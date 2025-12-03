@@ -4,10 +4,12 @@ const {
   createBeneficiary, 
   getBeneficiaries, 
   getBeneficiary, 
+  getBeneficiaryByUid, // Add this import
   updateBeneficiary, 
   deleteBeneficiary, 
   importBeneficiaries, 
   exportBeneficiaries,
+  downloadQRCode,
   upload
 } = require('../controllers/beneficiaryController');
 
@@ -33,5 +35,13 @@ router.route('/:id')
   .get(authMiddleware, getBeneficiary)
   .put(authMiddleware, upload.single('photo'), updateBeneficiary)
   .delete(authMiddleware, deleteBeneficiary);
+
+// New route for getting beneficiary by UID
+router.route('/uid/:uid')
+  .get(authMiddleware, getBeneficiaryByUid);
+
+// QR Code download route
+router.route('/:id/qrcode')
+  .get(authMiddleware, downloadQRCode);
 
 module.exports = router;

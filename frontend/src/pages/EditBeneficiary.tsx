@@ -1,21 +1,21 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { createBeneficiary, Beneficiary, downloadQRCode } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { getBeneficiaryByUid, updateBeneficiary, Beneficiary } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { ChevronLeft, Loader2, Download } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
 
-export default function RegisterBeneficiary() {
+export default function EditBeneficiary() {
+  const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [createdBeneficiary, setCreatedBeneficiary] = useState<Beneficiary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -25,8 +25,40 @@ export default function RegisterBeneficiary() {
     notes: ''
   });
 
+  useEffect(() => {
+    if (uid) {
+      loadBeneficiary(uid);
+    }
+  }, [uid]);
+
+  const loadBeneficiary = async (uid: string) => {
+    try {
+      const beneficiaryData = await getBeneficiaryByUid(uid);
+      if (beneficiaryData) {
+        setBeneficiary(beneficiaryData);
+        setFormData({
+          fullName: beneficiaryData.fullName,
+          dob: beneficiaryData.dob,
+          gender: beneficiaryData.gender,
+          household: beneficiaryData.household || '',
+          notes: beneficiaryData.notes || ''
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load beneficiary data',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!beneficiary) return;
 
     if (!formData.fullName) {
       toast({
@@ -37,58 +69,51 @@ export default function RegisterBeneficiary() {
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
     try {
-      const beneficiary = await createBeneficiary(formData);
-      setCreatedBeneficiary(beneficiary);
-      setShowQRModal(true);
+      const updatedBeneficiary = await updateBeneficiary(beneficiary.id, formData);
+      setBeneficiary(updatedBeneficiary);
       toast({
         title: 'Success',
-        description: `Beneficiary ${beneficiary.uid} registered successfully`
+        description: 'Beneficiary updated successfully'
       });
+      navigate(`/beneficiaries/${uid}`);
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to register beneficiary',
+        description: error instanceof Error ? error.message : 'Failed to update beneficiary',
         variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleDownloadQR = async () => {
-    if (!createdBeneficiary) return;
-    
-    try {
-      await downloadQRCode(createdBeneficiary.id, createdBeneficiary.uid);
-      toast({
-        title: 'Success',
-        description: 'QR code downloaded successfully'
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to download QR code',
-        variant: 'destructive'
-      });
-    }
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
-  const handleCloseModal = () => {
-    setShowQRModal(false);
-    // Navigate to beneficiaries list with refresh parameter
-    navigate('/beneficiaries?refresh=true');
-  };
+  if (!beneficiary) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <p className="text-muted-foreground">Beneficiary not found</p>
+        <Button onClick={() => navigate('/beneficiaries')}>Back to List</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <Link to="/beneficiaries">
+          <Link to={`/beneficiaries/${uid}`}>
             <Button variant="ghost" size="sm">
               <ChevronLeft className="mr-2 h-4 w-4" />
-              Back to Beneficiaries
+              Back to Profile
             </Button>
           </Link>
         </div>
@@ -97,8 +122,8 @@ export default function RegisterBeneficiary() {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <Card className="border-2">
           <CardHeader>
-            <CardTitle>Register New Beneficiary</CardTitle>
-            <CardDescription>Fill in the details to create a new beneficiary record and generate QR code</CardDescription>
+            <CardTitle>Edit Beneficiary</CardTitle>
+            <CardDescription>Update details for {beneficiary.uid}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -110,7 +135,7 @@ export default function RegisterBeneficiary() {
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   placeholder="John Doe"
                   required
-                  disabled={loading}
+                  disabled={saving}
                 />
               </div>
 
@@ -122,7 +147,7 @@ export default function RegisterBeneficiary() {
                     type="date"
                     value={formData.dob}
                     onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                    disabled={loading}
+                    disabled={saving}
                   />
                 </div>
 
@@ -131,7 +156,7 @@ export default function RegisterBeneficiary() {
                   <Select
                     value={formData.gender}
                     onValueChange={(value: 'male' | 'female' | 'other') => setFormData({ ...formData, gender: value })}
-                    disabled={loading}
+                    disabled={saving}
                   >
                     <SelectTrigger id="gender">
                       <SelectValue />
@@ -152,7 +177,7 @@ export default function RegisterBeneficiary() {
                   value={formData.household}
                   onChange={(e) => setFormData({ ...formData, household: e.target.value })}
                   placeholder="Family or household identifier"
-                  disabled={loading}
+                  disabled={saving}
                 />
               </div>
 
@@ -164,22 +189,27 @@ export default function RegisterBeneficiary() {
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Additional information..."
                   rows={4}
-                  disabled={loading}
+                  disabled={saving}
                 />
               </div>
 
               <div className="flex gap-3">
-                <Button type="submit" className="flex-1" disabled={loading}>
-                  {loading ? (
+                <Button type="submit" className="flex-1" disabled={saving}>
+                  {saving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Registering...
+                      Saving...
                     </>
                   ) : (
-                    'Register & Generate QR'
+                    'Save Changes'
                   )}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/dashboard')} disabled={loading}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate(`/beneficiaries/${uid}`)} 
+                  disabled={saving}
+                >
                   Cancel
                 </Button>
               </div>
@@ -187,40 +217,6 @@ export default function RegisterBeneficiary() {
           </CardContent>
         </Card>
       </main>
-
-      {/* QR Code Modal */}
-      <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Beneficiary Registered</DialogTitle>
-            <DialogDescription>
-              QR code generated successfully for {createdBeneficiary?.uid}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex flex-col items-center gap-4 p-6 bg-muted rounded-lg">
-              <img 
-                src={createdBeneficiary?.qrCode} 
-                alt="QR Code" 
-                className="w-48 h-48 border-4 border-white shadow-lg"
-              />
-              <div className="text-center">
-                <p className="text-2xl font-bold">{createdBeneficiary?.uid}</p>
-                <p className="text-sm text-muted-foreground">{createdBeneficiary?.fullName}</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button onClick={handleDownloadQR} className="flex-1">
-                <Download className="mr-2 h-4 w-4" />
-                Download QR
-              </Button>
-              <Button variant="outline" onClick={handleCloseModal}>
-                Done
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

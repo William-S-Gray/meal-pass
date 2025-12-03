@@ -10,8 +10,11 @@ import Dashboard from "./pages/Dashboard";
 import RegisterBeneficiary from "./pages/RegisterBeneficiary";
 import BeneficiariesList from "./pages/BeneficiariesList";
 import BeneficiaryProfile from "./pages/BeneficiaryProfile";
+import EditBeneficiary from "./pages/EditBeneficiary";
 import QRScanner from "./pages/QRScanner";
 import Reports from "./pages/Reports";
+import Statistics from "./pages/Statistics";
+import FedToday from "./pages/FedToday";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,9 +54,24 @@ const App = () => (
                 <BeneficiaryProfile />
               </ProtectedRoute>
             } />
+            <Route path="/beneficiaries/edit/:uid" element={
+              <ProtectedRoute allowedRoles={['admin', 'volunteer']}>
+                <EditBeneficiary />
+              </ProtectedRoute>
+            } />
             <Route path="/reports" element={
               <ProtectedRoute>
                 <Reports />
+              </ProtectedRoute>
+            } />
+            <Route path="/statistics" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <Statistics />
+              </ProtectedRoute>
+            } />
+            <Route path="/fed-today" element={
+              <ProtectedRoute>
+                <FedToday />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />

@@ -42,7 +42,7 @@ export default function Reports() {
       await exportFeedRecordsToCSV(startDate, endDate);
       toast({
         title: 'Success',
-        description: 'CSV export functionality will be connected to your backend'
+        description: 'CSV exported successfully'
       });
     } catch (error) {
       toast({

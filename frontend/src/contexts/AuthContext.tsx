@@ -24,23 +24,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
+      // Check if we have a user in localStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        // Verify that we have a valid token
+        if (parsedUser && parsedUser.token) {
+          setUser(parsedUser);
+        } else {
+          // Clear invalid user data
+          localStorage.removeItem('user');
+        }
+      } else {
+        // Fallback to API check
+        const currentUser = await getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+        }
+      }
     } catch (error) {
       console.error('Auth check failed:', error);
+      // Clear any invalid user data
+      localStorage.removeItem('user');
     } finally {
       setLoading(false);
     }
   };
 
   const login = async (email: string, password: string) => {
-    const user = await apiLogin(email, password);
-    setUser(user);
+    try {
+      const user = await apiLogin(email, password);
+      // The apiLogin function already stores the user with token in localStorage
+      // So we just need to set the user state
+      setUser(user);
+    } catch (error) {
+      // Clear user data on login failure
+      localStorage.removeItem('user');
+      throw error;
+    }
   };
 
   const logout = async () => {
-    await apiLogout();
-    setUser(null);
+    try {
+      await apiLogout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+    }
   };
 
   const isAdmin = user?.role === 'admin';

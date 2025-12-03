@@ -34,6 +34,14 @@ const protect = async (req, res, next) => {
 
     // Attach admin to request object
     req.admin = await Admin.findById(decoded.id);
+    
+    // Check if admin exists
+    if (!req.admin) {
+      return res.status(401).json({
+        success: false,
+        error: 'Admin not found'
+      });
+    }
 
     next();
   } catch (error) {

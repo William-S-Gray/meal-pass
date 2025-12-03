@@ -2,7 +2,9 @@ const express = require('express');
 const { protect } = require('../middleware/authMiddleware');
 const { 
   scanQRCode, 
+  setManualFeedingStatus,
   getFedToday, 
+  getFeedHistory,
   getStats, 
   getUnfed,
   exportFeedLogs
@@ -17,8 +19,14 @@ const authMiddleware = process.env.ENABLE_AUTH === 'true' ? [protect] : [];
 router.route('/scan')
   .post(authMiddleware, scanQRCode);
 
+router.route('/manual')
+  .post(authMiddleware, setManualFeedingStatus);
+
 router.route('/today')
   .get(authMiddleware, getFedToday);
+
+router.route('/history/:uniqueId')
+  .get(authMiddleware, getFeedHistory);
 
 router.route('/stats')
   .get(authMiddleware, getStats);

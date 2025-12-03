@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStats } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Check, QrCode, UserPlus, FileText, LogOut } from 'lucide-react';
+import { Users, Check, QrCode, UserPlus, FileText, LogOut, BarChart } from 'lucide-react';
 
 export default function Dashboard() {
   const { user, logout, isAdmin, isVolunteer } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ totalBeneficiaries: 0, fedToday: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -24,6 +25,10 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFedTodayClick = () => {
+    navigate('/fed-today');
   };
 
   return (
@@ -57,7 +62,10 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-success/50 bg-success/5">
+          <Card 
+            className="border-2 border-success/50 bg-success/5 cursor-pointer hover:bg-success/10 transition-colors"
+            onClick={handleFedTodayClick}
+          >
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Check className="h-5 w-5 text-success" />
@@ -102,6 +110,15 @@ export default function Dashboard() {
               Reports
             </Button>
           </Link>
+
+          {isAdmin && (
+            <Link to="/statistics" className="block">
+              <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
+                <BarChart className="h-8 w-8" />
+                Statistics
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Quick Info */}
@@ -137,6 +154,17 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">Track feeding data and export CSV files</p>
               </div>
             </div>
+            {isAdmin && (
+              <div className="flex items-start gap-3">
+                <div className="bg-primary/10 p-2 rounded-lg">
+                  <BarChart className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h4 className="font-semibold">View Statistics</h4>
+                  <p className="text-sm text-muted-foreground">Analyze feeding trends and patterns</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

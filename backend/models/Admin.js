@@ -20,6 +20,11 @@ const adminSchema = new mongoose.Schema({
     required: [true, 'Name is required'],
     trim: true,
     maxlength: [50, 'Name cannot be more than 50 characters']
+  },
+  role: {
+    type: String,
+    default: 'admin',
+    enum: ['admin', 'volunteer', 'reporter']
   }
 }, {
   timestamps: true

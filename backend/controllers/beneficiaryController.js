@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const Beneficiary = require('../models/Beneficiary');
+const FeedLog = require('../models/FeedLog');
 const { generateUniqueId } = require('../utils/idGenerator');
 const { generateQRCode } = require('../utils/generateQR');
 const { importFromCSV } = require('../utils/csvImporter');
@@ -43,7 +44,7 @@ const upload = multer({
  */
 const createBeneficiary = async (req, res, next) => {
   try {
-    const { name, gender, group } = req.body;
+    const { name, gender, group, dob, notes } = req.body;
     
     // Generate unique ID
     const uniqueId = await generateUniqueId();
@@ -64,7 +65,9 @@ const createBeneficiary = async (req, res, next) => {
       group,
       uniqueId,
       qrCodeUrl,
-      photoUrl
+      photoUrl,
+      dob: dob ? new Date(dob) : null,
+      notes: notes || null
     });
     
     await beneficiary.save();
@@ -108,10 +111,38 @@ const getBeneficiaries = async (req, res, next) => {
     
     const total = await Beneficiary.countDocuments(filter);
     
+    // Get today's date range
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    // Get all beneficiary IDs
+    const beneficiaryIds = beneficiaries.map(b => b._id);
+    
+    // Find feed logs for today for these beneficiaries
+    const todayFeedLogs = await FeedLog.find({
+      beneficiaryId: { $in: beneficiaryIds },
+      fedAt: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    });
+    
+    // Create a set of beneficiary IDs that were fed today
+    const fedTodayIds = new Set(todayFeedLogs.map(log => log.beneficiaryId.toString()));
+    
+    // Add fedToday property to each beneficiary
+    const beneficiariesWithFedStatus = beneficiaries.map(beneficiary => ({
+      ...beneficiary.toObject(),
+      fedToday: fedTodayIds.has(beneficiary._id.toString())
+    }));
+    
     res.status(200).json({
       success: true,
-      count: beneficiaries.length,
-      data: beneficiaries,
+      count: beneficiariesWithFedStatus.length,
+      data: beneficiariesWithFedStatus,
       pagination: {
         page,
         limit,
@@ -150,13 +181,38 @@ const getBeneficiary = async (req, res, next) => {
 };
 
 /**
+ * @desc    Get single beneficiary by UID
+ * @route   GET /api/beneficiaries/uid/:uid
+ * @access  Public (or Private if auth enabled)
+ */
+const getBeneficiaryByUid = async (req, res, next) => {
+  try {
+    const beneficiary = await Beneficiary.findOne({ uniqueId: req.params.uid });
+    
+    if (!beneficiary) {
+      return res.status(404).json({
+        success: false,
+        error: 'Beneficiary not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: beneficiary
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Update beneficiary
  * @route   PUT /api/beneficiaries/:id
  * @access  Public (or Private if auth enabled)
  */
 const updateBeneficiary = async (req, res, next) => {
   try {
-    const { name, gender, group } = req.body;
+    const { name, gender, group, dob, notes } = req.body;
     
     const beneficiary = await Beneficiary.findById(req.params.id);
     
@@ -178,6 +234,8 @@ const updateBeneficiary = async (req, res, next) => {
     beneficiary.gender = gender || beneficiary.gender;
     beneficiary.group = group || beneficiary.group;
     beneficiary.photoUrl = photoUrl;
+    if (dob !== undefined) beneficiary.dob = dob ? new Date(dob) : null;
+    if (notes !== undefined) beneficiary.notes = notes || null;
     
     await beneficiary.save();
     
@@ -305,13 +363,53 @@ const exportBeneficiaries = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Download QR code for a beneficiary
+ * @route   GET /api/beneficiaries/:id/qrcode
+ * @access  Public (or Private if auth enabled)
+ */
+const downloadQRCode = async (req, res, next) => {
+  try {
+    const beneficiary = await Beneficiary.findById(req.params.id);
+    
+    if (!beneficiary) {
+      return res.status(404).json({
+        success: false,
+        error: 'Beneficiary not found'
+      });
+    }
+    
+    // Construct the full path to the QR code file
+    const qrFilePath = path.join(__dirname, '..', 'public', beneficiary.qrCodeUrl);
+    
+    // Check if file exists
+    if (!fs.existsSync(qrFilePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'QR code file not found'
+      });
+    }
+    
+    // Set headers for file download
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', `attachment; filename="${beneficiary.uniqueId}-qrcode.png"`);
+    
+    // Send the file
+    res.sendFile(qrFilePath);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createBeneficiary,
   getBeneficiaries,
   getBeneficiary,
+  getBeneficiaryByUid,
   updateBeneficiary,
   deleteBeneficiary,
   importBeneficiaries,
   exportBeneficiaries,
+  downloadQRCode,
   upload
 };

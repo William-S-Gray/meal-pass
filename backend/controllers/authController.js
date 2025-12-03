@@ -50,7 +50,8 @@ const login = async (req, res, next) => {
         admin: {
           id: admin._id,
           name: admin.name,
-          email: admin.email
+          email: admin.email,
+          role: admin.role
         }
       }
     });
@@ -66,11 +67,25 @@ const login = async (req, res, next) => {
  */
 const getMe = async (req, res, next) => {
   try {
+    // Admin is already attached to req by auth middleware
+    // but let's double-check
+    if (!req.admin) {
+      return res.status(401).json({
+        success: false,
+        error: 'Not authorized to access this route'
+      });
+    }
+    
     const admin = await Admin.findById(req.admin.id);
     
     res.status(200).json({
       success: true,
-      data: admin
+      data: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role
+      }
     });
   } catch (error) {
     next(error);
@@ -94,7 +109,7 @@ const setupAdmin = async (req, res, next) => {
       });
     }
     
-    const { name, email, password } = req.body;
+    const { name, email, password, role = 'admin' } = req.body;
     
     // Validate input
     if (!name || !email || !password) {
@@ -108,7 +123,8 @@ const setupAdmin = async (req, res, next) => {
     const admin = new Admin({
       name,
       email,
-      password
+      password,
+      role
     });
     
     await admin.save();
@@ -125,7 +141,8 @@ const setupAdmin = async (req, res, next) => {
         admin: {
           id: admin._id,
           name: admin.name,
-          email: admin.email
+          email: admin.email,
+          role: admin.role
         }
       }
     });

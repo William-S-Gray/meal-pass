@@ -15,6 +15,7 @@ const connectDB = require('./config/db');
 const beneficiaryRoutes = require('./routes/beneficiaryRoutes');
 const feedRoutes = require('./routes/feedRoutes');
 const authRoutes = require('./routes/authRoutes');
+const feedingRoutes = require('./routes/feedingRoutes');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -29,8 +30,12 @@ connectDB();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Enable CORS
-app.use(cors());
+// Enable CORS with specific options for better security
+app.use(cors({
+  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080'],
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
 
 // Set security headers
 app.use(helmet());
@@ -42,13 +47,20 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Static folder
+// Static folder with CORS headers for QR codes
+app.use('/qrcodes', cors({
+  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080'],
+  credentials: true
+}), express.static(__dirname + '/public/qrcodes'));
+
+// Static folder for other assets
 app.use(express.static(__dirname + '/public'));
 
 // Mount routers
 app.use('/api/beneficiaries', beneficiaryRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/feeding', feedingRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

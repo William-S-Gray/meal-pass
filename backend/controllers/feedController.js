@@ -79,6 +79,109 @@ const scanQRCode = async (req, res, next) => {
 };
 
 /**
+ * @desc    Manually set beneficiary feeding status for today (Admin only)
+ * @route   POST /api/feed/manual
+ * @access  Private (Admin only)
+ */
+const setManualFeedingStatus = async (req, res, next) => {
+  try {
+    const { uniqueId, fed } = req.body;
+    const admin = req.admin; // Set by auth middleware
+    
+    if (!uniqueId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Unique ID is required'
+      });
+    }
+    
+    if (fed === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Fed status is required'
+      });
+    }
+    
+    // Check if admin (only admins can manually set feeding status)
+    if (admin.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only administrators can manually set feeding status'
+      });
+    }
+    
+    // Find beneficiary
+    const beneficiary = await Beneficiary.findOne({ uniqueId });
+    
+    if (!beneficiary) {
+      return res.status(404).json({
+        success: false,
+        error: 'Beneficiary not found'
+      });
+    }
+    
+    // Build date range for today
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    // Check if already has a feed log for today
+    const existingLog = await FeedLog.findOne({
+      uniqueId,
+      fedAt: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    });
+    
+    let feedLog;
+    let message;
+    
+    if (fed) {
+      // Mark as fed
+      if (existingLog) {
+        // Already fed, return existing log
+        feedLog = existingLog;
+        message = 'Beneficiary already marked as fed today';
+      } else {
+        // Create new feed log
+        feedLog = new FeedLog({
+          beneficiaryId: beneficiary._id,
+          uniqueId: beneficiary.uniqueId,
+          fedAt: new Date(),
+          servedBy: `${admin.name} (Manual)`
+        });
+        await feedLog.save();
+        message = 'Beneficiary manually marked as fed';
+      }
+    } else {
+      // Mark as not fed (remove feed log if exists)
+      if (existingLog) {
+        await FeedLog.deleteOne({ _id: existingLog._id });
+        message = 'Beneficiary manually marked as not fed (removed feed record)';
+      } else {
+        message = 'Beneficiary already not fed today';
+      }
+      feedLog = null;
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        beneficiary,
+        fed: !!feedLog,
+        feedLog,
+        message
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @desc    Get all people fed today
  * @route   GET /api/feed/today
  * @access  Public (or Private if auth enabled)
@@ -127,6 +230,39 @@ const getFedToday = async (req, res, next) => {
         total,
         pages: Math.ceil(total / limit)
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get feed history for a specific beneficiary
+ * @route   GET /api/feed/history/:uniqueId
+ * @access  Public (or Private if auth enabled)
+ */
+const getFeedHistory = async (req, res, next) => {
+  try {
+    const { uniqueId } = req.params;
+    
+    // Find beneficiary
+    const beneficiary = await Beneficiary.findOne({ uniqueId });
+    
+    if (!beneficiary) {
+      return res.status(404).json({
+        success: false,
+        error: 'Beneficiary not found'
+      });
+    }
+    
+    // Get feed logs for this beneficiary
+    const feedLogs = await FeedLog.find({ beneficiaryId: beneficiary._id })
+      .sort({ fedAt: -1 });
+    
+    res.status(200).json({
+      success: true,
+      count: feedLogs.length,
+      data: feedLogs
     });
   } catch (error) {
     next(error);
@@ -317,7 +453,9 @@ const exportFeedLogs = async (req, res, next) => {
 
 module.exports = {
   scanQRCode,
+  setManualFeedingStatus,
   getFedToday,
+  getFeedHistory,
   getStats,
   getUnfed,
   exportFeedLogs
