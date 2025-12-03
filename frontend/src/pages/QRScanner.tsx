@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { scanQRCode, getBeneficiaryByUid, Beneficiary } from '@/lib/api';
@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Camera, CheckCircle, AlertTriangle, XCircle, Search } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle, AlertTriangle, XCircle, Search, Loader2 } from 'lucide-react';
+import QrScanner from 'qr-scanner';
 
 export default function QRScanner() {
   const { user, isAdmin } = useAuth();
@@ -18,7 +19,55 @@ export default function QRScanner() {
   const [uniqueId, setUniqueId] = useState('');
   const [scanResult, setScanResult] = useState<{ status: 'success' | 'already_fed' | 'not_found' | 'error'; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
-  const uniqueIdRef = useRef<HTMLInputElement>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const qrScannerRef = useRef<QrScanner | null>(null);
+
+  // Initialize QR scanner when scanning is enabled
+  useEffect(() => {
+    if (scanning && videoRef.current && !qrScannerRef.current) {
+      try {
+        qrScannerRef.current = new QrScanner(
+          videoRef.current,
+          (result) => {
+            // Stop scanning after successful scan
+            if (qrScannerRef.current) {
+              qrScannerRef.current.stop();
+            }
+            setScanning(false);
+            processScan(result);
+          },
+          {
+            onDecodeError: (error) => {
+              // QR decode errors are normal, don't show them
+              console.debug('QR Decode Error:', error);
+            },
+            highlightScanRegion: true,
+            highlightCodeOutline: true,
+          }
+        );
+
+        qrScannerRef.current.start()
+          .catch((err) => {
+            console.error('QR Scanner Start Error:', err);
+            setCameraError('Failed to access camera. Please ensure you have granted camera permissions.');
+            setScanning(false);
+          });
+      } catch (err) {
+        console.error('QR Scanner Initialization Error:', err);
+        setCameraError('Failed to initialize camera. Please ensure you have granted camera permissions.');
+        setScanning(false);
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      if (qrScannerRef.current) {
+        qrScannerRef.current.destroy();
+        qrScannerRef.current = null;
+      }
+    };
+  }, [scanning]);
 
   // Handle manual entry submission
   const handleManualSubmit = async (e: React.FormEvent) => {
@@ -41,7 +90,7 @@ export default function QRScanner() {
       setLoading(true);
       
       // Call the new API endpoint
-      const result = await scanQRCode(uid);
+      const result = await scanQRCode(uid, 'web-scanner', 'scan');
       setScanResult(result);
       
       // Fetch beneficiary details for display
@@ -96,14 +145,16 @@ export default function QRScanner() {
     setBeneficiary(null);
     setUniqueId('');
     setScanResult(null);
+    setCameraError(null);
   };
 
   // Focus the input when manual entry is opened
   const openManualEntry = () => {
     setManualEntry(true);
     setTimeout(() => {
-      if (uniqueIdRef.current) {
-        uniqueIdRef.current.focus();
+      const input = document.getElementById('uniqueId');
+      if (input) {
+        (input as HTMLInputElement).focus();
       }
     }, 100);
   };
@@ -151,19 +202,25 @@ export default function QRScanner() {
 
             {scanning && (
               <div className="space-y-4">
-                <div className="aspect-square bg-black rounded-lg flex items-center justify-center">
-                  <p className="text-white">
-                    {/* TODO: Replace with actual camera feed */}
-                    Camera view will appear here when integrated with QR scanner library
-                  </p>
+                <div className="aspect-square bg-black rounded-lg overflow-hidden relative">
+                  {cameraError ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-white p-4 text-center">
+                      <XCircle className="w-12 h-12 mb-4" />
+                      <p className="mb-2">{cameraError}</p>
+                      <p className="text-sm opacity-75">Please check your camera permissions and try again.</p>
+                    </div>
+                  ) : (
+                    <video 
+                      ref={videoRef} 
+                      className="w-full h-full object-cover"
+                      playsInline
+                      muted
+                    />
+                  )}
                 </div>
                 <div className="flex gap-3">
                   <Button onClick={resetScanner} variant="outline" className="flex-1">
                     Cancel
-                  </Button>
-                  {/* For demo purposes - remove in production */}
-                  <Button onClick={() => processScan('BNF-0001')} className="flex-1">
-                    Simulate Scan (Demo)
                   </Button>
                 </div>
               </div>
@@ -174,7 +231,6 @@ export default function QRScanner() {
                 <div className="space-y-2">
                   <Label htmlFor="uniqueId">Beneficiary Unique ID</Label>
                   <Input
-                    ref={uniqueIdRef}
                     id="uniqueId"
                     placeholder="Enter Unique ID (e.g., BNF-0001)"
                     value={uniqueId}
@@ -187,7 +243,12 @@ export default function QRScanner() {
                     Cancel
                   </Button>
                   <Button onClick={handleManualSubmit} className="flex-1" disabled={loading}>
-                    {loading ? 'Processing...' : 'Submit'}
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : 'Submit'}
                   </Button>
                 </div>
               </div>
@@ -203,22 +264,22 @@ export default function QRScanner() {
             <DialogTitle className="flex items-center gap-2">
               {scanResult?.status === 'success' ? (
                 <>
-                  <CheckCircle className="h-5 w-5 text-success" />
+                  <CheckCircle className="h-5 w-5 text-green-500" />
                   Success
                 </>
               ) : scanResult?.status === 'already_fed' ? (
                 <>
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
                   Already Fed Today
                 </>
               ) : scanResult?.status === 'not_found' ? (
                 <>
-                  <XCircle className="h-5 w-5 text-destructive" />
+                  <XCircle className="h-5 w-5 text-red-500" />
                   Beneficiary Not Found
                 </>
               ) : (
                 <>
-                  <XCircle className="h-5 w-5 text-destructive" />
+                  <XCircle className="h-5 w-5 text-red-500" />
                   Error
                 </>
               )}
@@ -241,7 +302,11 @@ export default function QRScanner() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Status:</span>
-                  <span className={scanResult?.status === 'success' ? 'text-success font-semibold' : 'text-destructive font-semibold'}>
+                  <span className={
+                    scanResult?.status === 'success' ? 'text-green-500 font-semibold' : 
+                    scanResult?.status === 'already_fed' ? 'text-yellow-500 font-semibold' :
+                    scanResult?.status === 'not_found' ? 'text-red-500 font-semibold' : 'text-red-500 font-semibold'
+                  }>
                     {scanResult?.status === 'success' ? 'Fed Successfully' : 
                      scanResult?.status === 'already_fed' ? 'Already Fed Today' :
                      scanResult?.status === 'not_found' ? 'Not Found' : 'Error'}

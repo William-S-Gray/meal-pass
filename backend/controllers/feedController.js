@@ -1,5 +1,5 @@
 const Beneficiary = require('../models/Beneficiary');
-const FeedLog = require('../models/FeedLog');
+const FeedingRecord = require('../models/FeedingRecord'); // Changed from FeedLog to FeedingRecord
 const { exportToCSV } = require('../utils/csvExporter');
 
 /**
@@ -29,47 +29,44 @@ const scanQRCode = async (req, res, next) => {
     }
     
     // Check if already fed today
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0];
     
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    const existingLog = await FeedLog.findOne({
+    const existingRecord = await FeedingRecord.findOne({ // Changed from FeedLog to FeedingRecord
       uniqueId,
-      fedAt: {
-        $gte: startOfDay,
-        $lte: endOfDay
-      }
+      date: dateString
     });
     
-    if (existingLog) {
+    if (existingRecord) {
       return res.status(200).json({
         success: true,
         data: {
           beneficiary,
           alreadyFed: true,
-          feedLog: existingLog,
+          feedRecord: existingRecord, // Changed name from feedLog to feedRecord
           message: 'Beneficiary already fed today'
         }
       });
     }
     
-    // Create feed log
-    const feedLog = new FeedLog({
+    // Create feeding record
+    const feedingRecord = new FeedingRecord({ // Changed from FeedLog to FeedingRecord
       beneficiaryId: beneficiary._id,
       uniqueId: beneficiary.uniqueId,
-      fedAt: new Date()
+      date: dateString,
+      fedAt: new Date(),
+      method: 'scan', // Added method field
+      deviceId: 'unknown' // Added deviceId field
     });
     
-    await feedLog.save();
+    await feedingRecord.save();
     
     res.status(200).json({
       success: true,
       data: {
         beneficiary,
         alreadyFed: false,
-        feedLog,
+        feedRecord: feedingRecord, // Changed name from feedLog to feedRecord
         message: 'Beneficiary marked as fed successfully'
       }
     });
@@ -120,59 +117,55 @@ const setManualFeedingStatus = async (req, res, next) => {
       });
     }
     
-    // Build date range for today
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    // Get today's date
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0];
     
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    // Check if already has a feed log for today
-    const existingLog = await FeedLog.findOne({
+    // Check if already has a feeding record for today
+    const existingRecord = await FeedingRecord.findOne({ // Changed from FeedLog to FeedingRecord
       uniqueId,
-      fedAt: {
-        $gte: startOfDay,
-        $lte: endOfDay
-      }
+      date: dateString
     });
     
-    let feedLog;
+    let feedingRecord; // Changed name from feedLog to feedingRecord
     let message;
     
     if (fed) {
       // Mark as fed
-      if (existingLog) {
-        // Already fed, return existing log
-        feedLog = existingLog;
+      if (existingRecord) {
+        // Already fed, return existing record
+        feedingRecord = existingRecord;
         message = 'Beneficiary already marked as fed today';
       } else {
-        // Create new feed log
-        feedLog = new FeedLog({
+        // Create new feeding record
+        feedingRecord = new FeedingRecord({ // Changed from FeedLog to FeedingRecord
           beneficiaryId: beneficiary._id,
           uniqueId: beneficiary.uniqueId,
+          date: dateString,
           fedAt: new Date(),
-          servedBy: `${admin.name} (Manual)`
+          method: 'manual', // Added method field
+          deviceId: `${admin.name} (Manual)` // Changed from servedBy to deviceId
         });
-        await feedLog.save();
+        await feedingRecord.save();
         message = 'Beneficiary manually marked as fed';
       }
     } else {
-      // Mark as not fed (remove feed log if exists)
-      if (existingLog) {
-        await FeedLog.deleteOne({ _id: existingLog._id });
-        message = 'Beneficiary manually marked as not fed (removed feed record)';
+      // Mark as not fed (remove feeding record if exists)
+      if (existingRecord) {
+        await FeedingRecord.deleteOne({ _id: existingRecord._id }); // Changed from FeedLog to FeedingRecord
+        message = 'Beneficiary manually marked as not fed (removed feeding record)';
       } else {
         message = 'Beneficiary already not fed today';
       }
-      feedLog = null;
+      feedingRecord = null;
     }
     
     res.status(200).json({
       success: true,
       data: {
         beneficiary,
-        fed: !!feedLog,
-        feedLog,
+        fed: !!feedingRecord,
+        feedRecord: feedingRecord, // Changed name from feedLog to feedRecord
         message
       }
     });
@@ -192,19 +185,13 @@ const getFedToday = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     
-    // Build date range for today
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    // Get today's date
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0];
     
     // Build filter
     const filter = {
-      fedAt: {
-        $gte: startOfDay,
-        $lte: endOfDay
-      }
+      date: dateString
     };
     
     // Add group filter if provided
@@ -212,18 +199,18 @@ const getFedToday = async (req, res, next) => {
       filter.group = req.query.group;
     }
     
-    const feedLogs = await FeedLog.find(filter)
-      .populate('beneficiaryId', 'name gender group')
+    const feedingRecords = await FeedingRecord.find(filter) // Changed from FeedLog to FeedingRecord
+      .populate('beneficiary', 'name gender group')
       .skip(skip)
       .limit(limit)
       .sort({ fedAt: -1 });
     
-    const total = await FeedLog.countDocuments(filter);
+    const total = await FeedingRecord.countDocuments(filter); // Changed from FeedLog to FeedingRecord
     
     res.status(200).json({
       success: true,
-      count: feedLogs.length,
-      data: feedLogs,
+      count: feedingRecords.length,
+      data: feedingRecords,
       pagination: {
         page,
         limit,
@@ -255,14 +242,14 @@ const getFeedHistory = async (req, res, next) => {
       });
     }
     
-    // Get feed logs for this beneficiary
-    const feedLogs = await FeedLog.find({ beneficiaryId: beneficiary._id })
-      .sort({ fedAt: -1 });
+    // Get feeding records for this beneficiary
+    const feedingRecords = await FeedingRecord.find({ beneficiary: beneficiary._id }) // Changed from FeedLog to FeedingRecord
+      .sort({ date: -1, fedAt: -1 });
     
     res.status(200).json({
       success: true,
-      count: feedLogs.length,
-      data: feedLogs
+      count: feedingRecords.length,
+      data: feedingRecords
     });
   } catch (error) {
     next(error);
@@ -279,19 +266,13 @@ const getStats = async (req, res, next) => {
     // Total beneficiaries
     const totalBeneficiaries = await Beneficiary.countDocuments();
     
-    // Build date range for today
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    // Get today's date
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0];
     
     // Total fed today
-    const totalFedToday = await FeedLog.countDocuments({
-      fedAt: {
-        $gte: startOfDay,
-        $lte: endOfDay
-      }
+    const totalFedToday = await FeedingRecord.countDocuments({ // Changed from FeedLog to FeedingRecord
+      date: dateString
     });
     
     // Calculate feed rate percentage
@@ -308,14 +289,15 @@ const getStats = async (req, res, next) => {
       ? new Date(req.query.endDate) 
       : new Date();
     
-    // Set end date to end of day
-    endDate.setHours(23, 59, 59, 999);
+    // Format dates to YYYY-MM-DD
+    const startDateString = startDate.toISOString().split('T')[0];
+    const endDateString = endDate.toISOString().split('T')[0];
     
     // Total fed in date range
-    const totalFedInRange = await FeedLog.countDocuments({
-      fedAt: {
-        $gte: startDate,
-        $lte: endDate
+    const totalFedInRange = await FeedingRecord.countDocuments({ // Changed from FeedLog to FeedingRecord
+      date: {
+        $gte: startDateString,
+        $lte: endDateString
       }
     });
     
@@ -327,8 +309,8 @@ const getStats = async (req, res, next) => {
         totalFedInRange,
         feedRate,
         dateRange: {
-          startDate,
-          endDate
+          startDate: startDateString,
+          endDate: endDateString
         }
       }
     });
@@ -348,19 +330,13 @@ const getUnfed = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     
-    // Build date range for today
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    // Get today's date
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0];
     
     // Find beneficiaries who have been fed today
-    const fedBeneficiaries = await FeedLog.distinct('beneficiaryId', {
-      fedAt: {
-        $gte: startOfDay,
-        $lte: endOfDay
-      }
+    const fedBeneficiaries = await FeedingRecord.distinct('beneficiary', { // Changed from FeedLog to FeedingRecord
+      date: dateString
     });
     
     // Build filter for unfed beneficiaries
@@ -407,33 +383,31 @@ const exportFeedLogs = async (req, res, next) => {
     const filter = {};
     
     if (req.query.startDate || req.query.endDate) {
-      filter.fedAt = {};
+      filter.date = {};
       
       if (req.query.startDate) {
-        filter.fedAt.$gte = new Date(req.query.startDate);
+        filter.date.$gte = req.query.startDate;
       }
       
       if (req.query.endDate) {
-        filter.fedAt.$lte = new Date(req.query.endDate);
-        // Set to end of day
-        filter.fedAt.$lte.setHours(23, 59, 59, 999);
+        filter.date.$lte = req.query.endDate;
       }
     }
     
-    // Get feed logs
-    const feedLogs = await FeedLog.find(filter)
-      .populate('beneficiaryId', 'name gender group uniqueId')
-      .sort({ fedAt: -1 });
+    // Get feeding records
+    const feedingRecords = await FeedingRecord.find(filter) // Changed from FeedLog to FeedingRecord
+      .populate('beneficiary', 'name gender group uniqueId')
+      .sort({ date: -1, fedAt: -1 });
     
     // Prepare data for export
-    const exportData = feedLogs.map(log => ({
-      date: log.fedAt.toISOString().split('T')[0],
-      time: log.fedAt.toTimeString().split(' ')[0],
-      beneficiaryId: log.beneficiaryId?.uniqueId || log.uniqueId,
-      name: log.beneficiaryId?.name || 'Unknown',
-      gender: log.beneficiaryId?.gender || 'Unknown',
-      group: log.beneficiaryId?.group || 'Unknown',
-      servedBy: log.servedBy
+    const exportData = feedingRecords.map(record => ({
+      date: record.date,
+      time: record.fedAt.toTimeString().split(' ')[0],
+      beneficiaryId: record.beneficiary?.uniqueId || record.uniqueId,
+      name: record.beneficiary?.name || 'Unknown',
+      gender: record.beneficiary?.gender || 'Unknown',
+      group: record.beneficiary?.group || 'Unknown',
+      servedBy: record.deviceId || 'Unknown' // Changed from servedBy to deviceId
     }));
     
     const fields = ['date', 'time', 'beneficiaryId', 'name', 'gender', 'group', 'servedBy'];
@@ -451,6 +425,56 @@ const exportFeedLogs = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Get feed records by date range
+ * @route   GET /api/feed/date-range
+ * @access  Public (or Private if auth enabled)
+ */
+const getFeedRecordsByDateRange = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    // Build date filter
+    const filter = {};
+    
+    if (startDate || endDate) {
+      filter.date = {};
+      
+      if (startDate) {
+        filter.date.$gte = startDate;
+      }
+      
+      if (endDate) {
+        filter.date.$lte = endDate;
+      }
+    }
+    
+    // Get feeding records
+    const feedingRecords = await FeedingRecord.find(filter) // Changed from FeedLog to FeedingRecord
+      .populate('beneficiary', 'name gender group uniqueId')
+      .sort({ date: -1, fedAt: -1 });
+    
+    // Prepare data for response
+    const records = feedingRecords.map(record => ({
+      id: record._id,
+      beneficiaryUid: record.beneficiary?.uniqueId || record.uniqueId,
+      beneficiaryName: record.beneficiary?.name || 'Unknown',
+      date: record.date,
+      time: record.fedAt.toTimeString().split(' ')[0],
+      scannerName: record.deviceId || 'Unknown', // Changed from servedBy to deviceId
+      status: 'ok' // Assuming all records are valid
+    }));
+    
+    res.status(200).json({
+      success: true,
+      count: records.length,
+      data: records
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   scanQRCode,
   setManualFeedingStatus,
@@ -458,5 +482,6 @@ module.exports = {
   getFeedHistory,
   getStats,
   getUnfed,
-  exportFeedLogs
+  exportFeedLogs,
+  getFeedRecordsByDateRange
 };

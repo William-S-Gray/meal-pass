@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getBeneficiaryByUid, getFeedHistoryForBeneficiary, updateBeneficiary, downloadQRCode, setManualFeedingStatus, Beneficiary, FeedRecord } from '@/lib/api';
+import { 
+  getBeneficiaryByUid, 
+  getFeedingRecordsForBeneficiary, 
+  updateBeneficiary, 
+  downloadQRCode, 
+  setManualFeedingStatus, 
+  Beneficiary, 
+  FeedingRecord 
+} from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Download, Edit, Check, X } from 'lucide-react';
+import { ChevronLeft, Download, Edit, Check, X, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export default function BeneficiaryProfile() {
@@ -14,9 +22,9 @@ export default function BeneficiaryProfile() {
   const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
   const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null);
-  const [feedHistory, setFeedHistory] = useState<FeedRecord[]>([]);
+  const [feedHistory, setFeedHistory] = useState<FeedingRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     if (uid) {
@@ -28,7 +36,7 @@ export default function BeneficiaryProfile() {
     try {
       const [beneficiaryData, historyData] = await Promise.all([
         getBeneficiaryByUid(uid),
-        getFeedHistoryForBeneficiary(uid)
+        getFeedingRecordsForBeneficiary(uid)
       ]);
       setBeneficiary(beneficiaryData);
       setFeedHistory(historyData);
@@ -52,6 +60,7 @@ export default function BeneficiaryProfile() {
     if (!beneficiary) return;
     
     try {
+      setActionLoading(true);
       await downloadQRCode(beneficiary.id, beneficiary.uid);
       toast({
         title: 'Success',
@@ -63,6 +72,8 @@ export default function BeneficiaryProfile() {
         description: 'Failed to download QR code',
         variant: 'destructive'
       });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -70,6 +81,7 @@ export default function BeneficiaryProfile() {
     if (!beneficiary) return;
     
     try {
+      setActionLoading(true);
       const result = await setManualFeedingStatus(beneficiary.uid, fed);
       toast({
         title: 'Success',
@@ -91,6 +103,8 @@ export default function BeneficiaryProfile() {
           variant: 'destructive'
         });
       }
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -152,8 +166,13 @@ export default function BeneficiaryProfile() {
                       size="sm"
                       onClick={() => handleSetFeedingStatus(true)}
                       title="Mark as fed today"
+                      disabled={actionLoading || wasFedToday}
                     >
-                      <Check className="mr-2 h-4 w-4" />
+                      {actionLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Check className="mr-2 h-4 w-4" />
+                      )}
                       Mark Fed
                     </Button>
                     <Button 
@@ -161,8 +180,13 @@ export default function BeneficiaryProfile() {
                       size="sm"
                       onClick={() => handleSetFeedingStatus(false)}
                       title="Mark as not fed today"
+                      disabled={actionLoading || !wasFedToday}
                     >
-                      <X className="mr-2 h-4 w-4" />
+                      {actionLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <X className="mr-2 h-4 w-4" />
+                      )}
                       Mark Not Fed
                     </Button>
                   </>
@@ -205,6 +229,18 @@ export default function BeneficiaryProfile() {
                     {wasFedToday ? 'Fed Today' : 'Not Fed Today'}
                   </Badge>
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Meals</p>
+                  <p className="text-base font-medium">{feedHistory.length}</p>
+                </div>
+                {feedHistory.length > 0 && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Last Fed</p>
+                    <p className="text-base font-medium">
+                      {new Date(feedHistory[0].date).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col items-center gap-4 p-6 bg-muted rounded-lg">
@@ -213,9 +249,19 @@ export default function BeneficiaryProfile() {
                   alt="QR Code" 
                   className="w-48 h-48 border-4 border-white shadow-lg"
                 />
-                <Button variant="outline" className="w-full" onClick={handleDownloadQR}>
-                  <Download className="mr-2 h-4 w-4" />
+                <Button variant="outline" className="w-full" onClick={handleDownloadQR} disabled={actionLoading}>
+                  {actionLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
                   Download QR Code
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => window.print()}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Print Card
                 </Button>
               </div>
             </div>
@@ -246,11 +292,11 @@ export default function BeneficiaryProfile() {
                     {feedHistory.map((record) => (
                       <TableRow key={record.id}>
                         <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{record.time}</TableCell>
-                        <TableCell>{record.scannerName}</TableCell>
+                        <TableCell>{new Date(record.fedAt).toLocaleTimeString()}</TableCell>
+                        <TableCell>{record.deviceId}</TableCell>
                         <TableCell>
-                          <Badge variant={record.status === 'ok' ? 'default' : 'secondary'}>
-                            {record.status}
+                          <Badge variant="default">
+                            {record.method}
                           </Badge>
                         </TableCell>
                       </TableRow>

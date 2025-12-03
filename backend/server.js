@@ -3,6 +3,8 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { Server } = require('socket.io');
+const http = require('http');
 require('colors');
 
 // Load env vars
@@ -16,12 +18,28 @@ const beneficiaryRoutes = require('./routes/beneficiaryRoutes');
 const feedRoutes = require('./routes/feedRoutes');
 const authRoutes = require('./routes/authRoutes');
 const feedingRoutes = require('./routes/feedingRoutes');
+const reportsRoutes = require('./routes/reportsRoutes');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
 
 // Initialize app
 const app = express();
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080', 'http://localhost:8081'],
+    credentials: true,
+    optionsSuccessStatus: 200
+  }
+});
+
+// Store Socket.IO instance in app for use in controllers
+app.set('io', io);
 
 // Connect to database
 connectDB();
@@ -32,7 +50,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS with specific options for better security
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080'],
+  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080', 'http://localhost:8081'],
   credentials: true,
   optionsSuccessStatus: 200
 }));
@@ -49,7 +67,7 @@ app.use(limiter);
 
 // Static folder with CORS headers for QR codes
 app.use('/qrcodes', cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080'],
+  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080', 'http://localhost:8081'],
   credentials: true
 }), express.static(__dirname + '/public/qrcodes'));
 
@@ -61,6 +79,7 @@ app.use('/api/beneficiaries', beneficiaryRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/feeding', feedingRoutes);
+app.use('/api/reports', reportsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -91,7 +110,7 @@ process.on('uncaughtException', (err) => {
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.yellow.bold);
 });
 

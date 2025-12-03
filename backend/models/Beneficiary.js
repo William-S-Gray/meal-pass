@@ -7,17 +7,24 @@ const beneficiarySchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Name cannot be more than 100 characters']
   },
-  group: {
-    type: String,
-    required: false,
-    trim: true,
-    maxlength: [50, 'Group cannot be more than 50 characters']
-  },
   uniqueId: {
     type: String,
     required: [true, 'Unique ID is required'],
     unique: true,
     trim: true
+  },
+  gender: {
+    type: String,
+    required: [true, 'Gender is required'],
+    enum: ['male', 'female', 'other']
+  },
+  age: {
+    type: Number,
+    required: false
+  },
+  photo: {
+    type: String, // URL to photo
+    required: false
   },
   qrCodeUrl: {
     type: String,

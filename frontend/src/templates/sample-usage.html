@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Pass Card Sheet Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        textarea {
+            height: 150px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .instructions {
+            background-color: #e9f7fe;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .instructions h3 {
+            margin-top: 0;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Meal Pass Card Sheet Generator</h1>
+        
+        <div class="instructions">
+            <h3>Instructions:</h3>
+            <ul>
+                <li>Enter beneficiary data in JSON format below</li>
+                <li>Click "Generate Card Sheet" to create printable cards</li>
+                <li>The generated file will be downloaded automatically</li>
+                <li>Open the downloaded HTML file in a browser and print</li>
+                <li>Use Chrome's "Save as PDF" option for best results</li>
+            </ul>
+        </div>
+        
+        <div class="form-group">
+            <label for="beneficiariesData">Beneficiaries Data (JSON format):</label>
+            <textarea id="beneficiariesData" placeholder='Enter beneficiary data in JSON format. Example:
+[
+  { "name": "John Doe", "uniqueId": "MP-001", "qrCodeUrl": "https://example.com/qr1.png" },
+  { "name": "Jane Smith", "uniqueId": "MP-002", "qrCodeUrl": "https://example.com/qr2.png" }
+]'>[
+  { "name": "John Doe", "uniqueId": "MP-001", "qrCodeUrl": "https://example.com/qr1.png" },
+  { "name": "Jane Smith", "uniqueId": "MP-002", "qrCodeUrl": "https://example.com/qr2.png" },
+  { "name": "Robert Johnson", "uniqueId": "MP-003", "qrCodeUrl": "https://example.com/qr3.png" },
+  { "name": "Emily Williams", "uniqueId": "MP-004", "qrCodeUrl": "https://example.com/qr4.png" },
+  { "name": "Michael Brown", "uniqueId": "MP-005", "qrCodeUrl": "https://example.com/qr5.png" },
+  { "name": "Sarah Davis", "uniqueId": "MP-006", "qrCodeUrl": "https://example.com/qr6.png" },
+  { "name": "David Miller", "uniqueId": "MP-007", "qrCodeUrl": "https://example.com/qr7.png" },
+  { "name": "Lisa Wilson", "uniqueId": "MP-008", "qrCodeUrl": "https://example.com/qr8.png" },
+  { "name": "James Moore", "uniqueId": "MP-009", "qrCodeUrl": "https://example.com/qr9.png" },
+  { "name": "Patricia Taylor", "uniqueId": "MP-010", "qrCodeUrl": "https://example.com/qr10.png" }
+]</textarea>
+        </div>
+        
+        <button id="generateBtn">Generate Card Sheet</button>
+    </div>
+
+    <script src="./generateCardSheet.js"></script>
+    <script>
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            try {
+                // Get the JSON data from the textarea
+                const jsonData = document.getElementById('beneficiariesData').value;
+                const beneficiaries = JSON.parse(jsonData);
+                
+                // Generate the card sheet
+                generateCardSheet(beneficiaries);
+                
+                // Show success message
+                alert('Card sheet generated successfully! Check your downloads folder.');
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

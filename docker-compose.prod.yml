@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # MongoDB database
+  mongodb:
+    image: mongo:6.0
+    container_name: mealpass_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - mealpass_network
+
+  # Backend API
+  api:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    container_name: mealpass_api
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      MONGO_URI: mongodb://${MONGO_USERNAME:-root}:${MONGO_PASSWORD:-password}@mongodb:27017/mealpass?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-here}
+      ENABLE_AUTH: ${ENABLE_AUTH:-true}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost}
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend/logs:/app/logs
+      - ./backend/public:/app/public
+    networks:
+      - mealpass_network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: mealpass_frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - mealpass_network
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: mealpass_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/meal-pass.conf:/etc/nginx/conf.d/meal-pass.conf
+      - ./nginx/logs:/var/log/nginx
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - api
+    networks:
+      - mealpass_network
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  mealpass_network:
+    driver: bridge

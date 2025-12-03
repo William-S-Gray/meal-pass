@@ -1,26 +1,33 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getTodayFeedRecords, FeedRecord } from '@/lib/api';
+import { getTodayFeedRecords, PaginatedFeedRecords, FeedRecord } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Clock } from 'lucide-react';
+import { ArrowLeft, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export default function FedToday() {
   const navigate = useNavigate();
   const [feedRecords, setFeedRecords] = useState<FeedRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
     loadFeedRecords();
-  }, []);
+  }, [currentPage, itemsPerPage]);
 
   const loadFeedRecords = async () => {
     try {
-      const records = await getTodayFeedRecords(1, 100); // Get first 100 records
-      setFeedRecords(records);
+      setLoading(true);
+      const result: PaginatedFeedRecords = await getTodayFeedRecords(currentPage, itemsPerPage);
+      setFeedRecords(result.data);
+      setTotalPages(result.pagination.pages);
+      setTotalItems(result.pagination.total);
     } catch (error) {
       toast({
         title: 'Error',
@@ -32,16 +39,41 @@ export default function FedToday() {
     }
   };
 
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
+
+  const handleRefresh = () => {
+    loadFeedRecords();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <Link to="/dashboard">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+          <div className="flex items-center justify-between">
+            <Link to="/dashboard">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Dashboard
+              </Button>
+            </Link>
+            <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading}>
+              {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowLeft className="mr-2 h-4 w-4" />
+              )}
+              Refresh
             </Button>
-          </Link>
+          </div>
         </div>
       </header>
 
@@ -72,41 +104,100 @@ export default function FedToday() {
           <CardContent>
             {loading ? (
               <div className="flex justify-center items-center h-32">
-                <p className="text-muted-foreground">Loading feed records...</p>
+                <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                <span className="text-muted-foreground">Loading feed records...</span>
               </div>
             ) : feedRecords.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No beneficiaries have been fed today yet.</p>
               </div>
             ) : (
-              <div className="border-2 rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Beneficiary ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Scanner</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {feedRecords.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="font-mono font-semibold">{record.beneficiaryUid}</TableCell>
-                        <TableCell className="font-medium">{record.beneficiaryName}</TableCell>
-                        <TableCell>{record.time}</TableCell>
-                        <TableCell>{record.scannerName}</TableCell>
-                        <TableCell>
-                          <Badge variant={record.status === 'ok' ? 'default' : 'secondary'}>
-                            {record.status}
-                          </Badge>
-                        </TableCell>
+              <>
+                <div className="border-2 rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Beneficiary ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Scanner</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {feedRecords.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell className="font-mono font-semibold">{record.beneficiaryUid}</TableCell>
+                          <TableCell className="font-medium">{record.beneficiaryName}</TableCell>
+                          <TableCell>{record.time}</TableCell>
+                          <TableCell>{record.scannerName}</TableCell>
+                          <TableCell>
+                            <Badge variant={record.status === 'ok' ? 'default' : 'secondary'}>
+                              {record.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                
+                {/* Pagination Controls */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {Math.min(feedRecords.length, itemsPerPage * currentPage)} of {totalItems} feed records
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1 || loading}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(pageNum)}
+                            className="w-10 h-10"
+                            disabled={loading}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages || loading}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </div>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

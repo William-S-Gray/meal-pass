@@ -4,12 +4,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getStats } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Check, QrCode, UserPlus, FileText, LogOut, BarChart } from 'lucide-react';
+import { 
+  Users, Check, QrCode, UserPlus, FileText, LogOut, 
+  BarChart, Printer, PlusCircle, TrendingUp 
+} from 'lucide-react';
 
 export default function Dashboard() {
   const { user, logout, isAdmin, isVolunteer } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({ totalBeneficiaries: 0, fedToday: 0 });
+  const [notFedToday, setNotFedToday] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,6 +24,8 @@ export default function Dashboard() {
     try {
       const data = await getStats();
       setStats(data);
+      // Calculate not fed today
+      setNotFedToday(data.totalBeneficiaries - data.fedToday);
     } catch (error) {
       console.error('Failed to load stats:', error);
     } finally {
@@ -48,7 +54,7 @@ export default function Dashboard() {
 
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="border-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -77,49 +83,77 @@ export default function Dashboard() {
               <p className="text-4xl font-bold text-success">{loading ? '...' : stats.fedToday}</p>
             </CardContent>
           </Card>
+
+          <Card className="border-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-warning" />
+                Not Fed Today
+              </CardTitle>
+              <CardDescription>Beneficiaries awaiting meals</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold text-warning">{loading ? '...' : notFedToday}</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link to="/scan" className="block">
-            <Button className="w-full h-24 flex-col gap-2 text-base font-semibold" size="lg">
-              <QrCode className="h-8 w-8" />
-              Scan QR Code
-            </Button>
-          </Link>
+        {/* Quick Actions Panel */}
+        <Card className="border-2">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common tasks and operations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Link to="/scan" className="block">
+                <Button className="w-full h-24 flex-col gap-2 text-base font-semibold" size="lg">
+                  <QrCode className="h-8 w-8" />
+                  Scan QR Code
+                </Button>
+              </Link>
 
-          {(isAdmin || isVolunteer) && (
-            <Link to="/beneficiaries/register" className="block">
-              <Button variant="secondary" className="w-full h-24 flex-col gap-2 text-base font-semibold" size="lg">
-                <UserPlus className="h-8 w-8" />
-                Register Beneficiary
-              </Button>
-            </Link>
-          )}
+              {(isAdmin || isVolunteer) && (
+                <Link to="/beneficiaries/register" className="block">
+                  <Button variant="secondary" className="w-full h-24 flex-col gap-2 text-base font-semibold" size="lg">
+                    <UserPlus className="h-8 w-8" />
+                    Register Beneficiary
+                  </Button>
+                </Link>
+              )}
 
-          <Link to="/beneficiaries" className="block">
-            <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
-              <Users className="h-8 w-8" />
-              View Beneficiaries
-            </Button>
-          </Link>
+              <Link to="/beneficiaries" className="block">
+                <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
+                  <Users className="h-8 w-8" />
+                  View Beneficiaries
+                </Button>
+              </Link>
 
-          <Link to="/reports" className="block">
-            <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
-              <FileText className="h-8 w-8" />
-              Reports
-            </Button>
-          </Link>
+              <Link to="/reports-dashboard" className="block">
+                <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
+                  <FileText className="h-8 w-8" />
+                  Reports
+                </Button>
+              </Link>
 
-          {isAdmin && (
-            <Link to="/statistics" className="block">
-              <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
-                <BarChart className="h-8 w-8" />
-                Statistics
-              </Button>
-            </Link>
-          )}
-        </div>
+              {isAdmin && (
+                <Link to="/statistics" className="block">
+                  <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
+                    <BarChart className="h-8 w-8" />
+                    Statistics
+                  </Button>
+                </Link>
+              )}
+
+              <Link to="/beneficiaries" className="block">
+                <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
+                  <Printer className="h-8 w-8" />
+                  Print Cards
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Info */}
         <Card className="border-2">
@@ -152,6 +186,15 @@ export default function Dashboard() {
               <div>
                 <h4 className="font-semibold">View Reports</h4>
                 <p className="text-sm text-muted-foreground">Track feeding data and export CSV files</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <Printer className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h4 className="font-semibold">Print Cards</h4>
+                <p className="text-sm text-muted-foreground">Generate and print beneficiary ID cards</p>
               </div>
             </div>
             {isAdmin && (

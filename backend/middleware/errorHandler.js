@@ -1,11 +1,17 @@
+const logger = require('../utils/logger');
+
 const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  // Log error stack in development
-  if (process.env.NODE_ENV === 'development') {
-    console.error(err.stack);
-  }
+  // Log error with Winston
+  logger.error(err.stack || err.message, {
+    method: req.method,
+    url: req.url,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    timestamp: new Date().toISOString()
+  });
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {

@@ -1,7 +1,35 @@
 // API Service Layer - Backend Integration Points
 
-// Get base URL from environment or default to localhost
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+import axios from 'axios';
+
+// Create axios instance
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add a request interceptor to add auth token to all requests
+apiClient.interceptors.request.use(
+  (config) => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user && user.token) {
+          config.headers.Authorization = `Bearer ${user.token}`;
+        }
+      } catch (e) {
+        console.error('Error parsing user from localStorage:', e);
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export interface User {
   id: string;
@@ -50,6 +78,17 @@ export interface FeedingRecord {
   deviceId: string;
 }
 
+// Interface for feed records (used in reports)
+export interface FeedRecord {
+  id: string;
+  beneficiaryUid: string;
+  beneficiaryName: string;
+  date: string;
+  time: string;
+  scannerName: string;
+  status: 'ok' | 'duplicate';
+}
+
 // Interface for backend feeding record
 interface BackendFeedingRecord {
   _id: string;
@@ -65,106 +104,130 @@ interface BackendFeedingRecord {
   deviceId: string;
 }
 
-// Helper function to get auth headers
-const getAuthHeaders = () => {
-  const storedUser = localStorage.getItem('user');
-  if (storedUser) {
-    try {
-      const user: UserWithToken = JSON.parse(storedUser);
-      if (user && user.token) {
-        return {
-          'Authorization': `Bearer ${user.token}`
-        };
-      }
-    } catch (e) {
-      console.error('Error parsing user from localStorage:', e);
-    }
-  }
-  return {};
-};
+// Interface for backend feed log
+interface BackendFeedLog {
+  _id: string;
+  beneficiaryId?: {
+    uniqueId: string;
+    name: string;
+  };
+  uniqueId: string;
+  fedAt: string;
+  servedBy: string;
+}
+
+// Interface for report statistics
+export interface ReportStatistics {
+  totalBeneficiaries: number;
+  totalFedToday: number;
+  feedRate: number;
+  weeklyStats: Array<{
+    date: string;
+    count: number;
+  }>;
+  monthlyStats: Array<{
+    date: string;
+    count: number;
+  }>;
+}
+
+// Interface for paginated reports
+export interface PaginatedReport<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
 
 // Helper function to handle API errors
-const handleApiError = async (response: Response) => {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+const handleApiError = (error: unknown) => {
+  if (axios.isAxiosError(error)) {
+    if (error.response) {
+      // Server responded with error status
+      throw new Error(error.response.data.error || `HTTP error! status: ${error.response.status}`);
+    } else if (error.request) {
+      // Request was made but no response received
+      throw new Error('Network error - no response received');
+    } else {
+      // Something else happened
+      throw new Error(error.message || 'Unknown error occurred');
+    }
+  } else {
+    // Non-Axios error
+    throw new Error('Unknown error occurred');
   }
-  return response;
 };
 
 // ============ AUTH FUNCTIONS ============
 export async function loginUser(email: string, password: string): Promise<User> {
-  const response = await fetch(`${BASE_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password }),
-  });
-
-  await handleApiError(response);
-  const data = await response.json();
-  
-  // Store user with token in localStorage
-  const userWithToken: UserWithToken = {
-    id: data.data.admin.id,
-    email: data.data.admin.email,
-    fullName: data.data.admin.name,
-    role: data.data.admin.role || 'admin', // Default to admin if no role provided
-    token: data.data.token
-  };
-  
-  localStorage.setItem('user', JSON.stringify(userWithToken));
-  
-  // Return user without token
-  return {
-    id: data.data.admin.id,
-    email: data.data.admin.email,
-    fullName: data.data.admin.name,
-    role: data.data.admin.role || 'admin'
-  };
+  try {
+    const response = await apiClient.post('/api/auth/login', { email, password });
+    const data = response.data;
+    
+    // Store user with token in localStorage
+    const userWithToken: UserWithToken = {
+      id: data.data.admin.id,
+      email: data.data.admin.email,
+      fullName: data.data.admin.name,
+      role: data.data.admin.role || 'admin', // Default to admin if no role provided
+      token: data.data.token
+    };
+    
+    localStorage.setItem('user', JSON.stringify(userWithToken));
+    
+    // Return user without token
+    return {
+      id: data.data.admin.id,
+      email: data.data.admin.email,
+      fullName: data.data.admin.name,
+      role: data.data.admin.role || 'admin'
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
 }
 
 // ============ BENEFICIARY FUNCTIONS ============
 
 export async function createBeneficiary(data: Omit<Beneficiary, 'id' | 'uid' | 'qrCode' | 'createdAt'>): Promise<Beneficiary> {
-  // Prepare form data
-  const formData = new FormData();
-  formData.append('name', data.fullName);
-  formData.append('gender', data.gender);
-  formData.append('group', data.household || '');
-  
-  // Only append DOB if it's provided
-  if (data.dob) {
-    formData.append('dob', data.dob);
+  try {
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('name', data.fullName);
+    formData.append('gender', data.gender);
+    formData.append('group', data.household || '');
+    
+    // Only append DOB if it's provided
+    if (data.dob) {
+      formData.append('dob', data.dob);
+    }
+    
+    // Notes field is not in backend model, so we'll skip it for now
+    
+    const response = await apiClient.post('/api/beneficiaries', formData);
+    const result = response.data;
+    
+    // Map backend response to frontend interface
+    return {
+      id: result.data._id,
+      uid: result.data.uniqueId,
+      fullName: result.data.name,
+      dob: result.data.dob || '', // Backend doesn't have dob field, so we'll use empty string
+      gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
+      household: result.data.group || '',
+      qrCode: `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
+      createdAt: result.data.createdAt,
+      fedToday: result.data.fedToday || false,
+      active: result.data.active !== undefined ? result.data.active : true
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
   }
-  
-  // Notes field is not in backend model, so we'll skip it for now
-  
-  const response = await fetch(`${BASE_URL}/api/beneficiaries`, {
-    method: 'POST',
-    headers: {
-      ...getAuthHeaders()
-    },
-    body: formData,
-  });
-
-  await handleApiError(response);
-  const result = await response.json();
-  
-  // Map backend response to frontend interface
-  return {
-    id: result.data._id,
-    uid: result.data.uniqueId,
-    fullName: result.data.name,
-    dob: result.data.dob || '', // Backend doesn't have dob field, so we'll use empty string
-    gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
-    household: result.data.group || '',
-    qrCode: `${BASE_URL}${result.data.qrCodeUrl}`,
-    createdAt: result.data.createdAt,
-    fedToday: result.data.fedToday || false,
-    active: result.data.active !== undefined ? result.data.active : true
-  };
 }
 
 // Update the Beneficiary interface to include pagination info
@@ -179,68 +242,63 @@ export interface PaginatedBeneficiaries {
 }
 
 export async function getBeneficiaries(search?: string, page: number = 1, limit: number = 10): Promise<PaginatedBeneficiaries> {
-  let url = `${BASE_URL}/api/beneficiaries?page=${page}&limit=${limit}`;
-  if (search) {
-    url += `&search=${encodeURIComponent(search)}`;
-  }
-  
-  const response = await fetch(url, {
-    headers: {
-      ...getAuthHeaders()
+  try {
+    let url = `/api/beneficiaries?page=${page}&limit=${limit}`;
+    if (search) {
+      url += `&search=${encodeURIComponent(search)}`;
     }
-  });
-  await handleApiError(response);
-  const result = await response.json();
-  
-  // Define the backend beneficiary type
-  interface BackendBeneficiary {
-    _id: string;
-    uniqueId: string;
-    name: string;
-    dob?: string;
-    gender: string;
-    group?: string;
-    qrCodeUrl: string;
-    createdAt: string;
-    fedToday?: boolean;
-    active?: boolean;
+    
+    const response = await apiClient.get(url);
+    const result = response.data;
+    
+    // Define the backend beneficiary type
+    interface BackendBeneficiary {
+      _id: string;
+      uniqueId: string;
+      name: string;
+      dob?: string;
+      gender: string;
+      group?: string;
+      qrCodeUrl: string;
+      createdAt: string;
+      fedToday?: boolean;
+      active?: boolean;
+    }
+    
+    // Map backend response to frontend interface
+    const beneficiaries = result.data.map((item: BackendBeneficiary) => ({
+      id: item._id,
+      uid: item.uniqueId,
+      fullName: item.name,
+      dob: item.dob || '', // Backend doesn't have dob field
+      gender: item.gender.toLowerCase() as 'male' | 'female' | 'other',
+      household: item.group || '',
+      qrCode: `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
+      createdAt: item.createdAt,
+      fedToday: item.fedToday || false,
+      active: item.active !== undefined ? item.active : true
+    }));
+    
+    return {
+      data: beneficiaries,
+      pagination: result.pagination
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
   }
-  
-  // Map backend response to frontend interface
-  const beneficiaries = result.data.map((item: BackendBeneficiary) => ({
-    id: item._id,
-    uid: item.uniqueId,
-    fullName: item.name,
-    dob: item.dob || '', // Backend doesn't have dob field
-    gender: item.gender.toLowerCase() as 'male' | 'female' | 'other',
-    household: item.group || '',
-    qrCode: `${BASE_URL}${item.qrCodeUrl}`,
-    createdAt: item.createdAt,
-    fedToday: item.fedToday || false,
-    active: item.active !== undefined ? item.active : true
-  }));
-  
-  return {
-    data: beneficiaries,
-    pagination: result.pagination
-  };
 }
 
 export async function getBeneficiaryByUid(uid: string): Promise<Beneficiary | null> {
   try {
-    const response = await fetch(`${BASE_URL}/api/beneficiaries/uid/${uid}`, {
-      headers: {
-        ...getAuthHeaders()
-      }
-    });
+    const response = await apiClient.get(`/api/beneficiaries/uid/${uid}`);
     
     // If beneficiary not found, return null
     if (response.status === 404) {
       return null;
     }
     
-    await handleApiError(response);
-    const result = await response.json();
+    const result = response.data;
     
     // Define the backend beneficiary type
     interface BackendBeneficiary {
@@ -265,135 +323,310 @@ export async function getBeneficiaryByUid(uid: string): Promise<Beneficiary | nu
       dob: item.dob || '',
       gender: item.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: item.group || '',
-      qrCode: `${BASE_URL}${item.qrCodeUrl}`,
+      qrCode: `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
       createdAt: item.createdAt,
       active: item.active !== undefined ? item.active : true
     };
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
+      return null;
+    }
     console.error('Failed to fetch beneficiary by UID:', error);
     return null;
   }
 }
 
 export async function updateBeneficiary(id: string, data: Partial<Beneficiary>): Promise<Beneficiary> {
-  const formData = new FormData();
-  
-  if (data.fullName) formData.append('name', data.fullName);
-  if (data.gender) formData.append('gender', data.gender);
-  if (data.household) formData.append('group', data.household);
-  
-  // Only append DOB if it's provided
-  if (data.dob) {
-    formData.append('dob', data.dob);
+  try {
+    const formData = new FormData();
+    
+    if (data.fullName) formData.append('name', data.fullName);
+    if (data.gender) formData.append('gender', data.gender);
+    if (data.household) formData.append('group', data.household);
+    
+    // Only append DOB if it's provided
+    if (data.dob) {
+      formData.append('dob', data.dob);
+    }
+    
+    const response = await apiClient.put(`/api/beneficiaries/${id}`, formData);
+    const result = response.data;
+    
+    // Map backend response to frontend interface
+    return {
+      id: result.data._id,
+      uid: result.data.uniqueId,
+      fullName: result.data.name,
+      dob: result.data.dob || '',
+      gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
+      household: result.data.group || '',
+      qrCode: `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
+      createdAt: result.data.createdAt,
+      active: result.data.active !== undefined ? result.data.active : true
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
   }
-  
-  const response = await fetch(`${BASE_URL}/api/beneficiaries/${id}`, {
-    method: 'PUT',
-    headers: {
-      ...getAuthHeaders()
-    },
-    body: formData,
-  });
-
-  await handleApiError(response);
-  const result = await response.json();
-  
-  // Map backend response to frontend interface
-  return {
-    id: result.data._id,
-    uid: result.data.uniqueId,
-    fullName: result.data.name,
-    dob: result.data.dob || '',
-    gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
-    household: result.data.group || '',
-    qrCode: `${BASE_URL}${result.data.qrCodeUrl}`,
-    createdAt: result.data.createdAt,
-    active: result.data.active !== undefined ? result.data.active : true
-  };
 }
 
 export async function deleteBeneficiary(id: string): Promise<void> {
-  const response = await fetch(`${BASE_URL}/api/beneficiaries/${id}`, {
-    method: 'DELETE',
-    headers: {
-      ...getAuthHeaders()
-    },
-  });
+  try {
+    await apiClient.delete(`/api/beneficiaries/${id}`);
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
 
-  await handleApiError(response);
-  return Promise.resolve();
+// ============ PRINTING FUNCTIONS ============
+export async function printBulkCards(beneficiaryIds: string[]): Promise<Blob> {
+  try {
+    const response = await apiClient.post('/api/beneficiaries/print-cards', { beneficiaryIds }, {
+      responseType: 'blob'
+    });
+    
+    // Check if the response is actually a PDF
+    const contentType = response.headers['content-type'];
+    if (!contentType || !contentType.includes('application/pdf')) {
+      throw new Error(`Expected PDF response but got ${contentType}`);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error in printBulkCards:', error);
+    handleApiError(error);
+    throw error;
+  }
+}
+
+export async function printSingleCard(beneficiaryId: string): Promise<Blob> {
+  try {
+    const response = await apiClient.get(`/api/beneficiaries/${beneficiaryId}/print-card`, {
+      responseType: 'blob'
+    });
+    
+    // Check if the response is actually a PDF
+    const contentType = response.headers['content-type'];
+    if (!contentType || !contentType.includes('application/pdf')) {
+      throw new Error(`Expected PDF response but got ${contentType}`);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error in printSingleCard:', error);
+    handleApiError(error);
+    throw error;
+  }
 }
 
 // ============ QR CODE FUNCTIONS ============
 export async function downloadQRCode(beneficiaryId: string, beneficiaryUid: string): Promise<void> {
-  const response = await fetch(`${BASE_URL}/api/beneficiaries/${beneficiaryId}/qrcode`, {
-    headers: {
-      ...getAuthHeaders()
-    }
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to download QR code');
+  try {
+    const response = await apiClient.get(`/api/beneficiaries/${beneficiaryId}/qrcode`, {
+      responseType: 'blob'
+    });
+    
+    // Create blob from response
+    const blob = response.data;
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `beneficiary-qr-${beneficiaryUid}.png`;
+    
+    // Trigger download
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
   }
-  
-  // Create blob from response
-  const blob = await response.blob();
-  
-  // Create download link
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `beneficiary-qr-${beneficiaryUid}.png`;
-  
-  // Trigger download
-  document.body.appendChild(a);
-  a.click();
-  
-  // Clean up
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
 }
 
 // ============ FEEDING FUNCTIONS ============
-export async function scanQRCode(uniqueId: string, deviceId: string, method: 'scan' | 'manual'): Promise<QRScanResponse> {
-  const response = await fetch(`${BASE_URL}/api/feeding/scan`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders()
-    },
-    body: JSON.stringify({ uniqueId, deviceId, method })
-  });
-
-  // For this specific endpoint, we don't want to throw an error for business logic responses
-  // We'll handle different status codes appropriately
-  if (!response.ok && response.status !== 400 && response.status !== 404) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  const result = await response.json();
-  return result;
-}
 
 export async function getTodayFeedingRecords(): Promise<FeedingRecord[]> {
-  const response = await fetch(`${BASE_URL}/api/feeding/today`, {
-    headers: {
-      ...getAuthHeaders()
+  try {
+    const response = await apiClient.get('/api/feeding/today');
+    const result = response.data;
+    
+    return result.data.map((item: BackendFeedingRecord) => ({
+      id: item._id,
+      uniqueId: item.uniqueId,
+      beneficiary: item.beneficiary,
+      date: item.date,
+      fedAt: item.fedAt,
+      method: item.method,
+      deviceId: item.deviceId
+    }));
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
+
+export async function getFeedingRecordsForBeneficiary(uniqueId: string): Promise<FeedingRecord[]> {
+  try {
+    const response = await apiClient.get(`/api/feeding/beneficiary/${uniqueId}`);
+    const result = response.data;
+    
+    return result.data.map((item: BackendFeedingRecord) => ({
+      id: item._id,
+      uniqueId: item.uniqueId,
+      beneficiary: item.beneficiary,
+      date: item.date,
+      fedAt: item.fedAt,
+      method: item.method,
+      deviceId: item.deviceId
+    }));
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
+
+export async function scanQRCode(uniqueId: string, deviceId: string, method: 'scan' | 'manual'): Promise<QRScanResponse> {
+  try {
+    const response = await apiClient.post('/api/feeding/scan', { uniqueId, deviceId, method });
+    return response.data;
+  } catch (error) {
+    // For this specific endpoint, we don't want to throw an error for business logic responses
+    // We'll handle different status codes appropriately
+    if (axios.isAxiosError(error) && error.response && error.response.status !== 400 && error.response.status !== 404) {
+      handleApiError(error);
     }
-  });
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
+
+export async function setManualFeedingStatus(uniqueId: string, fed: boolean): Promise<QRScanResponse> {
+  // For setting fed status to true, we use the scan endpoint with method 'manual'
+  // For setting fed status to false, we use the remove feeding record endpoint
+  const deviceId = 'manual-admin'; // Default device ID for admin actions
   
-  await handleApiError(response);
-  const result = await response.json();
-  
-  return result.data.map((item: BackendFeedingRecord) => ({
-    id: item._id,
-    uniqueId: item.uniqueId,
-    beneficiary: item.beneficiary,
-    date: item.date,
-    fedAt: item.fedAt,
-    method: item.method,
-    deviceId: item.deviceId
-  }));
+  if (fed) {
+    // Mark as fed
+    return scanQRCode(uniqueId, deviceId, 'manual');
+  } else {
+    // Remove feeding status
+    return removeFeedingStatus(uniqueId);
+  }
+}
+
+export async function removeFeedingStatus(uniqueId: string): Promise<QRScanResponse> {
+  try {
+    const response = await apiClient.delete(`/api/feeding/record/${uniqueId}`);
+    return response.data;
+  } catch (error) {
+    // For this specific endpoint, we don't want to throw an error for business logic responses
+    // We'll handle different status codes appropriately
+    if (axios.isAxiosError(error) && error.response && error.response.status !== 400 && error.response.status !== 404) {
+      handleApiError(error);
+    }
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
+
+// ============ REPORTING FUNCTIONS ============
+export async function getDailyReport(page: number = 1, limit: number = 50): Promise<PaginatedReport<FeedRecord>> {
+  try {
+    const response = await apiClient.get(`/api/reports/today?page=${page}&limit=${limit}`);
+    const result = response.data;
+    
+    // Map the backend response to the FeedRecord interface expected by the frontend
+    const feedRecords = result.data.map((item: BackendFeedLog) => ({
+      id: item._id,
+      beneficiaryUid: item.beneficiaryId?.uniqueId || item.uniqueId,
+      beneficiaryName: item.beneficiaryId?.name || 'Unknown',
+      date: item.fedAt ? new Date(item.fedAt).toISOString().split('T')[0] : '',
+      time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
+      scannerName: item.servedBy || 'Unknown',
+      status: 'ok' // Assuming all records are valid
+    }));
+    
+    return {
+      data: feedRecords,
+      pagination: result.pagination
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
+
+export async function getDateRangeReport(from: string, to: string, page: number = 1, limit: number = 50): Promise<PaginatedReport<FeedRecord>> {
+  try {
+    const response = await apiClient.get(`/api/reports/date-range?from=${from}&to=${to}&page=${page}&limit=${limit}`);
+    const result = response.data;
+    
+    // Map the backend response to the FeedRecord interface expected by the frontend
+    const feedRecords = result.data.map((item: BackendFeedLog) => ({
+      id: item._id,
+      beneficiaryUid: item.beneficiaryId?.uniqueId || item.uniqueId,
+      beneficiaryName: item.beneficiaryId?.name || 'Unknown',
+      date: item.fedAt ? new Date(item.fedAt).toISOString().split('T')[0] : '',
+      time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
+      scannerName: item.servedBy || 'Unknown',
+      status: 'ok' // Assuming all records are valid
+    }));
+    
+    return {
+      data: feedRecords,
+      pagination: result.pagination
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
+
+interface BeneficiaryReportData {
+  data: {
+    beneficiary: {
+      id: string;
+      uniqueId: string;
+      name: string;
+      gender: string;
+      group: string;
+    };
+    feedLogs: Array<{
+      _id: string;
+      fedAt: string;
+      servedBy: string;
+    }>;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  };
+}
+
+export async function getBeneficiaryReport(uniqueId: string, page: number = 1, limit: number = 50): Promise<BeneficiaryReportData> {
+  try {
+    const response = await apiClient.get(`/api/reports/beneficiary/${uniqueId}?page=${page}&limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
+
+export async function getReportStatistics(): Promise<ReportStatistics> {
+  try {
+    const response = await apiClient.get('/api/reports/statistics');
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
 }
 
 // ============ AUTH FUNCTIONS (continued) ============
@@ -445,32 +678,131 @@ export async function getStats(): Promise<{
   totalBeneficiaries: number;
   fedToday: number;
 }> {
-  // Fetch beneficiaries count
-  const beneficiariesResponse = await fetch(`${BASE_URL}/api/beneficiaries`, {
-    headers: {
-      ...getAuthHeaders()
-    }
-  });
-  await handleApiError(beneficiariesResponse);
-  const beneficiariesResult = await beneficiariesResponse.json();
-  
-  // Fetch fed today count
-  const fedResponse = await fetch(`${BASE_URL}/api/feed/today`, {
-    headers: {
-      ...getAuthHeaders()
-    }
-  });
-  await handleApiError(fedResponse);
-  const fedResult = await fedResponse.json();
-  
-  return {
-    totalBeneficiaries: beneficiariesResult.pagination.total,
-    fedToday: fedResult.count
+  try {
+    // Fetch beneficiaries count
+    const beneficiariesResponse = await apiClient.get('/api/beneficiaries');
+    const beneficiariesResult = beneficiariesResponse.data;
+    
+    // Fetch fed today count using the new feeding endpoint
+    const fedResponse = await apiClient.get('/api/feeding/today');
+    const fedResult = fedResponse.data;
+    
+    return {
+      totalBeneficiaries: beneficiariesResult.pagination.total,
+      fedToday: fedResult.count
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
+
+// Interface for detailed statistics
+export interface DetailedStats {
+  totalBeneficiaries: number;
+  totalFedToday: number;
+  totalFedInRange: number;
+  feedRate: number;
+  dateRange?: {
+    startDate: Date;
+    endDate: Date;
   };
+}
+
+export async function getDetailedStats(startDate?: string, endDate?: string): Promise<DetailedStats> {
+  try {
+    let url = '/api/feeding/stats'; // Changed from /api/feed/stats to /api/feeding/stats
+    if (startDate || endDate) {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      url += `?${params.toString()}`;
+    }
+    
+    const response = await apiClient.get(url);
+    const result = response.data;
+    
+    return {
+      totalBeneficiaries: result.data.totalBeneficiaries,
+      totalFedToday: result.data.totalFedToday,
+      totalFedInRange: result.data.totalFedInRange,
+      feedRate: result.data.feedRate,
+      dateRange: result.data.dateRange
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
 }
 
 // ============ EXPORT FUNCTIONS ============
 export async function exportFeedRecordsToCSV(startDate: string, endDate: string): Promise<string> {
   // In a real implementation, this would generate CSV export
   throw new Error('Not implemented');
+}
+
+export interface PaginatedFeedRecords {
+  data: FeedRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+export async function getFeedRecordsByDateRange(startDate: string, endDate: string, site?: string): Promise<FeedRecord[]> {
+  try {
+    let url = `/api/feed/date-range?startDate=${startDate}&endDate=${endDate}`;
+    if (site) {
+      url += `&site=${encodeURIComponent(site)}`;
+    }
+    
+    const response = await apiClient.get(url);
+    const result = response.data;
+    
+    // Map the backend response to the FeedRecord interface expected by the frontend
+    const feedRecords = result.data.map((item: { id: string; beneficiaryUid: string; beneficiaryName: string; date: string; time: string; scannerName: string; status?: string }) => ({
+      id: item.id,
+      beneficiaryUid: item.beneficiaryUid,
+      beneficiaryName: item.beneficiaryName,
+      date: item.date,
+      time: item.time,
+      scannerName: item.scannerName,
+      status: item.status || 'ok'
+    }));
+    
+    return feedRecords;
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
+}
+
+export async function getTodayFeedRecords(page: number = 1, limit: number = 10): Promise<PaginatedFeedRecords> {
+  try {
+    const url = `/api/feeding/today?page=${page}&limit=${limit}`;
+    
+    const response = await apiClient.get(url);
+    const result = response.data;
+    
+    // Map the backend response to the FeedRecord interface expected by the frontend
+    const feedRecords = result.data.map((item: BackendFeedingRecord) => ({
+      id: item._id,
+      beneficiaryUid: item.beneficiary?.uniqueId || item.uniqueId,
+      beneficiaryName: item.beneficiary?.name || 'Unknown',
+      date: item.date,
+      time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
+      scannerName: item.deviceId || 'Unknown',
+      status: 'ok' // Assuming all records are valid
+    }));
+    
+    return {
+      data: feedRecords,
+      pagination: result.pagination
+    };
+  } catch (error) {
+    handleApiError(error);
+    throw error; // Re-throw to maintain existing error handling
+  }
 }

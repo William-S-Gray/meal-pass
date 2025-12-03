@@ -10,6 +10,8 @@ const {
   importBeneficiaries, 
   exportBeneficiaries,
   downloadQRCode,
+  printBulkCards,
+  printSingleCard,
   upload
 } = require('../controllers/beneficiaryController');
 
@@ -43,5 +45,12 @@ router.route('/uid/:uid')
 // QR Code download route
 router.route('/:id/qrcode')
   .get(authMiddleware, downloadQRCode);
+
+// Print routes
+router.route('/print-cards')
+  .post(authMiddleware, printBulkCards);
+
+router.route('/:id/print-card')
+  .get(authMiddleware, printSingleCard);
 
 module.exports = router;

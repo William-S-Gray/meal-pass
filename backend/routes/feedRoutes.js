@@ -7,7 +7,8 @@ const {
   getFeedHistory,
   getStats, 
   getUnfed,
-  exportFeedLogs
+  exportFeedLogs,
+  getFeedRecordsByDateRange
 } = require('../controllers/feedController');
 
 const router = express.Router();
@@ -36,5 +37,8 @@ router.route('/unfed')
 
 router.route('/export')
   .get(authMiddleware, exportFeedLogs);
+
+router.route('/date-range')
+  .get(authMiddleware, getFeedRecordsByDateRange);
 
 module.exports = router;
