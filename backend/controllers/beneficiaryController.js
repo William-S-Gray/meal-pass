@@ -65,11 +65,11 @@ const createBeneficiary = async (req, res, next) => {
 
     const result = await beneficiaryService.create(value);
     
-    // Return the response with _id as required
+    // Return the response with _id as required and the complete data object
     res.status(201).json({
       success: true,
-      _id: result.id,
-      ...result
+      _id: result._id,
+      data: result
     });
   } catch (error) {
     logger.error('Error in createBeneficiary:', error);
@@ -206,11 +206,26 @@ const downloadQRCode = async (req, res, next) => {
       return sendError(res, 404, 'QR code not found');
     }
     
-    // Set CORS headers to allow image download
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    // Set proper headers for file download
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    const fullPath = `${req.protocol}://${req.get('host')}${beneficiary.qrCodeUrl}`;
-    res.redirect(fullPath);
+    // Serve the file directly instead of redirecting
+    const filePath = path.join(__dirname, '..', 'public', beneficiary.qrCodeUrl);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return sendError(res, 404, 'QR code file not found');
+    }
+    
+    // Set content type and serve file
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', `attachment; filename="${path.basename(beneficiary.qrCodeUrl)}"`);
+    
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
   } catch (error) {
     logger.error('Error in downloadQRCode:', error);
     sendError(res, 500, error.message);

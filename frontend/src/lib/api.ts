@@ -298,7 +298,7 @@ export async function createBeneficiary(data: Omit<Beneficiary, '_id' | 'uid' | 
       fullName: result.name,
       gender: result.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: result.group || '',
-      qrCode: `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
+      qrCode: result.qrCodeUrl.startsWith('http') ? result.qrCodeUrl : `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
       createdAt: result.createdAt,
       fedToday: result.fedToday || false,
       active: result.active !== undefined ? result.active : true
@@ -337,7 +337,7 @@ export async function getBeneficiaries(search?: string, page: number = 1, limit:
       fullName: item.name,
       gender: item.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: item.group || '',
-      qrCode: `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
+      qrCode: item.qrCodeUrl.startsWith('http') ? item.qrCodeUrl : `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
       createdAt: item.createdAt,
       fedToday: item.fedToday || false,
       active: item.active !== undefined ? item.active : true
@@ -371,7 +371,7 @@ export async function getBeneficiaryByUid(uid: string): Promise<Beneficiary | nu
       fullName: result.data.name,
       gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: result.data.group || '',
-      qrCode: `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
+      qrCode: result.data.qrCodeUrl.startsWith('http') ? result.data.qrCodeUrl : `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
       createdAt: result.data.createdAt,
       fedToday: result.data.fedToday || false,
       active: result.data.active !== undefined ? result.data.active : true
@@ -403,7 +403,7 @@ export async function updateBeneficiary(id: string, data: Partial<Beneficiary>):
       fullName: result.data.name,
       gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: result.data.group || '',
-      qrCode: `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
+      qrCode: result.data.qrCodeUrl.startsWith('http') ? result.data.qrCodeUrl : `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
       createdAt: result.data.createdAt,
       active: result.data.active !== undefined ? result.data.active : true
     };

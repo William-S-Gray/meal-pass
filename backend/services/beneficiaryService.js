@@ -10,7 +10,7 @@ const logger = require('../utils/logger');
  */
 const formatBeneficiaryResponse = (beneficiary) => {
   return {
-    id: beneficiary._id,
+    _id: beneficiary._id,
     uniqueId: beneficiary.uniqueId,
     name: beneficiary.name,
     dob: beneficiary.dob,

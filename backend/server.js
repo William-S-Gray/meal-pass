@@ -52,14 +52,19 @@ app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS with specific options for better security
 app.use(cors({
-  origin: "*",
+  origin: process.env.FRONTEND_URL || "*",
   methods: "GET,POST,PUT,DELETE",
   allowedHeaders: "Content-Type, Authorization",
-  exposedHeaders: ["Content-Disposition"]
+  exposedHeaders: ["Content-Disposition"],
+  credentials: true
 }));
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: { policy: "require-corp" },
+  crossOriginOpenerPolicy: { policy: "same-origin" }
+}));
 
 // Compression middleware
 app.use(compression());
@@ -78,7 +83,12 @@ const limiter = rateLimit({
 app.use('/api/', limiter); // Apply rate limiting to all API routes
 
 // Static folder with CORS headers for QR codes
-app.use('/qrcodes', cors(), express.static(__dirname + '/public/qrcodes'));
+app.use('/qrcodes', cors({
+  origin: process.env.FRONTEND_URL || "*",
+  methods: "GET,HEAD,OPTIONS",
+  allowedHeaders: "Content-Type, Authorization",
+  credentials: true
+}), express.static(__dirname + '/public/qrcodes'));
 
 // Static folder for other assets
 app.use(express.static(__dirname + '/public'));

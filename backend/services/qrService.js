@@ -23,7 +23,7 @@ const generateQRCode = async (uniqueId) => {
     
     // Use smaller size for better performance
     await QRCode.toFile(filePath, uniqueId, {
-      width: 200, // Reduced size for better performance
+      width: 300, // Increased size for better readability
       margin: 2,
       color: {
         dark: '#000000',
