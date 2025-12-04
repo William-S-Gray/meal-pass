@@ -52,12 +52,12 @@ const DashboardComponent = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b-2 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-primary">MealTrack</h1>
             <p className="text-sm text-muted-foreground">{user?.fullName} • {user?.role}</p>
           </div>
-          <Button variant="outline" onClick={handleLogout} size="sm">
+          <Button variant="outline" onClick={handleLogout} size="sm" className="w-full sm:w-auto">
             <LogOut className="mr-2 h-4 w-4" />
             Logout
           </Button>
@@ -66,17 +66,17 @@ const DashboardComponent = () => {
 
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card className="border-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
-                Total Beneficiaries
+                <span className="text-sm sm:text-base">Total Beneficiaries</span>
               </CardTitle>
               <CardDescription>Registered in system</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold">{loading ? '...' : stats.totalBeneficiaries}</p>
+              <p className="text-3xl sm:text-4xl font-bold">{loading ? '...' : stats.totalBeneficiaries}</p>
             </CardContent>
           </Card>
 
@@ -87,12 +87,12 @@ const DashboardComponent = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Check className="h-5 w-5 text-success" />
-                Fed Today
+                <span className="text-sm sm:text-base">Fed Today</span>
               </CardTitle>
               <CardDescription>Meals distributed today</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-success">{loading ? '...' : stats.fedToday}</p>
+              <p className="text-3xl sm:text-4xl font-bold text-success">{loading ? '...' : stats.fedToday}</p>
             </CardContent>
           </Card>
 
@@ -100,12 +100,12 @@ const DashboardComponent = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-warning" />
-                Not Fed Today
+                <span className="text-sm sm:text-base">Not Fed Today</span>
               </CardTitle>
               <CardDescription>Beneficiaries awaiting meals</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-bold text-warning">{loading ? '...' : notFedToday}</p>
+              <p className="text-3xl sm:text-4xl font-bold text-warning">{loading ? '...' : notFedToday}</p>
             </CardContent>
           </Card>
         </div>
@@ -117,49 +117,49 @@ const DashboardComponent = () => {
             <CardDescription>Common tasks and operations</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <Link to="/scan" className="block">
-                <Button className="w-full h-24 flex-col gap-2 text-base font-semibold" size="lg">
-                  <QrCode className="h-8 w-8" />
+                <Button className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold" size="lg">
+                  <QrCode className="h-6 w-6 sm:h-8 sm:w-8" />
                   Scan QR Code
                 </Button>
               </Link>
 
               {(isAdmin || isVolunteer) && (
                 <Link to="/beneficiaries/register" className="block">
-                  <Button variant="secondary" className="w-full h-24 flex-col gap-2 text-base font-semibold" size="lg">
-                    <UserPlus className="h-8 w-8" />
+                  <Button variant="secondary" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold" size="lg">
+                    <UserPlus className="h-6 w-6 sm:h-8 sm:w-8" />
                     Register Beneficiary
                   </Button>
                 </Link>
               )}
 
               <Link to="/beneficiaries" className="block">
-                <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
-                  <Users className="h-8 w-8" />
+                <Button variant="outline" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold border-2" size="lg">
+                  <Users className="h-6 w-6 sm:h-8 sm:w-8" />
                   View Beneficiaries
                 </Button>
               </Link>
 
               <Link to="/reports-dashboard" className="block">
-                <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
-                  <FileText className="h-8 w-8" />
+                <Button variant="outline" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold border-2" size="lg">
+                  <FileText className="h-6 w-6 sm:h-8 sm:w-8" />
                   Reports
                 </Button>
               </Link>
 
               {isAdmin && (
                 <Link to="/statistics" className="block">
-                  <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
-                    <BarChart className="h-8 w-8" />
+                  <Button variant="outline" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold border-2" size="lg">
+                    <BarChart className="h-6 w-6 sm:h-8 sm:w-8" />
                     Statistics
                   </Button>
                 </Link>
               )}
 
               <Link to="/beneficiaries" className="block">
-                <Button variant="outline" className="w-full h-24 flex-col gap-2 text-base font-semibold border-2" size="lg">
-                  <Printer className="h-8 w-8" />
+                <Button variant="outline" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold border-2" size="lg">
+                  <Printer className="h-6 w-6 sm:h-8 sm:w-8" />
                   Print Cards
                 </Button>
               </Link>
@@ -178,8 +178,8 @@ const DashboardComponent = () => {
                 <QrCode className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h4 className="font-semibold">Scan QR Code</h4>
-                <p className="text-sm text-muted-foreground">Use the scanner to mark beneficiaries as fed</p>
+                <h4 className="font-semibold text-sm sm:text-base">Scan QR Code</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">Use the scanner to mark beneficiaries as fed</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -187,8 +187,8 @@ const DashboardComponent = () => {
                 <UserPlus className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h4 className="font-semibold">Register New Beneficiaries</h4>
-                <p className="text-sm text-muted-foreground">Add new beneficiaries and generate QR codes</p>
+                <h4 className="font-semibold text-sm sm:text-base">Register New Beneficiaries</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">Add new beneficiaries and generate QR codes</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -196,8 +196,8 @@ const DashboardComponent = () => {
                 <FileText className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h4 className="font-semibold">View Reports</h4>
-                <p className="text-sm text-muted-foreground">Track feeding data and export CSV files</p>
+                <h4 className="font-semibold text-sm sm:text-base">View Reports</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">Track feeding data and export CSV files</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -205,8 +205,8 @@ const DashboardComponent = () => {
                 <Printer className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h4 className="font-semibold">Print Cards</h4>
-                <p className="text-sm text-muted-foreground">Generate and print beneficiary ID cards</p>
+                <h4 className="font-semibold text-sm sm:text-base">Print Cards</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">Generate and print beneficiary ID cards</p>
               </div>
             </div>
             {isAdmin && (
@@ -215,8 +215,8 @@ const DashboardComponent = () => {
                   <BarChart className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h4 className="font-semibold">View Statistics</h4>
-                  <p className="text-sm text-muted-foreground">Analyze trends and feeding patterns</p>
+                  <h4 className="font-semibold text-sm sm:text-base">View Statistics</h4>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Analyze trends and feeding patterns</p>
                 </div>
               </div>
             )}

@@ -162,14 +162,14 @@ export default function BeneficiaryProfile() {
         {/* Beneficiary Details */}
         <Card className="border-2">
           <CardHeader>
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
                 <CardTitle className="text-2xl">{beneficiary.fullName}</CardTitle>
                 <CardDescription className="text-lg mt-1">
                   <span className="font-mono font-semibold">{beneficiary.uid}</span>
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {isAdmin && (
                   <>
                     <Button 
@@ -253,7 +253,7 @@ export default function BeneficiaryProfile() {
                 <img 
                   src={beneficiary.qrCode} 
                   alt="QR Code" 
-                  className="w-48 h-48 border-4 border-white shadow-lg"
+                  className="max-w-[80vw] max-h-[80vh] md:max-w-[300px] md:max-h-[300px] border-4 border-white shadow-lg w-full h-auto object-contain"
                 />
                 <Button variant="outline" className="w-full" onClick={handleDownloadQR} disabled={actionLoading}>
                   {actionLoading ? (
@@ -284,24 +284,25 @@ export default function BeneficiaryProfile() {
             {feedHistory.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">No feed records yet</p>
             ) : (
-              <div className="border-2 rounded-lg overflow-hidden">
-                <Table>
+              // Make table responsive with horizontal scrolling on small screens
+              <div className="overflow-x-auto w-full rounded-lg border-2">
+                <Table className="min-w-[600px] md:min-w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Scanner</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Time</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Scanner</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {feedHistory.map((record) => (
                       <TableRow key={`feed-record-${record.id}`}>
-                        <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{new Date(record.fedAt).toLocaleTimeString()}</TableCell>
-                        <TableCell>{record.deviceId}</TableCell>
+                        <TableCell className="text-xs sm:text-sm">{new Date(record.date).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-xs sm:text-sm">{new Date(record.fedAt).toLocaleTimeString()}</TableCell>
+                        <TableCell className="text-xs sm:text-sm">{record.deviceId}</TableCell>
                         <TableCell>
-                          <Badge variant="default">
+                          <Badge variant="default" className="text-xs sm:text-sm">
                             {record.method}
                           </Badge>
                         </TableCell>

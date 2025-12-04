@@ -66,24 +66,24 @@ export default function Statistics() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-primary">Statistics</h1>
-            <p className="text-muted-foreground">View detailed meal distribution statistics</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary">Statistics</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">View detailed meal distribution statistics</p>
           </div>
         </div>
 
         {/* Date Filter */}
         <Card className="border-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Calendar className="h-5 w-5" />
               Date Range Filter
             </CardTitle>
             <CardDescription>Select a date range to view statistics</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date</Label>
                 <Input
@@ -91,6 +91,7 @@ export default function Statistics() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -100,6 +101,7 @@ export default function Statistics() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full"
                 />
               </div>
               <div className="flex items-end">
@@ -118,40 +120,40 @@ export default function Statistics() {
         ) : stats ? (
           <>
             {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="border-2">
                 <CardHeader>
-                  <CardTitle>Total Beneficiaries</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Total Beneficiaries</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-4xl font-bold">{stats.totalBeneficiaries}</p>
+                  <p className="text-3xl sm:text-4xl font-bold">{stats.totalBeneficiaries}</p>
                 </CardContent>
               </Card>
 
               <Card className="border-2">
                 <CardHeader>
-                  <CardTitle>Fed Today</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Fed Today</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-4xl font-bold text-success">{stats.totalFedToday}</p>
+                  <p className="text-3xl sm:text-4xl font-bold text-success">{stats.totalFedToday}</p>
                 </CardContent>
               </Card>
 
               <Card className="border-2">
                 <CardHeader>
-                  <CardTitle>Fed in Range</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Fed in Range</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-4xl font-bold">{stats.totalFedInRange}</p>
+                  <p className="text-3xl sm:text-4xl font-bold">{stats.totalFedInRange}</p>
                 </CardContent>
               </Card>
 
               <Card className="border-2">
                 <CardHeader>
-                  <CardTitle>Feed Rate</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Feed Rate</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-4xl font-bold">{stats.feedRate}%</p>
+                  <p className="text-3xl sm:text-4xl font-bold">{stats.feedRate}%</p>
                 </CardContent>
               </Card>
             </div>
@@ -160,18 +162,18 @@ export default function Statistics() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-2">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <TrendingUp className="h-5 w-5" />
                     Distribution Overview
                   </CardTitle>
                   <CardDescription>Comparison of key metrics</CardDescription>
                 </CardHeader>
-                <CardContent className="h-80">
+                <CardContent className="h-64 sm:h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
+                      <XAxis dataKey="name" fontSize={12} />
+                      <YAxis fontSize={12} />
                       <Tooltip />
                       <Bar dataKey="value" fill="#8884d8" />
                     </BarChart>
@@ -181,13 +183,13 @@ export default function Statistics() {
 
               <Card className="border-2">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <TrendingUp className="h-5 w-5" />
                     Fed vs Not Fed
                   </CardTitle>
                   <CardDescription>Proportion of beneficiaries fed today</CardDescription>
                 </CardHeader>
-                <CardContent className="h-80">
+                <CardContent className="h-64 sm:h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie

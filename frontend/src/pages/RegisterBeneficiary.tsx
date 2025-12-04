@@ -171,7 +171,7 @@ export default function RegisterBeneficiary() {
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Button type="submit" className="flex-1" disabled={loading}>
                   {loading ? (
                     <>
@@ -182,7 +182,7 @@ export default function RegisterBeneficiary() {
                     'Register & Generate QR'
                   )}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/dashboard')} disabled={loading}>
+                <Button type="button" variant="outline" onClick={() => navigate('/dashboard')} disabled={loading} className="w-full sm:w-auto">
                   Cancel
                 </Button>
               </div>
@@ -193,7 +193,7 @@ export default function RegisterBeneficiary() {
 
       {/* QR Code Modal */}
       <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-w-[90vw]">
           <DialogHeader>
             <DialogTitle>Beneficiary Registered</DialogTitle>
             <DialogDescription>
@@ -205,19 +205,19 @@ export default function RegisterBeneficiary() {
               <img 
                 src={createdBeneficiary?.qrCode} 
                 alt="QR Code" 
-                className="w-48 h-48 border-4 border-white shadow-lg"
+                className="max-w-[80vw] max-h-[80vh] md:max-w-[300px] md:max-h-[300px] border-4 border-white shadow-lg w-full h-auto object-contain"
               />
               <div className="text-center">
-                <p className="text-2xl font-bold">{createdBeneficiary?.uid}</p>
+                <p className="text-xl font-bold sm:text-2xl">{createdBeneficiary?.uid}</p>
                 <p className="text-sm text-muted-foreground">{createdBeneficiary?.fullName}</p>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button onClick={handleDownloadQR} className="flex-1">
                 <Download className="mr-2 h-4 w-4" />
                 Download QR
               </Button>
-              <Button variant="outline" onClick={handleCloseModal}>
+              <Button variant="outline" onClick={handleCloseModal} className="w-full sm:w-auto">
                 Done
               </Button>
             </div>

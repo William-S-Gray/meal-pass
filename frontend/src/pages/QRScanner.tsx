@@ -185,12 +185,12 @@ export default function QRScanner() {
                   <Camera className="w-16 h-16 text-primary" />
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
-                  <Button onClick={() => setScanning(true)} size="lg" className="text-lg px-8 py-6 flex-1">
-                    <Camera className="mr-2 h-6 w-6" />
+                  <Button onClick={() => setScanning(true)} size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 flex-1">
+                    <Camera className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
                     Start Scanning
                   </Button>
-                  <Button onClick={openManualEntry} variant="outline" size="lg" className="text-lg px-8 py-6 flex-1">
-                    <Search className="mr-2 h-6 w-6" />
+                  <Button onClick={openManualEntry} variant="outline" size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 flex-1">
+                    <Search className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
                     Manual Entry
                   </Button>
                 </div>
@@ -235,14 +235,14 @@ export default function QRScanner() {
                     placeholder="Enter Unique ID (e.g., BNF-0001)"
                     value={uniqueId}
                     onChange={(e) => setUniqueId(e.target.value)}
-                    className="text-lg py-6"
+                    className="text-base sm:text-lg py-4 sm:py-6"
                   />
                 </div>
-                <div className="flex gap-3">
-                  <Button onClick={resetScanner} variant="outline" className="flex-1">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button onClick={resetScanner} variant="outline" className="flex-1 w-full sm:w-auto">
                     Cancel
                   </Button>
-                  <Button onClick={handleManualSubmit} className="flex-1" disabled={loading}>
+                  <Button onClick={handleManualSubmit} className="flex-1 w-full sm:w-auto" disabled={loading}>
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -259,32 +259,32 @@ export default function QRScanner() {
 
       {/* Result Dialog */}
       <Dialog open={!!scanResult} onOpenChange={(open) => !open && resetScanner()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-w-[90vw]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               {scanResult?.status === 'success' ? (
                 <>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
                   Success
                 </>
               ) : scanResult?.status === 'already_fed' ? (
                 <>
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
                   Already Fed Today
                 </>
               ) : scanResult?.status === 'not_found' ? (
                 <>
-                  <XCircle className="h-5 w-5 text-red-500" />
+                  <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
                   Beneficiary Not Found
                 </>
               ) : (
                 <>
-                  <XCircle className="h-5 w-5 text-red-500" />
+                  <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
                   Error
                 </>
               )}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               {scanResult?.message}
             </DialogDescription>
           </DialogHeader>
@@ -292,16 +292,16 @@ export default function QRScanner() {
           {beneficiary && (
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-lg space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">UID:</span>
+                <div className="flex justify-between text-xs sm:text-sm">
+                  <span className="text-muted-foreground">UID:</span>
                   <span className="font-mono font-semibold">{beneficiary.uid}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Name:</span>
+                <div className="flex justify-between text-xs sm:text-sm">
+                  <span className="text-muted-foreground">Name:</span>
                   <span className="font-medium">{beneficiary.fullName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Status:</span>
+                <div className="flex justify-between text-xs sm:text-sm">
+                  <span className="text-muted-foreground">Status:</span>
                   <span className={
                     scanResult?.status === 'success' ? 'text-green-500 font-semibold' : 
                     scanResult?.status === 'already_fed' ? 'text-yellow-500 font-semibold' :
@@ -314,8 +314,8 @@ export default function QRScanner() {
                 </div>
               </div>
               
-              <div className="flex gap-3">
-                <Button onClick={resetScanner} className="flex-1">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button onClick={resetScanner} className="flex-1 w-full sm:w-auto">
                   Done
                 </Button>
               </div>
@@ -323,8 +323,8 @@ export default function QRScanner() {
           )}
           
           {!beneficiary && scanResult?.status === 'not_found' && (
-            <div className="flex gap-3">
-              <Button onClick={resetScanner} className="flex-1">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button onClick={resetScanner} className="flex-1 w-full sm:w-auto">
                 Done
               </Button>
             </div>

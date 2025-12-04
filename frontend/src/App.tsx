@@ -18,8 +18,38 @@ import ReportsDashboard from "./pages/ReportsDashboard";
 import Statistics from "./pages/Statistics";
 import FedToday from "./pages/FedToday";
 import NotFound from "./pages/NotFound";
+import { useState } from "react";
 
 const queryClient = new QueryClient();
+
+// Debug toggle for responsiveness testing
+const DebugToggle = () => {
+  const [debugMode, setDebugMode] = useState(false);
+  
+  const toggleDebug = () => {
+    setDebugMode(!debugMode);
+    if (!debugMode) {
+      const style = document.createElement('style');
+      style.id = 'debug-outline';
+      style.innerHTML = '* { outline: 1px solid red !important; }';
+      document.head.appendChild(style);
+    } else {
+      const style = document.getElementById('debug-outline');
+      if (style) style.remove();
+    }
+  };
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50">
+      <button
+        onClick={toggleDebug}
+        className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg hover:bg-red-600 transition-colors"
+      >
+        {debugMode ? 'Disable Debug' : 'Enable Debug'}
+      </button>
+    </div>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -85,6 +115,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </HashRouter>
+          <DebugToggle />
         </TooltipProvider>
       </WebSocketProvider>
     </AuthProvider>

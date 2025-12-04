@@ -112,8 +112,4 @@ module.exports = {
   getTodaysRecords,
   getRecordsByBeneficiary,
   removeTodaysRecord
-};recordFeeding,
-  getTodaysRecords,
-  getRecordsByBeneficiary,
-  removeTodaysRecord
 };

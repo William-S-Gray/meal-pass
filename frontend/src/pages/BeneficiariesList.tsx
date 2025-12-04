@@ -222,7 +222,7 @@ export default function BeneficiariesList() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link to="/dashboard">
                 <Button variant="ghost" size="sm">
@@ -237,7 +237,7 @@ export default function BeneficiariesList() {
               <span className="text-sm text-muted-foreground">
                 {isConnected ? 'Live' : 'Offline'}
               </span>
-              <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading}>
+              <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading} className="w-full sm:w-auto">
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -258,19 +258,19 @@ export default function BeneficiariesList() {
                 <CardTitle>Beneficiary List</CardTitle>
                 <CardDescription>Manage registered beneficiaries</CardDescription>
               </div>
-              <form onSubmit={handleSearchSubmit} className="flex gap-2">
-                <div className="relative">
+              <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
                     type="text"
                     placeholder="Search beneficiaries..."
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}
-                    className="pl-10 pr-4"
+                    className="pl-10 pr-4 w-full"
                     disabled={loading}
                   />
                 </div>
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
                   {loading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -284,7 +284,7 @@ export default function BeneficiariesList() {
           <CardContent>
             {/* Bulk Actions */}
             {isAdmin && selectedBeneficiaries.length > 0 && (
-              <div className="mb-4 flex items-center gap-2">
+              <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2">
                 <span className="text-sm text-muted-foreground">
                   {selectedBeneficiaries.length} selected
                 </span>
@@ -293,6 +293,7 @@ export default function BeneficiariesList() {
                   size="sm" 
                   onClick={handleBulkPrint}
                   disabled={actionLoading['bulk-print']}
+                  className="w-full sm:w-auto"
                 >
                   {actionLoading['bulk-print'] ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -58,14 +58,14 @@ export default function FedToday() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <Link to="/dashboard">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Dashboard
               </Button>
             </Link>
-            <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading}>
+            <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading} className="w-full sm:w-auto">
               {loading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -78,14 +78,14 @@ export default function FedToday() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-primary">People Fed Today</h1>
-            <p className="text-muted-foreground">List of beneficiaries who received meals today</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary">People Fed Today</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">List of beneficiaries who received meals today</p>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
+            <span className="text-xs sm:text-sm text-muted-foreground">
               {new Date().toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 year: 'numeric', 
@@ -113,26 +113,27 @@ export default function FedToday() {
               </div>
             ) : (
               <>
-                <div className="border-2 rounded-lg overflow-hidden">
-                  <Table>
+                {/* Make table responsive with horizontal scrolling on small screens */}
+                <div className="overflow-x-auto w-full rounded-lg border-2">
+                  <Table className="min-w-[600px] md:min-w-full">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Beneficiary ID</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Time</TableHead>
-                        <TableHead>Scanner</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Beneficiary ID</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Time</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Scanner</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {feedRecords.map((record) => (
                         <TableRow key={record.id}>
-                          <TableCell className="font-mono font-semibold">{record.beneficiaryUid}</TableCell>
-                          <TableCell className="font-medium">{record.beneficiaryName}</TableCell>
-                          <TableCell>{record.time}</TableCell>
-                          <TableCell>{record.scannerName}</TableCell>
+                          <TableCell className="font-mono font-semibold text-xs sm:text-sm">{record.beneficiaryUid}</TableCell>
+                          <TableCell className="font-medium text-xs sm:text-sm">{record.beneficiaryName}</TableCell>
+                          <TableCell className="text-xs sm:text-sm">{record.time}</TableCell>
+                          <TableCell className="text-xs sm:text-sm">{record.scannerName}</TableCell>
                           <TableCell>
-                            <Badge variant={record.status === 'ok' ? 'default' : 'secondary'}>
+                            <Badge variant={record.status === 'ok' ? 'default' : 'secondary'} className="text-xs sm:text-sm">
                               {record.status}
                             </Badge>
                           </TableCell>
@@ -144,7 +145,7 @@ export default function FedToday() {
                 
                 {/* Pagination Controls */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-xs sm:text-sm text-muted-foreground">
                     Showing {Math.min(feedRecords.length, itemsPerPage * currentPage)} of {totalItems} feed records
                   </div>
                   <div className="flex items-center gap-2">
@@ -153,9 +154,10 @@ export default function FedToday() {
                       size="sm"
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1 || loading}
+                      className="h-8 sm:h-9"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      <span className="hidden xs:inline">Previous</span>
                     </Button>
                     
                     <div className="flex items-center gap-1">
@@ -177,7 +179,7 @@ export default function FedToday() {
                             variant={currentPage === pageNum ? "default" : "outline"}
                             size="sm"
                             onClick={() => handlePageChange(pageNum)}
-                            className="w-10 h-10"
+                            className="w-8 h-8 sm:w-10 sm:h-10"
                             disabled={loading}
                           >
                             {pageNum}
@@ -191,8 +193,9 @@ export default function FedToday() {
                       size="sm"
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages || loading}
+                      className="h-8 sm:h-9"
                     >
-                      Next
+                      <span className="hidden xs:inline">Next</span>
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
                   </div>

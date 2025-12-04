@@ -76,8 +76,9 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
   }
 
   return (
-    <div className="border-2 rounded-lg overflow-hidden">
-      <Table>
+    // Make table responsive with horizontal scrolling on small screens
+    <div className="overflow-x-auto w-full rounded-lg border-2">
+      <Table className="min-w-[600px] md:min-w-full">
         <TableHeader>
           <TableRow>
             {showSelection && isAdmin && (
@@ -90,11 +91,11 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                 />
               </TableHead>
             )}
-            <TableHead>UID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Gender</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="text-xs sm:text-sm md:text-base">UID</TableHead>
+            <TableHead className="text-xs sm:text-sm md:text-base">Name</TableHead>
+            <TableHead className="text-xs sm:text-sm md:text-base">Gender</TableHead>
+            <TableHead className="text-xs sm:text-sm md:text-base">Status</TableHead>
+            <TableHead className="text-right text-xs sm:text-sm md:text-base">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -110,25 +111,25 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                   />
                 </TableCell>
               )}
-              <TableCell className="font-mono font-semibold">
+              <TableCell className="font-mono font-semibold text-xs sm:text-sm md:text-base">
                 <div className="flex items-center gap-2">
                   <QrCode className="h-4 w-4 text-muted-foreground" />
                   {beneficiary.uid}
                 </div>
               </TableCell>
-              <TableCell className="font-medium">{beneficiary.fullName}</TableCell>
-              <TableCell className="capitalize">{beneficiary.gender}</TableCell>
+              <TableCell className="font-medium text-xs sm:text-sm md:text-base">{beneficiary.fullName}</TableCell>
+              <TableCell className="capitalize text-xs sm:text-sm md:text-base">{beneficiary.gender}</TableCell>
               <TableCell>
-                <Badge variant={beneficiary.fedToday ? "default" : "outline"}>
+                <Badge variant={beneficiary.fedToday ? "default" : "outline"} className="text-xs sm:text-sm">
                   {beneficiary.fedToday ? 'Fed Today' : 'Not Fed'}
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-1 sm:gap-2">
                   <Link to={`/beneficiaries/${beneficiary.uid}`}>
-                    <Button variant="outline" size="sm">
-                      <Eye className="mr-2 h-4 w-4" />
-                      View
+                    <Button variant="outline" size="sm" className="h-8 px-2 text-xs sm:h-9 sm:px-4 sm:text-sm">
+                      <Eye className="mr-1 h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
+                      <span className="hidden xs:inline">View</span>
                     </Button>
                   </Link>
                   <Button 
@@ -136,11 +137,12 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                     size="sm" 
                     onClick={() => onDownloadQR(beneficiary)}
                     disabled={actionLoading[`qr-${beneficiary._id}`] || !beneficiary._id}
+                    className="h-8 w-8 p-0 sm:h-9 sm:w-9"
                   >
                     {actionLoading[`qr-${beneficiary._id}`] ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                     ) : (
-                      <QrCode className="h-4 w-4" />
+                      <QrCode className="h-3 w-3 sm:h-4 sm:w-4" />
                     )}
                   </Button>
                   {isAdmin && onSetFeedingStatus && (
@@ -151,11 +153,12 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                         onClick={() => onSetFeedingStatus(beneficiary, true)}
                         title="Mark as fed today"
                         disabled={actionLoading[`feed-${beneficiary._id}`] || beneficiary.fedToday || !beneficiary._id}
+                        className="h-8 w-8 p-0 sm:h-9 sm:w-9"
                       >
                         {actionLoading[`feed-${beneficiary._id}`] ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                         ) : (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                         )}
                       </Button>
                       <Button 
@@ -164,11 +167,12 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                         onClick={() => onSetFeedingStatus(beneficiary, false)}
                         title="Mark as not fed today"
                         disabled={actionLoading[`feed-${beneficiary._id}`] || !beneficiary.fedToday || !beneficiary._id}
+                        className="h-8 w-8 p-0 sm:h-9 sm:w-9"
                       >
                         {actionLoading[`feed-${beneficiary._id}`] ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                         ) : (
-                          <X className="h-4 w-4 text-red-500" />
+                          <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                         )}
                       </Button>
                     </>
@@ -180,11 +184,12 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                       onClick={() => onDelete(beneficiary._id, beneficiary.fullName)}
                       disabled={actionLoading[`delete-${beneficiary._id}`] || !beneficiary._id}
                       title="Delete beneficiary"
+                      className="h-8 w-8 p-0 sm:h-9 sm:w-9"
                     >
                       {actionLoading[`delete-${beneficiary._id}`] ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                       ) : (
-                        <X className="h-4 w-4 text-red-500" />
+                        <X className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                       )}
                     </Button>
                   )}

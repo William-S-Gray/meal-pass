@@ -77,7 +77,7 @@ export default function Reports() {
             <CardDescription>View and export feeding data</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date</Label>
                 <Input
@@ -85,6 +85,7 @@ export default function Reports() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -94,6 +95,7 @@ export default function Reports() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
@@ -103,15 +105,16 @@ export default function Reports() {
                   placeholder="Filter by site..."
                   value={site}
                   onChange={(e) => setSite(e.target.value)}
+                  className="w-full"
                 />
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button onClick={loadRecords} disabled={loading}>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button onClick={loadRecords} disabled={loading} className="w-full sm:w-auto">
                 <Search className="mr-2 h-4 w-4" />
                 {loading ? 'Loading...' : 'Generate Report'}
               </Button>
-              <Button onClick={handleExportCSV} variant="outline" disabled={feedRecords.length === 0}>
+              <Button onClick={handleExportCSV} variant="outline" disabled={feedRecords.length === 0} className="w-full sm:w-auto">
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
               </Button>
@@ -120,31 +123,31 @@ export default function Reports() {
         </Card>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card className="border-2">
             <CardHeader>
-              <CardTitle className="text-base">Total Fed</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Total Fed</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{totalFed}</p>
+              <p className="text-2xl sm:text-3xl font-bold">{totalFed}</p>
             </CardContent>
           </Card>
 
           <Card className="border-2">
             <CardHeader>
-              <CardTitle className="text-base">Duplicates</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Duplicates</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{duplicates}</p>
+              <p className="text-2xl sm:text-3xl font-bold">{duplicates}</p>
             </CardContent>
           </Card>
 
           <Card className="border-2">
             <CardHeader>
-              <CardTitle className="text-base">Total Records</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Total Records</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{feedRecords.length}</p>
+              <p className="text-2xl sm:text-3xl font-bold">{feedRecords.length}</p>
             </CardContent>
           </Card>
         </div>
@@ -160,30 +163,31 @@ export default function Reports() {
                 {loading ? 'Loading records...' : 'No records found for selected date range'}
               </p>
             ) : (
-              <div className="border-2 rounded-lg overflow-hidden">
-                <Table>
+              // Make table responsive with horizontal scrolling on small screens
+              <div className="overflow-x-auto w-full rounded-lg border-2">
+                <Table className="min-w-[600px] md:min-w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>UID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Scanner</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="text-xs sm:text-sm">UID</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Time</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Scanner</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {feedRecords.map((record) => (
                       <TableRow key={record.id}>
-                        <TableCell className="font-mono font-semibold">{record.beneficiaryUid}</TableCell>
-                        <TableCell>{record.beneficiaryName}</TableCell>
-                        <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{record.time}</TableCell>
-                        <TableCell>{record.scannerName}</TableCell>
+                        <TableCell className="font-mono font-semibold text-xs sm:text-sm">{record.beneficiaryUid}</TableCell>
+                        <TableCell className="text-xs sm:text-sm">{record.beneficiaryName}</TableCell>
+                        <TableCell className="text-xs sm:text-sm">{new Date(record.date).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-xs sm:text-sm">{record.time}</TableCell>
+                        <TableCell className="text-xs sm:text-sm">{record.scannerName}</TableCell>
                         <TableCell>
                           <Badge 
                             variant={record.status === 'ok' ? 'default' : 'secondary'}
-                            className={record.status === 'ok' ? 'bg-success' : ''}
+                            className={`text-xs sm:text-sm ${record.status === 'ok' ? 'bg-success' : ''}`}
                           >
                             {record.status}
                           </Badge>
