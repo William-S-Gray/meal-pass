@@ -49,7 +49,7 @@ const recordFeeding = async (feedingData) => {
     }).lean();
     
     if (existingRecord) {
-      logger.warn('Beneficiary already fed today', { uniqueId: feedingData.uniqueId });
+      logger.warn('Beneficiary already fed today', { uniqueId: feedingData.uniqueId, date: today });
       throw new Error('Beneficiary already fed today');
     }
     
@@ -67,10 +67,10 @@ const recordFeeding = async (feedingData) => {
     
     await feedingRecord.save();
     
-    logger.info('Feeding recorded successfully', { id: feedingRecord._id });
+    logger.info('Feeding recorded successfully', { id: feedingRecord._id, uniqueId: feedingData.uniqueId });
     return formatFeedingRecordResponse(feedingRecord.toObject()); // Convert to object for consistency
   } catch (error) {
-    logger.error('Error recording feeding', { error: error.message });
+    logger.error('Error recording feeding', { error: error.message, uniqueId: feedingData?.uniqueId });
     throw error;
   }
 };

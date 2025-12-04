@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 interface Beneficiary {
-  id: string;
+  _id: string;
   uid: string;
   fullName: string;
   dob?: string;
@@ -99,13 +99,13 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
         </TableHeader>
         <TableBody>
           {beneficiaries.map((beneficiary, index) => (
-            <TableRow key={`beneficiary-${beneficiary.id || beneficiary.uid || `fallback-${index}`}`}>
+            <TableRow key={`beneficiary-${beneficiary._id || beneficiary.uid || `fallback-${index}`}`}>
               {showSelection && isAdmin && (
                 <TableCell>
                   <input
                     type="checkbox"
-                    checked={selectedBeneficiaries.includes(beneficiary.id)}
-                    onChange={() => onSelectBeneficiary?.(beneficiary.id)}
+                    checked={selectedBeneficiaries.includes(beneficiary._id)}
+                    onChange={() => onSelectBeneficiary?.(beneficiary._id)}
                     className="h-4 w-4"
                   />
                 </TableCell>
@@ -135,9 +135,9 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                     variant="ghost" 
                     size="sm" 
                     onClick={() => onDownloadQR(beneficiary)}
-                    disabled={actionLoading[`qr-${beneficiary.id}`]}
+                    disabled={actionLoading[`qr-${beneficiary._id}`] || !beneficiary._id}
                   >
-                    {actionLoading[`qr-${beneficiary.id}`] ? (
+                    {actionLoading[`qr-${beneficiary._id}`] ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <QrCode className="h-4 w-4" />
@@ -150,9 +150,9 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                         size="sm" 
                         onClick={() => onSetFeedingStatus(beneficiary, true)}
                         title="Mark as fed today"
-                        disabled={actionLoading[`feed-${beneficiary.id}`] || beneficiary.fedToday}
+                        disabled={actionLoading[`feed-${beneficiary._id}`] || beneficiary.fedToday || !beneficiary._id}
                       >
-                        {actionLoading[`feed-${beneficiary.id}`] ? (
+                        {actionLoading[`feed-${beneficiary._id}`] ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Check className="h-4 w-4 text-green-500" />
@@ -163,9 +163,9 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                         size="sm" 
                         onClick={() => onSetFeedingStatus(beneficiary, false)}
                         title="Mark as not fed today"
-                        disabled={actionLoading[`feed-${beneficiary.id}`] || !beneficiary.fedToday}
+                        disabled={actionLoading[`feed-${beneficiary._id}`] || !beneficiary.fedToday || !beneficiary._id}
                       >
-                        {actionLoading[`feed-${beneficiary.id}`] ? (
+                        {actionLoading[`feed-${beneficiary._id}`] ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <X className="h-4 w-4 text-red-500" />
@@ -177,11 +177,11 @@ const BeneficiaryTableComponent: React.FC<BeneficiaryTableProps> = ({
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      onClick={() => onDelete(beneficiary.id, beneficiary.fullName)}
-                      disabled={actionLoading[`delete-${beneficiary.id}`]}
+                      onClick={() => onDelete(beneficiary._id, beneficiary.fullName)}
+                      disabled={actionLoading[`delete-${beneficiary._id}`] || !beneficiary._id}
                       title="Delete beneficiary"
                     >
-                      {actionLoading[`delete-${beneficiary.id}`] ? (
+                      {actionLoading[`delete-${beneficiary._id}`] ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <X className="h-4 w-4 text-red-500" />

@@ -59,9 +59,16 @@ export default function BeneficiaryProfile() {
   const handleDownloadQR = async () => {
     if (!beneficiary) return;
     
+    // Add validation for beneficiary ID
+    if (!beneficiary._id) {
+      console.error("Attempted QR download with no ID", beneficiary);
+      alert("No ID found for beneficiary.");
+      return;
+    }
+    
     try {
       setActionLoading(true);
-      await downloadQRCode(beneficiary.id, beneficiary.uid);
+      await downloadQRCode(beneficiary._id, beneficiary.uid);
       toast({
         title: 'Success',
         description: 'QR code downloaded successfully'

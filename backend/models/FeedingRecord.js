@@ -36,7 +36,7 @@ const feedingRecordSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index to prevent duplicate feedings
+// Compound index to prevent duplicate feedings - this ensures uniqueness
 feedingRecordSchema.index({ uniqueId: 1, date: 1 }, { unique: true });
 
 // Index for querying by date range

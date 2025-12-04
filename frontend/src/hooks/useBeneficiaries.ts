@@ -3,7 +3,7 @@ import { getBeneficiaries, deleteBeneficiary } from '../lib/api';
 import { toast } from './use-toast';
 
 interface Beneficiary {
-  id: string;
+  _id: string;
   uid: string;
   fullName: string;
   gender: string;

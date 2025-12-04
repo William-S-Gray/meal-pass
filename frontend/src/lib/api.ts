@@ -49,7 +49,7 @@ interface UserWithToken extends User {
 }
 
 export interface Beneficiary {
-  id: string;
+  _id: string;  // Changed from 'id' to '_id' to match backend
   uid: string; // BNF-XXXX format
   fullName: string;
   gender: 'male' | 'female' | 'other';
@@ -58,6 +58,7 @@ export interface Beneficiary {
   createdAt: string;
   fedToday?: boolean; // Add fedToday property
   active?: boolean; // Add active property
+  dob?: string; // Add dob property
 }
 
 // Response interface for QR scan
@@ -255,7 +256,7 @@ export async function loginUser(email: string, password: string): Promise<User> 
 
 // ============ BENEFICIARY FUNCTIONS ============
 
-export async function createBeneficiary(data: Omit<Beneficiary, 'id' | 'uid' | 'qrCode' | 'createdAt' | 'notes'>): Promise<Beneficiary> {
+export async function createBeneficiary(data: Omit<Beneficiary, '_id' | 'uid' | 'qrCode' | 'createdAt' | 'notes'>): Promise<Beneficiary> {
   try {
     // Prepare form data
     const formData = new FormData();
@@ -292,7 +293,7 @@ export async function createBeneficiary(data: Omit<Beneficiary, 'id' | 'uid' | '
     
     // Map backend response to frontend interface
     return {
-      id: result._id,
+      _id: result._id,
       uid: result.uniqueId,
       fullName: result.name,
       gender: result.gender.toLowerCase() as 'male' | 'female' | 'other',
@@ -331,10 +332,9 @@ export async function getBeneficiaries(search?: string, page: number = 1, limit:
     
     // Map backend response to frontend interface
     const beneficiaries = result.data.map((item) => ({
-      id: item._id,
+      _id: item._id,
       uid: item.uniqueId,
       fullName: item.name,
-
       gender: item.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: item.group || '',
       qrCode: `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
@@ -366,7 +366,7 @@ export async function getBeneficiaryByUid(uid: string): Promise<Beneficiary | nu
     
     // Map backend response to frontend interface
     return {
-      id: result.data._id,
+      _id: result.data._id,
       uid: result.data.uniqueId,
       fullName: result.data.name,
       gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
@@ -398,7 +398,7 @@ export async function updateBeneficiary(id: string, data: Partial<Beneficiary>):
     
     // Map backend response to frontend interface
     return {
-      id: result.data._id,
+      _id: result.data._id,
       uid: result.data.uniqueId,
       fullName: result.data.name,
       gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
@@ -546,9 +546,25 @@ export async function scanQRCode(uniqueId: string, deviceId: string, method: 'sc
   } catch (error) {
     // For this specific endpoint, we don't want to throw an error for business logic responses
     // We'll handle different status codes appropriately
-    if (axios.isAxiosError(error) && error.response && error.response.status !== 400 && error.response.status !== 404) {
-      handleApiError(error);
+    if (axios.isAxiosError(error)) {
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        // This is likely a "Beneficiary already fed today" error
+        return {
+          status: 'already_fed',
+          message: error.response.data?.message || 'Beneficiary already fed today'
+        };
+      } else if (error.response?.status === 404) {
+        // This is likely a "Beneficiary not found" error
+        return {
+          status: 'not_found',
+          message: error.response.data?.message || 'Beneficiary not found'
+        };
+      }
     }
+    
+    // Re-throw other errors
+    handleApiError(error);
     throw error; // Re-throw to maintain existing error handling
   }
 }

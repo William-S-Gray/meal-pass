@@ -7,16 +7,25 @@ const { record, query } = require('../validators/feedingValidator');
  * @desc    Record feeding event
  * @route   POST /api/feeding/scan
  * @access  Private (Volunteer/Admin)
+ * 
+ * This endpoint prevents duplicate feedings by:
+ * 1. Checking if a feeding record already exists for the same beneficiary on the same day
+ * 2. Using a compound unique index in the database for additional protection
  */
 const recordFeeding = async (req, res, next) => {
   try {
+    // Log the incoming request for debugging
+    logger.info('Received feeding record request', { body: req.body });
+    
     // Validate request body early to fail fast
     const { error, value } = record.validate(req.body);
     if (error) {
+      logger.warn('Feeding record validation failed', { error: error.details });
       return sendValidationError(res, error);
     }
 
     const result = await feedingService.recordFeeding(value);
+    logger.info('Feeding recorded successfully', { uniqueId: value.uniqueId });
     sendSuccess(res, 201, result, 'Feeding recorded successfully');
   } catch (error) {
     logger.error('Error in recordFeeding:', error);
@@ -100,6 +109,10 @@ const removeTodaysRecord = async (req, res, next) => {
 
 module.exports = {
   recordFeeding,
+  getTodaysRecords,
+  getRecordsByBeneficiary,
+  removeTodaysRecord
+};recordFeeding,
   getTodaysRecords,
   getRecordsByBeneficiary,
   removeTodaysRecord

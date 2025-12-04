@@ -35,7 +35,7 @@ export default function QRScanner() {
               qrScannerRef.current.stop();
             }
             setScanning(false);
-            processScan(result);
+            processScan(result.data); // Extract the data from the scan result
           },
           {
             onDecodeError: (error) => {
@@ -101,25 +101,25 @@ export default function QRScanner() {
       if (result.status === 'success') {
         toast({
           title: 'Success',
-          description: result.message,
+          description: `Beneficiary ${beneficiaryData?.fullName || uid} has been marked as fed for today.`,
           variant: 'default'
         });
       } else if (result.status === 'already_fed') {
         toast({
-          title: 'Already Fed',
-          description: result.message,
+          title: 'Already Fed Today',
+          description: `Beneficiary ${beneficiaryData?.fullName || uid} has already been fed today. Duplicate feeding prevented.`,
           variant: 'destructive'
         });
       } else if (result.status === 'not_found') {
         toast({
           title: 'Not Found',
-          description: result.message,
+          description: `No beneficiary found with ID ${uid}. Please check the QR code.`,
           variant: 'destructive'
         });
       } else {
         toast({
           title: 'Error',
-          description: result.message,
+          description: result.message || 'Failed to process scan',
           variant: 'destructive'
         });
       }

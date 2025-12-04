@@ -90,6 +90,13 @@ export default function BeneficiariesList() {
   };
 
   const handleDownloadQR = async (beneficiaryId: string, beneficiaryUid: string) => {
+    // Add validation for beneficiaryId
+    if (!beneficiaryId) {
+      console.error("Attempted QR download with no ID");
+      alert("No ID found for beneficiary.");
+      return;
+    }
+    
     try {
       setActionLoading(prev => ({ ...prev, [`qr-${beneficiaryId}`]: true }));
       await downloadQRCode(beneficiaryId, beneficiaryUid);
@@ -126,7 +133,7 @@ export default function BeneficiariesList() {
     if (selectedBeneficiaries.length === beneficiaries.length) {
       setSelectedBeneficiaries([]);
     } else {
-      setSelectedBeneficiaries(beneficiaries.map(b => b.id));
+      setSelectedBeneficiaries(beneficiaries.map(b => b._id));
     }
   };
 
@@ -305,7 +312,14 @@ export default function BeneficiariesList() {
               onSelectBeneficiary={handleSelectBeneficiary}
               onSelectAll={handleSelectAll}
               showSelection={true}
-              onDownloadQR={(beneficiary) => handleDownloadQR(beneficiary.id, beneficiary.uid)}
+              onDownloadQR={(beneficiary) => {
+                if (!beneficiary._id) {
+                  console.error("Attempted QR download with no ID", beneficiary);
+                  alert("No ID found for beneficiary.");
+                  return;
+                }
+                handleDownloadQR(beneficiary._id, beneficiary.uid);
+              }}
               onSetFeedingStatus={undefined} // We'll handle this in a separate component if needed
               onDelete={isAdmin ? deleteBeneficiaryById : undefined}
               isAdmin={isAdmin}

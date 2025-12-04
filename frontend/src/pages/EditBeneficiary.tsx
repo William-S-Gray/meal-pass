@@ -72,7 +72,12 @@ export default function EditBeneficiary() {
 
     setSaving(true);
     try {
-      await updateBeneficiary(beneficiary.id, formData);
+      // Add validation for beneficiary ID
+      if (!beneficiary._id) {
+        throw new Error("No ID found for beneficiary.");
+      }
+      
+      await updateBeneficiary(beneficiary._id, formData);
       toast({
         title: 'Success',
         description: 'Beneficiary updated successfully'
