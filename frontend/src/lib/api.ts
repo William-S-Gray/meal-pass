@@ -272,20 +272,35 @@ export async function createBeneficiary(data: Omit<Beneficiary, 'id' | 'uid' | '
     
     // Notes field is not in backend model, so we exclude it
     
-    const response = await postWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; gender: string; group?: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean } }>('/api/beneficiaries', formData);
-    const result = response;
+    const response = await postWithCacheClear<{ 
+      success: boolean; 
+      _id: string; 
+      data: { 
+        _id: string; 
+        uniqueId: string; 
+        name: string; 
+        gender: string; 
+        group?: string; 
+        qrCodeUrl: string; 
+        createdAt: string; 
+        fedToday?: boolean; 
+        active?: boolean 
+      } 
+    }>('/api/beneficiaries', formData);
+    
+    const result = response.data;
     
     // Map backend response to frontend interface
     return {
-      id: result.data._id,
-      uid: result.data.uniqueId,
-      fullName: result.data.name,
-      gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
-      household: result.data.group || '',
-      qrCode: `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
-      createdAt: result.data.createdAt,
-      fedToday: result.data.fedToday || false,
-      active: result.data.active !== undefined ? result.data.active : true
+      id: result._id,
+      uid: result.uniqueId,
+      fullName: result.name,
+      gender: result.gender.toLowerCase() as 'male' | 'female' | 'other',
+      household: result.group || '',
+      qrCode: `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
+      createdAt: result.createdAt,
+      fedToday: result.fedToday || false,
+      active: result.active !== undefined ? result.active : true
     };
   } catch (error) {
     handleApiError(error);

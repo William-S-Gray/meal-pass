@@ -22,6 +22,7 @@ const beneficiarySchema = new mongoose.Schema({
   },
   group: {
     type: String,
+    required: false, // Explicitly set as not required
     trim: true,
     index: true // Add index for group
   },

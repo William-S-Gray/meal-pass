@@ -64,7 +64,13 @@ const createBeneficiary = async (req, res, next) => {
     }
 
     const result = await beneficiaryService.create(value);
-    sendSuccess(res, 201, result, 'Beneficiary created successfully');
+    
+    // Return the response with _id as required
+    res.status(201).json({
+      success: true,
+      _id: result.id,
+      ...result
+    });
   } catch (error) {
     logger.error('Error in createBeneficiary:', error);
     sendError(res, 500, error.message);
@@ -199,6 +205,9 @@ const downloadQRCode = async (req, res, next) => {
     if (!beneficiary.qrCodeUrl) {
       return sendError(res, 404, 'QR code not found');
     }
+    
+    // Set CORS headers to allow image download
+    res.setHeader("Access-Control-Allow-Origin", "*");
     
     const fullPath = `${req.protocol}://${req.get('host')}${beneficiary.qrCodeUrl}`;
     res.redirect(fullPath);

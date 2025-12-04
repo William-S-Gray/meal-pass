@@ -51,35 +51,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS with specific options for better security
-const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Check if origin is in whitelist
-    // Extract domain from FRONTEND_URL if available
-    const frontendDomain = process.env.FRONTEND_URL;
-    
-    const whitelist = [
-      process.env.ORIGIN_URL,
-      frontendDomain,
-      'http://localhost:8080',
-      'http://localhost:8081',
-      'http://127.0.0.1:8080',
-      'http://127.0.0.1:8081'
-    ].filter(Boolean); // Remove undefined values
-    
-    if (whitelist.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: "*",
+  methods: "GET,POST,PUT,DELETE",
+  allowedHeaders: "Content-Type, Authorization",
+  exposedHeaders: ["Content-Disposition"]
+}));
 
 // Security middleware
 app.use(helmet());
@@ -101,7 +78,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter); // Apply rate limiting to all API routes
 
 // Static folder with CORS headers for QR codes
-app.use('/qrcodes', cors(corsOptions), express.static(__dirname + '/public/qrcodes'));
+app.use('/qrcodes', cors(), express.static(__dirname + '/public/qrcodes'));
 
 // Static folder for other assets
 app.use(express.static(__dirname + '/public'));
