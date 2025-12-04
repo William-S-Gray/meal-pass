@@ -1,28 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getBeneficiaryByUid, updateBeneficiary, Beneficiary } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { ChevronLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function EditBeneficiary() {
   const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
+  const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: '',
-    dob: '',
     gender: 'male' as 'male' | 'female' | 'other',
-    household: '',
-    notes: ''
+    household: ''
   });
 
   useEffect(() => {
@@ -33,23 +30,29 @@ export default function EditBeneficiary() {
 
   const loadBeneficiary = async (uid: string) => {
     try {
-      const beneficiaryData = await getBeneficiaryByUid(uid);
-      if (beneficiaryData) {
-        setBeneficiary(beneficiaryData);
+      const data = await getBeneficiaryByUid(uid);
+      if (data) {
+        setBeneficiary(data);
         setFormData({
-          fullName: beneficiaryData.fullName,
-          dob: beneficiaryData.dob,
-          gender: beneficiaryData.gender,
-          household: beneficiaryData.household || '',
-          notes: beneficiaryData.notes || ''
+          fullName: data.fullName,
+          gender: data.gender as 'male' | 'female' | 'other',
+          household: data.household || ''
         });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Beneficiary not found',
+          variant: 'destructive'
+        });
+        navigate('/beneficiaries');
       }
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to load beneficiary data',
+        description: 'Failed to load beneficiary',
         variant: 'destructive'
       });
+      navigate('/beneficiaries');
     } finally {
       setLoading(false);
     }
@@ -57,10 +60,8 @@ export default function EditBeneficiary() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!beneficiary) return;
 
-    if (!formData.fullName) {
+    if (!beneficiary || !formData.fullName) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
@@ -71,8 +72,7 @@ export default function EditBeneficiary() {
 
     setSaving(true);
     try {
-      const updatedBeneficiary = await updateBeneficiary(beneficiary.id, formData);
-      setBeneficiary(updatedBeneficiary);
+      await updateBeneficiary(beneficiary.id, formData);
       toast({
         title: 'Success',
         description: 'Beneficiary updated successfully'
@@ -81,7 +81,7 @@ export default function EditBeneficiary() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update beneficiary',
+        description: 'Failed to update beneficiary',
         variant: 'destructive'
       });
     } finally {
@@ -97,25 +97,19 @@ export default function EditBeneficiary() {
     );
   }
 
-  if (!beneficiary) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">Beneficiary not found</p>
-        <Button onClick={() => navigate('/beneficiaries')}>Back to List</Button>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <Link to={`/beneficiaries/${uid}`}>
-            <Button variant="ghost" size="sm">
-              <ChevronLeft className="mr-2 h-4 w-4" />
-              Back to Profile
-            </Button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to={`/beneficiaries/${uid}`}>
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Profile
+              </Button>
+            </Link>
+            <h1 className="text-2xl font-bold text-primary">Edit Beneficiary</h1>
+          </div>
         </div>
       </header>
 
@@ -123,7 +117,7 @@ export default function EditBeneficiary() {
         <Card className="border-2">
           <CardHeader>
             <CardTitle>Edit Beneficiary</CardTitle>
-            <CardDescription>Update details for {beneficiary.uid}</CardDescription>
+            <CardDescription>Update details for {beneficiary?.uid}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -140,17 +134,6 @@ export default function EditBeneficiary() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="dob">Date of Birth (Optional)</Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    value={formData.dob}
-                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                    disabled={saving}
-                  />
-                </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="gender">Gender *</Label>
                   <Select
@@ -181,18 +164,6 @@ export default function EditBeneficiary() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Additional information..."
-                  rows={4}
-                  disabled={saving}
-                />
-              </div>
-
               <div className="flex gap-3">
                 <Button type="submit" className="flex-1" disabled={saving}>
                   {saving ? (
@@ -207,7 +178,7 @@ export default function EditBeneficiary() {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => navigate(`/beneficiaries/${uid}`)} 
+                  onClick={() => navigate(`/beneficiaries/${uid}`)}
                   disabled={saving}
                 >
                   Cancel

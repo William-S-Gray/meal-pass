@@ -19,10 +19,8 @@ export default function RegisterBeneficiary() {
 
   const [formData, setFormData] = useState({
     fullName: '',
-    dob: '',
     gender: 'male' as 'male' | 'female' | 'other',
-    household: '',
-    notes: ''
+    household: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,17 +114,6 @@ export default function RegisterBeneficiary() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dob">Date of Birth (Optional)</Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    value={formData.dob}
-                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="gender">Gender *</Label>
                   <Select
                     value={formData.gender}
@@ -152,18 +139,6 @@ export default function RegisterBeneficiary() {
                   value={formData.household}
                   onChange={(e) => setFormData({ ...formData, household: e.target.value })}
                   placeholder="Family or household identifier"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Additional information..."
-                  rows={4}
                   disabled={loading}
                 />
               </div>

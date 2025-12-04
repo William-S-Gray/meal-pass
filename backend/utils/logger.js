@@ -8,9 +8,12 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir);
 }
 
+// Determine log level based on environment
+const logLevel = process.env.NODE_ENV === 'production' ? 'warn' : (process.env.LOG_LEVEL || 'info');
+
 // Create the logger
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
+  level: logLevel,
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
@@ -24,9 +27,11 @@ const logger = winston.createLogger({
       level: 'error' 
     }),
     
-    // Write all logs with level `info` and below to `combined.log`
+    // In production, only log warnings and errors to reduce I/O
+    // In development, log everything
     new winston.transports.File({ 
-      filename: path.join(logsDir, 'combined.log') 
+      filename: path.join(logsDir, 'combined.log'),
+      level: process.env.NODE_ENV === 'production' ? 'warn' : 'info'
     }),
   ],
 });

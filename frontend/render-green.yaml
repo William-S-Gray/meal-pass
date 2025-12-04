@@ -1,0 +1,14 @@
+services:
+  - type: static
+    name: meal-pass-frontend-green
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: VITE_API_URL
+        value: https://meal-pass-backend-green.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

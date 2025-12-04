@@ -1,46 +1,49 @@
 const mongoose = require('mongoose');
 
 const beneficiarySchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Name is required'],
-    trim: true,
-    maxlength: [100, 'Name cannot be more than 100 characters']
-  },
   uniqueId: {
     type: String,
-    required: [true, 'Unique ID is required'],
+    required: true,
     unique: true,
-    trim: true
+    index: true // Add index for uniqueId
   },
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    index: true // Add index for name
+  },
+
   gender: {
     type: String,
-    required: [true, 'Gender is required'],
-    enum: ['male', 'female', 'other']
+    required: true,
+    enum: ['male', 'female', 'other'],
+    index: true // Add index for gender
   },
-  age: {
-    type: Number,
-    required: false
-  },
-  photo: {
-    type: String, // URL to photo
-    required: false
+  group: {
+    type: String,
+    trim: true,
+    index: true // Add index for group
   },
   qrCodeUrl: {
-    type: String,
-    required: [true, 'QR Code URL is required']
+    type: String
+  },
+  photo: {
+    type: String
   },
   active: {
     type: Boolean,
-    default: true
+    default: true,
+    index: true // Add index for active status
   }
 }, {
   timestamps: true
 });
 
-// Add indexes for better query performance
-beneficiarySchema.index({ uniqueId: 1 });
+// Add indexes for common query fields
+beneficiarySchema.index({ name: 1 });
 beneficiarySchema.index({ group: 1 });
-beneficiarySchema.index({ createdAt: 1 });
+beneficiarySchema.index({ createdAt: -1 }); // For sorting by creation date
+beneficiarySchema.index({ uniqueId: 1, active: 1 }); // Composite index for common queries
 
 module.exports = mongoose.model('Beneficiary', beneficiarySchema);

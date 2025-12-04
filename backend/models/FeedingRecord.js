@@ -4,35 +4,46 @@ const feedingRecordSchema = new mongoose.Schema({
   uniqueId: {
     type: String,
     required: true,
-    trim: true
+    index: true // Add index for uniqueId
   },
   beneficiary: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Beneficiary',
-    required: true
+    name: String,
+    group: String,
+    uniqueId: String
   },
   date: {
-    type: String, // YYYY-MM-DD format
-    required: true
+    type: String,
+    required: true,
+    index: true // Add index for date
   },
   fedAt: {
     type: Date,
-    default: Date.now
+    required: true,
+    index: true // Add index for fedAt
   },
   method: {
     type: String,
+    required: true,
     enum: ['scan', 'manual'],
-    required: true
+    index: true // Add index for method
   },
   deviceId: {
     type: String,
-    required: true
+    required: true,
+    index: true // Add index for deviceId
   }
 }, {
   timestamps: true
 });
 
-// Add indexes for better query performance
-feedingRecordSchema.index({ uniqueId: 1, date: 1 });
+// Compound index to prevent duplicate feedings
+feedingRecordSchema.index({ uniqueId: 1, date: 1 }, { unique: true });
+
+// Index for querying by date range
+feedingRecordSchema.index({ date: 1, fedAt: -1 });
+
+// Additional indexes for common queries
+feedingRecordSchema.index({ deviceId: 1, fedAt: -1 }); // For querying by device
+feedingRecordSchema.index({ 'beneficiary.uniqueId': 1, fedAt: -1 }); // For querying by beneficiary
 
 module.exports = mongoose.model('FeedingRecord', feedingRecordSchema);

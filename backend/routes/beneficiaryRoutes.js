@@ -7,11 +7,7 @@ const {
   getBeneficiaryByUid, // Add this import
   updateBeneficiary, 
   deleteBeneficiary, 
-  importBeneficiaries, 
-  exportBeneficiaries,
   downloadQRCode,
-  printBulkCards,
-  printSingleCard,
   upload
 } = require('../controllers/beneficiaryController');
 
@@ -24,13 +20,6 @@ const authMiddleware = process.env.ENABLE_AUTH === 'true' ? [protect] : [];
 router.route('/')
   .post(authMiddleware, upload.single('photo'), createBeneficiary)
   .get(authMiddleware, getBeneficiaries);
-
-// Specific routes must be defined before parameterized routes
-router.route('/import')
-  .post(authMiddleware, upload.single('csvFile'), importBeneficiaries);
-
-router.route('/export')
-  .get(authMiddleware, exportBeneficiaries);
 
 // Parameterized routes
 router.route('/:id')
@@ -45,12 +34,5 @@ router.route('/uid/:uid')
 // QR Code download route
 router.route('/:id/qrcode')
   .get(authMiddleware, downloadQRCode);
-
-// Print routes
-router.route('/print-cards')
-  .post(authMiddleware, printBulkCards);
-
-router.route('/:id/print-card')
-  .get(authMiddleware, printSingleCard);
 
 module.exports = router;

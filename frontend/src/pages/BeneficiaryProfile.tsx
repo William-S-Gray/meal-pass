@@ -127,11 +127,15 @@ export default function BeneficiaryProfile() {
 
   // Check if beneficiary was fed today by looking at feed history
   const wasFedToday = feedHistory.some(record => {
-    const recordDate = new Date(record.date);
+    // Parse the date string and create a date object for the record date
+    const recordDate = new Date(record.date + 'T00:00:00');
+    
+    // Get today's date in local timezone
     const today = new Date();
-    return recordDate.getDate() === today.getDate() &&
-           recordDate.getMonth() === today.getMonth() &&
-           recordDate.getFullYear() === today.getFullYear();
+    const todayDateString = today.toISOString().split('T')[0];
+    
+    // Compare date strings directly for accurate comparison
+    return record.date === todayDateString;
   });
 
   return (
@@ -217,12 +221,7 @@ export default function BeneficiaryProfile() {
                     <p className="text-base font-medium">{beneficiary.household}</p>
                   </div>
                 )}
-                {beneficiary.notes && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Notes</p>
-                    <p className="text-base font-medium">{beneficiary.notes}</p>
-                  </div>
-                )}
+
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <Badge variant={wasFedToday ? "default" : "secondary"}>
@@ -290,7 +289,7 @@ export default function BeneficiaryProfile() {
                   </TableHeader>
                   <TableBody>
                     {feedHistory.map((record) => (
-                      <TableRow key={record.id}>
+                      <TableRow key={`feed-record-${record.id}`}>
                         <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
                         <TableCell>{new Date(record.fedAt).toLocaleTimeString()}</TableCell>
                         <TableCell>{record.deviceId}</TableCell>

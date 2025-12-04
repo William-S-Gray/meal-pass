@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStats } from '@/lib/api';
@@ -9,33 +9,45 @@ import {
   BarChart, Printer, PlusCircle, TrendingUp 
 } from 'lucide-react';
 
-export default function Dashboard() {
+const DashboardComponent = () => {
   const { user, logout, isAdmin, isVolunteer } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({ totalBeneficiaries: 0, fedToday: 0 });
   const [notFedToday, setNotFedToday] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const data = await getStats();
-      setStats(data);
-      // Calculate not fed today
-      setNotFedToday(data.totalBeneficiaries - data.fedToday);
+      setStats({
+        totalBeneficiaries: data.totalBeneficiaries || 0,
+        fedToday: data.fedToday || 0
+      });
+      // Calculate not fed today with proper checks
+      const total = data.totalBeneficiaries || 0;
+      const fed = data.fedToday || 0;
+      setNotFedToday(Math.max(0, total - fed));
     } catch (error) {
       console.error('Failed to load stats:', error);
+      // Set defaults on error
+      setStats({ totalBeneficiaries: 0, fedToday: 0 });
+      setNotFedToday(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleFedTodayClick = () => {
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  const handleFedTodayClick = useCallback(() => {
     navigate('/fed-today');
-  };
+  }, [navigate]);
+
+  const handleLogout = useCallback(() => {
+    logout();
+  }, [logout]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
@@ -45,7 +57,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-primary">MealTrack</h1>
             <p className="text-sm text-muted-foreground">{user?.fullName} • {user?.role}</p>
           </div>
-          <Button variant="outline" onClick={logout} size="sm">
+          <Button variant="outline" onClick={handleLogout} size="sm">
             <LogOut className="mr-2 h-4 w-4" />
             Logout
           </Button>
@@ -204,7 +216,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <h4 className="font-semibold">View Statistics</h4>
-                  <p className="text-sm text-muted-foreground">Analyze feeding trends and patterns</p>
+                  <p className="text-sm text-muted-foreground">Analyze trends and feeding patterns</p>
                 </div>
               </div>
             )}
@@ -213,4 +225,7 @@ export default function Dashboard() {
       </main>
     </div>
   );
-}
+};
+
+// Memoize the component to prevent unnecessary re-renders
+export default memo(DashboardComponent);

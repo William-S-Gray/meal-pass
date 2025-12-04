@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: meal-pass-backend-green
+    env: node
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ORIGIN_URL
+        sync: false
+      - key: ACTIVE_ENV
+        value: green

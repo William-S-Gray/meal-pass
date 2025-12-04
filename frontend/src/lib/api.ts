@@ -4,10 +4,11 @@ import axios from 'axios';
 
 // Create axios instance
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: false // Disable credentials for CORS
 });
 
 // Add a request interceptor to add auth token to all requests
@@ -31,6 +32,10 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Simple in-memory cache for GET requests
+const apiCache = new Map<string, { data: unknown; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export interface User {
   id: string;
   email: string;
@@ -47,10 +52,8 @@ export interface Beneficiary {
   id: string;
   uid: string; // BNF-XXXX format
   fullName: string;
-  dob?: string; // Make DOB optional
   gender: 'male' | 'female' | 'other';
   household?: string;
-  notes?: string;
   qrCode: string;
   createdAt: string;
   fedToday?: boolean; // Add fedToday property
@@ -161,18 +164,77 @@ const handleApiError = (error: unknown) => {
   }
 };
 
+// Wrapper for GET requests with caching
+const cachedGet = async <T>(url: string): Promise<T> => {
+  // Check cache first
+  const cached = apiCache.get(url);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data as T;
+  }
+
+  // If not in cache or expired, make the request
+  try {
+    const response = await apiClient.get<T>(url);
+    // Cache the result
+    apiCache.set(url, { data: response.data, timestamp: Date.now() });
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// Wrapper for POST requests that clears relevant cache
+const postWithCacheClear = async <T>(url: string, data?: unknown): Promise<T> => {
+  try {
+    const response = await apiClient.post<T>(url, data);
+    // Clear cache for related GET requests
+    apiCache.clear();
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// Wrapper for PUT requests that clears relevant cache
+const putWithCacheClear = async <T>(url: string, data?: unknown): Promise<T> => {
+  try {
+    const response = await apiClient.put<T>(url, data);
+    // Clear cache for related GET requests
+    apiCache.clear();
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// Wrapper for DELETE requests that clears relevant cache
+const deleteWithCacheClear = async <T>(url: string): Promise<T> => {
+  try {
+    const response = await apiClient.delete<T>(url);
+    // Clear cache for related GET requests
+    apiCache.clear();
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
 // ============ AUTH FUNCTIONS ============
 export async function loginUser(email: string, password: string): Promise<User> {
   try {
-    const response = await apiClient.post('/api/auth/login', { email, password });
-    const data = response.data;
+    const response = await postWithCacheClear<{ data: { admin: { id: string; email: string; name: string; role?: string }; token: string } }>('/api/auth/login', { email, password });
+    const data = response;
     
     // Store user with token in localStorage
     const userWithToken: UserWithToken = {
       id: data.data.admin.id,
       email: data.data.admin.email,
       fullName: data.data.admin.name,
-      role: data.data.admin.role || 'admin', // Default to admin if no role provided
+      role: (data.data.admin.role as 'admin' | 'volunteer' | 'reporter') || 'admin', // Default to admin if no role provided
       token: data.data.token
     };
     
@@ -183,7 +245,7 @@ export async function loginUser(email: string, password: string): Promise<User> 
       id: data.data.admin.id,
       email: data.data.admin.email,
       fullName: data.data.admin.name,
-      role: data.data.admin.role || 'admin'
+      role: (data.data.admin.role as 'admin' | 'volunteer' | 'reporter') || 'admin'
     };
   } catch (error) {
     handleApiError(error);
@@ -193,7 +255,7 @@ export async function loginUser(email: string, password: string): Promise<User> 
 
 // ============ BENEFICIARY FUNCTIONS ============
 
-export async function createBeneficiary(data: Omit<Beneficiary, 'id' | 'uid' | 'qrCode' | 'createdAt'>): Promise<Beneficiary> {
+export async function createBeneficiary(data: Omit<Beneficiary, 'id' | 'uid' | 'qrCode' | 'createdAt' | 'notes'>): Promise<Beneficiary> {
   try {
     // Prepare form data
     const formData = new FormData();
@@ -201,22 +263,24 @@ export async function createBeneficiary(data: Omit<Beneficiary, 'id' | 'uid' | '
     formData.append('gender', data.gender);
     formData.append('group', data.household || '');
     
-    // Only append DOB if it's provided
-    if (data.dob) {
-      formData.append('dob', data.dob);
-    }
+    // Log the data being sent for debugging
+    console.log('Sending beneficiary data:', {
+      name: data.fullName,
+      gender: data.gender,
+      group: data.household || ''
+    });
     
-    // Notes field is not in backend model, so we'll skip it for now
+    // Notes field is not in backend model, so we exclude it
     
-    const response = await apiClient.post('/api/beneficiaries', formData);
-    const result = response.data;
+    const response = await postWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; gender: string; group?: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean } }>('/api/beneficiaries', formData);
+    const result = response;
     
     // Map backend response to frontend interface
     return {
       id: result.data._id,
       uid: result.data.uniqueId,
       fullName: result.data.name,
-      dob: result.data.dob || '', // Backend doesn't have dob field, so we'll use empty string
+
       gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: result.data.group || '',
       qrCode: `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
@@ -248,29 +312,15 @@ export async function getBeneficiaries(search?: string, page: number = 1, limit:
       url += `&search=${encodeURIComponent(search)}`;
     }
     
-    const response = await apiClient.get(url);
-    const result = response.data;
-    
-    // Define the backend beneficiary type
-    interface BackendBeneficiary {
-      _id: string;
-      uniqueId: string;
-      name: string;
-      dob?: string;
-      gender: string;
-      group?: string;
-      qrCodeUrl: string;
-      createdAt: string;
-      fedToday?: boolean;
-      active?: boolean;
-    }
+    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; gender: string; group?: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean }[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
+    const result = response;
     
     // Map backend response to frontend interface
-    const beneficiaries = result.data.map((item: BackendBeneficiary) => ({
+    const beneficiaries = result.data.map((item) => ({
       id: item._id,
       uid: item.uniqueId,
       fullName: item.name,
-      dob: item.dob || '', // Backend doesn't have dob field
+
       gender: item.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: item.group || '',
       qrCode: `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
@@ -291,41 +341,26 @@ export async function getBeneficiaries(search?: string, page: number = 1, limit:
 
 export async function getBeneficiaryByUid(uid: string): Promise<Beneficiary | null> {
   try {
-    const response = await apiClient.get(`/api/beneficiaries/uid/${uid}`);
+    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; gender: string; group?: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/beneficiaries/uid/${uid}`);
     
     // If beneficiary not found, return null
-    if (response.status === 404) {
+    if ((response as unknown as { status: number }).status === 404) {
       return null;
     }
     
-    const result = response.data;
-    
-    // Define the backend beneficiary type
-    interface BackendBeneficiary {
-      _id: string;
-      uniqueId: string;
-      name: string;
-      dob?: string;
-      gender: string;
-      group?: string;
-      qrCodeUrl: string;
-      createdAt: string;
-      active?: boolean;
-    }
-    
-    const item: BackendBeneficiary = result.data;
+    const result = response;
     
     // Map backend response to frontend interface
     return {
-      id: item._id,
-      uid: item.uniqueId,
-      fullName: item.name,
-      dob: item.dob || '',
-      gender: item.gender.toLowerCase() as 'male' | 'female' | 'other',
-      household: item.group || '',
-      qrCode: `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
-      createdAt: item.createdAt,
-      active: item.active !== undefined ? item.active : true
+      id: result.data._id,
+      uid: result.data.uniqueId,
+      fullName: result.data.name,
+      gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
+      household: result.data.group || '',
+      qrCode: `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
+      createdAt: result.data.createdAt,
+      fedToday: result.data.fedToday || false,
+      active: result.data.active !== undefined ? result.data.active : true
     };
   } catch (error) {
     if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
@@ -344,20 +379,14 @@ export async function updateBeneficiary(id: string, data: Partial<Beneficiary>):
     if (data.gender) formData.append('gender', data.gender);
     if (data.household) formData.append('group', data.household);
     
-    // Only append DOB if it's provided
-    if (data.dob) {
-      formData.append('dob', data.dob);
-    }
-    
-    const response = await apiClient.put(`/api/beneficiaries/${id}`, formData);
-    const result = response.data;
+    const response = await putWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; gender: string; group?: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/beneficiaries/${id}`, formData);
+    const result = response;
     
     // Map backend response to frontend interface
     return {
       id: result.data._id,
       uid: result.data.uniqueId,
       fullName: result.data.name,
-      dob: result.data.dob || '',
       gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: result.data.group || '',
       qrCode: `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
@@ -372,7 +401,7 @@ export async function updateBeneficiary(id: string, data: Partial<Beneficiary>):
 
 export async function deleteBeneficiary(id: string): Promise<void> {
   try {
-    await apiClient.delete(`/api/beneficiaries/${id}`);
+    await deleteWithCacheClear(`/api/beneficiaries/${id}`);
   } catch (error) {
     handleApiError(error);
     throw error; // Re-throw to maintain existing error handling
@@ -383,10 +412,11 @@ export async function deleteBeneficiary(id: string): Promise<void> {
 export async function printBulkCards(beneficiaryIds: string[]): Promise<Blob> {
   try {
     const response = await apiClient.post('/api/beneficiaries/print-cards', { beneficiaryIds }, {
-      responseType: 'blob'
+      responseType: 'blob',
+      timeout: 60000 // Increase timeout for PDF generation
     });
     
-    // Check if the response is actually a PDF
+    // Validate response
     const contentType = response.headers['content-type'];
     if (!contentType || !contentType.includes('application/pdf')) {
       throw new Error(`Expected PDF response but got ${contentType}`);
@@ -403,10 +433,11 @@ export async function printBulkCards(beneficiaryIds: string[]): Promise<Blob> {
 export async function printSingleCard(beneficiaryId: string): Promise<Blob> {
   try {
     const response = await apiClient.get(`/api/beneficiaries/${beneficiaryId}/print-card`, {
-      responseType: 'blob'
+      responseType: 'blob',
+      timeout: 60000 // Increase timeout for PDF generation
     });
     
-    // Check if the response is actually a PDF
+    // Validate response
     const contentType = response.headers['content-type'];
     if (!contentType || !contentType.includes('application/pdf')) {
       throw new Error(`Expected PDF response but got ${contentType}`);
@@ -453,10 +484,10 @@ export async function downloadQRCode(beneficiaryId: string, beneficiaryUid: stri
 
 export async function getTodayFeedingRecords(): Promise<FeedingRecord[]> {
   try {
-    const response = await apiClient.get('/api/feeding/today');
-    const result = response.data;
+    const response = await cachedGet<{ data: BackendFeedingRecord[] }>(`/api/feeding/today`);
+    const result = response;
     
-    return result.data.map((item: BackendFeedingRecord) => ({
+    return result.data.map((item) => ({
       id: item._id,
       uniqueId: item.uniqueId,
       beneficiary: item.beneficiary,
@@ -473,10 +504,10 @@ export async function getTodayFeedingRecords(): Promise<FeedingRecord[]> {
 
 export async function getFeedingRecordsForBeneficiary(uniqueId: string): Promise<FeedingRecord[]> {
   try {
-    const response = await apiClient.get(`/api/feeding/beneficiary/${uniqueId}`);
-    const result = response.data;
+    const response = await cachedGet<{ data: BackendFeedingRecord[] }>(`/api/feeding/beneficiary/${uniqueId}`);
+    const result = response;
     
-    return result.data.map((item: BackendFeedingRecord) => ({
+    return result.data.map((item) => ({
       id: item._id,
       uniqueId: item.uniqueId,
       beneficiary: item.beneficiary,
@@ -493,8 +524,11 @@ export async function getFeedingRecordsForBeneficiary(uniqueId: string): Promise
 
 export async function scanQRCode(uniqueId: string, deviceId: string, method: 'scan' | 'manual'): Promise<QRScanResponse> {
   try {
-    const response = await apiClient.post('/api/feeding/scan', { uniqueId, deviceId, method });
-    return response.data;
+    const response = await postWithCacheClear<{ status: string; message: string }>('/api/feeding/scan', { uniqueId, deviceId, method });
+    return {
+      status: response.status as 'success' | 'already_fed' | 'not_found' | 'error',
+      message: response.message
+    };
   } catch (error) {
     // For this specific endpoint, we don't want to throw an error for business logic responses
     // We'll handle different status codes appropriately
@@ -521,8 +555,11 @@ export async function setManualFeedingStatus(uniqueId: string, fed: boolean): Pr
 
 export async function removeFeedingStatus(uniqueId: string): Promise<QRScanResponse> {
   try {
-    const response = await apiClient.delete(`/api/feeding/record/${uniqueId}`);
-    return response.data;
+    const response = await deleteWithCacheClear<{ status: string; message: string }>(`/api/feeding/record/${uniqueId}`);
+    return {
+      status: response.status as 'success' | 'already_fed' | 'not_found' | 'error',
+      message: response.message
+    };
   } catch (error) {
     // For this specific endpoint, we don't want to throw an error for business logic responses
     // We'll handle different status codes appropriately
@@ -536,18 +573,18 @@ export async function removeFeedingStatus(uniqueId: string): Promise<QRScanRespo
 // ============ REPORTING FUNCTIONS ============
 export async function getDailyReport(page: number = 1, limit: number = 50): Promise<PaginatedReport<FeedRecord>> {
   try {
-    const response = await apiClient.get(`/api/reports/today?page=${page}&limit=${limit}`);
-    const result = response.data;
+    const response = await cachedGet<{ data: BackendFeedLog[]; pagination: { page: number; limit: number; total: number; pages: number } }>(`/api/reports/today?page=${page}&limit=${limit}`);
+    const result = response;
     
     // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = result.data.map((item: BackendFeedLog) => ({
+    const feedRecords = result.data.map((item) => ({
       id: item._id,
       beneficiaryUid: item.beneficiaryId?.uniqueId || item.uniqueId,
       beneficiaryName: item.beneficiaryId?.name || 'Unknown',
       date: item.fedAt ? new Date(item.fedAt).toISOString().split('T')[0] : '',
       time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
       scannerName: item.servedBy || 'Unknown',
-      status: 'ok' // Assuming all records are valid
+      status: 'ok' as const // Assuming all records are valid
     }));
     
     return {
@@ -562,18 +599,18 @@ export async function getDailyReport(page: number = 1, limit: number = 50): Prom
 
 export async function getDateRangeReport(from: string, to: string, page: number = 1, limit: number = 50): Promise<PaginatedReport<FeedRecord>> {
   try {
-    const response = await apiClient.get(`/api/reports/date-range?from=${from}&to=${to}&page=${page}&limit=${limit}`);
-    const result = response.data;
+    const response = await cachedGet<{ data: BackendFeedLog[]; pagination: { page: number; limit: number; total: number; pages: number } }>(`/api/reports/date-range?from=${from}&to=${to}&page=${page}&limit=${limit}`);
+    const result = response;
     
     // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = result.data.map((item: BackendFeedLog) => ({
+    const feedRecords = result.data.map((item) => ({
       id: item._id,
       beneficiaryUid: item.beneficiaryId?.uniqueId || item.uniqueId,
       beneficiaryName: item.beneficiaryId?.name || 'Unknown',
       date: item.fedAt ? new Date(item.fedAt).toISOString().split('T')[0] : '',
       time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
       scannerName: item.servedBy || 'Unknown',
-      status: 'ok' // Assuming all records are valid
+      status: 'ok' as const // Assuming all records are valid
     }));
     
     return {
@@ -611,8 +648,8 @@ interface BeneficiaryReportData {
 
 export async function getBeneficiaryReport(uniqueId: string, page: number = 1, limit: number = 50): Promise<BeneficiaryReportData> {
   try {
-    const response = await apiClient.get(`/api/reports/beneficiary/${uniqueId}?page=${page}&limit=${limit}`);
-    return response.data;
+    const response = await cachedGet<BeneficiaryReportData>(`/api/reports/beneficiary/${uniqueId}?page=${page}&limit=${limit}`);
+    return response;
   } catch (error) {
     handleApiError(error);
     throw error; // Re-throw to maintain existing error handling
@@ -621,8 +658,8 @@ export async function getBeneficiaryReport(uniqueId: string, page: number = 1, l
 
 export async function getReportStatistics(): Promise<ReportStatistics> {
   try {
-    const response = await apiClient.get('/api/reports/statistics');
-    return response.data.data;
+    const response = await cachedGet<{ data: ReportStatistics }>('/api/reports/statistics');
+    return response.data;
   } catch (error) {
     handleApiError(error);
     throw error; // Re-throw to maintain existing error handling
@@ -679,17 +716,15 @@ export async function getStats(): Promise<{
   fedToday: number;
 }> {
   try {
-    // Fetch beneficiaries count
-    const beneficiariesResponse = await apiClient.get('/api/beneficiaries');
-    const beneficiariesResult = beneficiariesResponse.data;
-    
-    // Fetch fed today count using the new feeding endpoint
-    const fedResponse = await apiClient.get('/api/feeding/today');
-    const fedResult = fedResponse.data;
+    // Use cached GET wrapper for better performance
+    // Get all beneficiaries by using a high limit
+    const beneficiariesResponse = await cachedGet<{ pagination: { total: number } }>('/api/beneficiaries?limit=100');
+    // Get today's feeding records and count them
+    const fedResponse = await getTodayFeedRecords(1, 100); // Get all records for today
     
     return {
-      totalBeneficiaries: beneficiariesResult.pagination.total,
-      fedToday: fedResult.count
+      totalBeneficiaries: beneficiariesResponse.pagination.total,
+      fedToday: fedResponse.pagination.total // Use the total from pagination
     };
   } catch (error) {
     handleApiError(error);
@@ -719,8 +754,8 @@ export async function getDetailedStats(startDate?: string, endDate?: string): Pr
       url += `?${params.toString()}`;
     }
     
-    const response = await apiClient.get(url);
-    const result = response.data;
+    const response = await cachedGet<{ data: DetailedStats }>(url);
+    const result = response;
     
     return {
       totalBeneficiaries: result.data.totalBeneficiaries,
@@ -758,18 +793,18 @@ export async function getFeedRecordsByDateRange(startDate: string, endDate: stri
       url += `&site=${encodeURIComponent(site)}`;
     }
     
-    const response = await apiClient.get(url);
-    const result = response.data;
+    const response = await cachedGet<{ data: { id: string; beneficiaryUid: string; beneficiaryName: string; date: string; time: string; scannerName: string; status?: string }[] }>(url);
+    const result = response;
     
     // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = result.data.map((item: { id: string; beneficiaryUid: string; beneficiaryName: string; date: string; time: string; scannerName: string; status?: string }) => ({
+    const feedRecords = result.data.map((item) => ({
       id: item.id,
       beneficiaryUid: item.beneficiaryUid,
       beneficiaryName: item.beneficiaryName,
       date: item.date,
       time: item.time,
       scannerName: item.scannerName,
-      status: item.status || 'ok'
+      status: (item.status as 'ok' | 'duplicate') || 'ok'
     }));
     
     return feedRecords;
@@ -783,18 +818,18 @@ export async function getTodayFeedRecords(page: number = 1, limit: number = 10):
   try {
     const url = `/api/feeding/today?page=${page}&limit=${limit}`;
     
-    const response = await apiClient.get(url);
-    const result = response.data;
+    const response = await cachedGet<{ data: BackendFeedingRecord[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
+    const result = response;
     
     // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = result.data.map((item: BackendFeedingRecord) => ({
+    const feedRecords = result.data.map((item) => ({
       id: item._id,
       beneficiaryUid: item.beneficiary?.uniqueId || item.uniqueId,
       beneficiaryName: item.beneficiary?.name || 'Unknown',
       date: item.date,
       time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
       scannerName: item.deviceId || 'Unknown',
-      status: 'ok' // Assuming all records are valid
+      status: 'ok' as const // Assuming all records are valid
     }));
     
     return {

@@ -201,7 +201,7 @@ export default function Statistics() {
                         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       >
                         {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip />

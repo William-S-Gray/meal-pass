@@ -2,9 +2,12 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { Server } = require('socket.io');
 const http = require('http');
+const morgan = require('morgan');
+const mongoose = require('mongoose');
 require('colors');
 
 // Load env vars
@@ -15,7 +18,6 @@ const connectDB = require('./config/db');
 
 // Route files
 const beneficiaryRoutes = require('./routes/beneficiaryRoutes');
-const feedRoutes = require('./routes/feedRoutes');
 const authRoutes = require('./routes/authRoutes');
 const feedingRoutes = require('./routes/feedingRoutes');
 const reportsRoutes = require('./routes/reportsRoutes');
@@ -32,7 +34,7 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080', 'http://localhost:8081'],
+    origin: process.env.ORIGIN_URL || 'http://localhost:8080',
     credentials: true,
     optionsSuccessStatus: 200
   }
@@ -49,44 +51,112 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS with specific options for better security
-app.use(cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080', 'http://localhost:8081'],
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in whitelist
+    // Extract domain from FRONTEND_URL if available
+    const frontendDomain = process.env.FRONTEND_URL;
+    
+    const whitelist = [
+      process.env.ORIGIN_URL,
+      frontendDomain,
+      'http://localhost:8080',
+      'http://localhost:8081',
+      'http://127.0.0.1:8080',
+      'http://127.0.0.1:8081'
+    ].filter(Boolean); // Remove undefined values
+    
+    if (whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200
-}));
+};
 
-// Set security headers
+app.use(cors(corsOptions));
+
+// Security middleware
 app.use(helmet());
+
+// Compression middleware
+app.use(compression());
+
+// Logging middleware for development only
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
 
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
 });
-app.use(limiter);
+app.use('/api/', limiter); // Apply rate limiting to all API routes
 
 // Static folder with CORS headers for QR codes
-app.use('/qrcodes', cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:8080', 'http://localhost:8081'],
-  credentials: true
-}), express.static(__dirname + '/public/qrcodes'));
+app.use('/qrcodes', cors(corsOptions), express.static(__dirname + '/public/qrcodes'));
 
 // Static folder for other assets
 app.use(express.static(__dirname + '/public'));
 
 // Mount routers
 app.use('/api/beneficiaries', beneficiaryRoutes);
-app.use('/api/feed', feedRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/feeding', feedingRoutes);
 app.use('/api/reports', reportsRoutes);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
+// Health check endpoint for Render
+app.get('/health', async (req, res) => {
+  try {
+    // Check MongoDB connection
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = dbState === 1 ? 'connected' : 'disconnected';
+    
+    // Get memory usage
+    const memoryUsage = process.memoryUsage();
+    
+    // Get uptime
+    const uptime = process.uptime();
+    
+    res.status(200).json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      uptime: uptime,
+      environment: process.env.ACTIVE_ENV || 'unknown',
+      database: {
+        status: dbStatus,
+        readyState: dbState
+      },
+      system: {
+        memory: {
+          rss: Math.round(memoryUsage.rss / 1024 / 1024) + ' MB',
+          heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024) + ' MB',
+          heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + ' MB'
+        },
+        pid: process.pid
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
   res.status(200).json({
-    success: true,
-    message: 'Server is running',
-    timestamp: new Date().toISOString()
+    message: 'Meal Pass API is running',
+    version: '1.0.0'
   });
 });
 
@@ -108,6 +178,7 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
+// Use Render's dynamic port or default to 5000
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
