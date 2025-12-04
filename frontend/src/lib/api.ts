@@ -280,7 +280,6 @@ export async function createBeneficiary(data: Omit<Beneficiary, 'id' | 'uid' | '
       id: result.data._id,
       uid: result.data.uniqueId,
       fullName: result.data.name,
-
       gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
       household: result.data.group || '',
       qrCode: `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
@@ -375,9 +374,9 @@ export async function updateBeneficiary(id: string, data: Partial<Beneficiary>):
   try {
     const formData = new FormData();
     
-    if (data.fullName) formData.append('name', data.fullName);
-    if (data.gender) formData.append('gender', data.gender);
-    if (data.household) formData.append('group', data.household);
+    if (data.fullName !== undefined) formData.append('name', data.fullName);
+    if (data.gender !== undefined) formData.append('gender', data.gender);
+    if (data.household !== undefined) formData.append('group', data.household);
     
     const response = await putWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; gender: string; group?: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/beneficiaries/${id}`, formData);
     const result = response;

@@ -50,6 +50,12 @@ const createBeneficiary = async (req, res, next) => {
     // Log the incoming request body for debugging
     console.log('Incoming beneficiary data:', req.body);
     
+    // Check if we have any data at all
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log('No body data received');
+      return sendError(res, 400, 'No data received. Please check your request format.');
+    }
+    
     // Validate request body
     const { error, value } = create.validate(req.body);
     if (error) {

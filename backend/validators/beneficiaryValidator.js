@@ -12,7 +12,7 @@ const createSchema = Joi.object({
   gender: Joi.string().valid('male', 'female', 'other').required().messages({
     'any.only': 'Gender must be male, female, or other'
   }),
-  group: Joi.string().max(100).optional().messages({
+  group: Joi.string().max(100).allow('').optional().messages({
     'string.max': 'Group must be less than 100 characters'
   })
 });
@@ -28,7 +28,7 @@ const updateSchema = Joi.object({
   gender: Joi.string().valid('male', 'female', 'other').optional().messages({
     'any.only': 'Gender must be male, female, or other'
   }),
-  group: Joi.string().max(100).optional().messages({
+  group: Joi.string().max(100).allow('').optional().messages({
     'string.max': 'Group must be less than 100 characters'
   }),
   active: Joi.boolean().optional()

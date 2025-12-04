@@ -11,6 +11,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { toast } from '@/hooks/use-toast';
 import { ChevronLeft, Loader2, Download } from 'lucide-react';
 
+// Define error type for better type safety
+interface ApiError extends Error {
+  response?: {
+    data?: {
+      error?: string;
+    };
+  };
+  message: string;
+}
+
 export default function RegisterBeneficiary() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -45,9 +55,20 @@ export default function RegisterBeneficiary() {
         description: `Beneficiary ${beneficiary.uid} registered successfully`
       });
     } catch (error) {
+      console.error('Beneficiary creation error:', error);
+      let errorMessage = 'Failed to register beneficiary';
+      
+      // Try to extract more specific error information
+      const apiError = error as ApiError;
+      if (apiError.response && apiError.response.data && apiError.response.data.error) {
+        errorMessage = apiError.response.data.error;
+      } else if (apiError.message) {
+        errorMessage = apiError.message;
+      }
+      
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to register beneficiary',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
