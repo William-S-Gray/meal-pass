@@ -1,6 +1,6 @@
 # Meal-Pass MERN Feeding Management System
 
-A comprehensive meal distribution system with QR code tracking for beneficiaries, built with the MERN stack (MongoDB, Express, React, Node.js).
+A comprehensive meal distribution system with QR code tracking for employees, built with the MERN stack (MongoDB, Express, React, Node.js).
 
 ## 🏗️ System Architecture
 
@@ -43,8 +43,8 @@ frontend/
 - Role-based access control (Admin, Volunteer, Reporter)
 - Secure password hashing with bcrypt
 
-### Beneficiary Management
-- Create, read, update, delete beneficiaries
+### Employee Management
+- Create, read, update, delete employees
 - Automatic QR code generation
 - Unique ID assignment
 - Photo upload support
@@ -64,7 +64,7 @@ frontend/
 - Export to CSV/PDF
 
 ### Printing & Export
-- Individual beneficiary card printing
+- Individual employee card printing
 - Bulk card printing (up to 40 cards per sheet)
 - QR code download
 
@@ -126,25 +126,25 @@ npm run dev
 - `POST /api/auth/login` - User login
 - `POST /api/auth/logout` - User logout
 
-### Beneficiaries
-- `GET /api/beneficiaries` - Get all beneficiaries (paginated)
-- `POST /api/beneficiaries` - Create new beneficiary
-- `GET /api/beneficiaries/:id` - Get beneficiary by ID
-- `GET /api/beneficiaries/uid/:uid` - Get beneficiary by unique ID
-- `PUT /api/beneficiaries/:id` - Update beneficiary
-- `DELETE /api/beneficiaries/:id` - Delete beneficiary
-- `GET /api/beneficiaries/:id/qrcode` - Download QR code
+### Employees
+- `GET /api/employees` - Get all employees (paginated)
+- `POST /api/employees` - Create new employee
+- `GET /api/employees/:id` - Get employee by ID
+- `GET /api/employees/uid/:uid` - Get employee by unique ID
+- `PUT /api/employees/:id` - Update employee
+- `DELETE /api/employees/:id` - Delete employee
+- `GET /api/employees/:id/qrcode` - Download QR code
 
 ### Feeding
 - `POST /api/feeding/scan` - Record feeding event
 - `GET /api/feeding/today` - Get today's feeding records
-- `GET /api/feeding/beneficiary/:uniqueId` - Get feeding records for beneficiary
+- `GET /api/feeding/employee/:uniqueId` - Get feeding records for employee
 - `DELETE /api/feeding/record/:uniqueId` - Remove today's feeding record
 
 ### Reports
 - `GET /api/reports/today` - Get today's report
 - `GET /api/reports/date-range` - Get date range report
-- `GET /api/reports/beneficiary/:uniqueId` - Get beneficiary report
+- `GET /api/reports/employee/:uniqueId` - Get employee report
 - `GET /api/reports/statistics` - Get statistics
 
 ## 🔒 Security Features
@@ -282,3 +282,138 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🆘 Support
 
 For support, please open an issue on the GitHub repository or contact the development team.
+
+# Meal Tracking System for Africa Accommodation Providers
+
+This is a comprehensive meal tracking system designed for Africa Accommodation Providers to manage employee meals using QR/Barcode scanning technology.
+
+## Features
+
+- Employee registration with unique identifiers
+- QR code generation for each employee
+- Expiration date validation for employee access
+- Mobile-responsive QR scanner for meal distribution
+- Printable employee ID cards
+- Real-time feeding status tracking
+- Comprehensive reporting and analytics
+
+## System Requirements
+
+### Employee Registration
+
+During employee registration, administrators must fill in the following information:
+
+- Full Name
+- Unique Identifier
+- Validity Period (validUntil date)
+- Optional fields:
+  - Phone Number
+  - Department
+  - Position
+  - Photo
+
+### Validation Rules
+
+- The system validates the validity period before allowing any employee to be fed
+- Expired employees are blocked with an alert message: "Employee meal access expired"
+- Duplicate unique identifiers are prevented during registration
+
+### ID Card Generation
+
+Generated employee ID cards include:
+
+- Business Name: Africa Accommodation Providers
+- Employee Name
+- Unique Identifier
+- Validity Date
+- QR Code (representing the Unique Identifier)
+
+ID cards are printable in ID card format (300px width).
+
+### QR/Barcode Scanner
+
+The scanner works on:
+
+- Mobile devices
+- Dedicated barcode scanners
+- Manual entry option
+
+### User Interface
+
+- Login Page shows business header: "Africa Accommodation Providers - Meal Track System"
+- Dashboard displays: "Africa Accommodation Providers" and logged-in user name
+
+## Technical Architecture
+
+### Backend
+
+- Node.js + Express
+- MongoDB with Mongoose
+- RESTful API design
+- JWT-based authentication
+- QR code generation with qrcode library
+- PDF generation for ID cards
+
+### Frontend
+
+- React with TypeScript
+- Tailwind CSS for styling
+- shadcn/ui components
+- Responsive design for all device sizes
+- QR scanner library for barcode scanning
+
+### Database Collections
+
+- `employees` - Employee records with validity dates
+- `feedingrecords` - Meal feeding logs
+- `admins` - System administrator accounts
+
+### API Endpoints
+
+#### Employee Management
+- `POST /api/employees` - Register new employee
+- `GET /api/employees` - List all employees
+- `GET /api/employees/:id` - Get employee by ID
+- `GET /api/employees/uid/:uid` - Get employee by unique ID
+- `PUT /api/employees/:id` - Update employee
+- `DELETE /api/employees/:id` - Delete employee
+- `GET /api/employees/:id/qrcode` - Download employee QR code
+- `GET /api/employees/:id/qrcode/dataurl` - Get QR code as DataURL
+
+#### Feeding Management
+- `POST /api/feeding/scan` - Record employee meal
+- `GET /api/feeding/today` - Get today's feeding records
+- `GET /api/feeding/employee/:uniqueId` - Get feeding records for employee
+- `DELETE /api/feeding/record/:uniqueId` - Remove today's feeding record
+
+#### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+
+#### Reporting
+- `GET /api/reports/today` - Daily report
+- `GET /api/reports/date-range` - Date range report
+- `GET /api/reports/employee/:uniqueId` - Employee-specific report
+- `GET /api/reports/statistics` - System statistics
+
+## Testing
+
+The system includes comprehensive test suites covering:
+
+- Validity period checking (not expired → Meal allowed)
+- Expiration blocking (expired → Meal blocked)
+- Duplicate unique identifier prevention
+- QR scan validation for valid employees
+- Printed ID card content verification
+
+## Deployment
+
+The system is containerized with Docker and can be deployed to cloud platforms like Render or Heroku.
+
+## Contributing
+
+Contributions are welcome! Please fork the repository and submit pull requests.
+
+## License
+
+MIT License

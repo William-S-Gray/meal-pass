@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getDetailedStats, DetailedStats } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { ArrowLeft, Calendar, TrendingUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export default function Statistics() {
+  const { socket, isConnected } = useWebSocket();
   const [stats, setStats] = useState<DetailedStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<string>('');
@@ -18,6 +20,40 @@ export default function Statistics() {
   useEffect(() => {
     loadStats();
   }, []);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handler for stats updates
+    const handleStatsUpdate = () => {
+      loadStats();
+    };
+
+    // Handler for feeding record creation
+    const handleFeedingRecordCreated = () => {
+      // Reload stats when a new feeding record is created
+      loadStats();
+    };
+
+    // Handler for feeding record removal
+    const handleFeedingRecordRemoved = () => {
+      // Reload stats when a feeding record is removed
+      loadStats();
+    };
+
+    // Register event listeners
+    socket.on('statsUpdated', handleStatsUpdate);
+    socket.on('feedingRecordCreated', handleFeedingRecordCreated);
+    socket.on('feedingRecordRemoved', handleFeedingRecordRemoved);
+
+    // Cleanup event listeners
+    return () => {
+      socket.off('statsUpdated', handleStatsUpdate);
+      socket.off('feedingRecordCreated', handleFeedingRecordCreated);
+      socket.off('feedingRecordRemoved', handleFeedingRecordRemoved);
+    };
+  }, [socket]);
 
   const loadStats = async () => {
     try {
@@ -40,14 +76,14 @@ export default function Statistics() {
   };
 
   const chartData = stats ? [
-    { name: 'Total Beneficiaries', value: stats.totalBeneficiaries },
+    { name: 'Total Beneficiaries', value: stats.totalEmployees },
     { name: 'Fed Today', value: stats.totalFedToday },
     { name: 'Fed in Range', value: stats.totalFedInRange }
   ] : [];
 
   const pieData = stats ? [
     { name: 'Fed', value: stats.totalFedToday },
-    { name: 'Not Fed', value: stats.totalBeneficiaries - stats.totalFedToday }
+    { name: 'Not Fed', value: stats.totalEmployees - stats.totalFedToday }
   ] : [];
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
@@ -56,12 +92,20 @@ export default function Statistics() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <Link to="/dashboard">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link to="/dashboard">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Dashboard
+              </Button>
+            </Link>
+            {isConnected && (
+              <span className="text-xs text-green-500 flex items-center">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                Live Updates
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
@@ -126,7 +170,7 @@ export default function Statistics() {
                   <CardTitle className="text-base sm:text-lg">Total Beneficiaries</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl sm:text-4xl font-bold">{stats.totalBeneficiaries}</p>
+                  <p className="text-3xl sm:text-4xl font-bold">{stats.totalEmployees}</p>
                 </CardContent>
               </Card>
 
@@ -203,10 +247,10 @@ export default function Statistics() {
                         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       >
                         {pieData.map((entry, index) => (
-                          <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip formatter={(value) => [value, 'Beneficiaries']} />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -214,8 +258,8 @@ export default function Statistics() {
             </div>
           </>
         ) : (
-          <div className="flex justify-center items-center h-64">
-            <p className="text-muted-foreground">No statistics available</p>
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No statistics data available</p>
           </div>
         )}
       </main>

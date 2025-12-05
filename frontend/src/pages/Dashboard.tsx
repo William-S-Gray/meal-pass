@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getStats } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +10,46 @@ import {
   BarChart, Printer, PlusCircle, TrendingUp 
 } from 'lucide-react';
 
+// Define the stats type
+interface DashboardStats {
+  totalBeneficiaries: number;
+  fedToday: number;
+}
+
+// Define types for WebSocket events
+interface FeedingRecordEvent {
+  feedingRecord: {
+    id: string;
+    uniqueId: string;
+    employee: {
+      name: string;
+      department: string;
+      uniqueId: string;
+    };
+    date: string;
+    fedAt: string;
+    method: string;
+    deviceId: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  employee: {
+    name: string;
+    department: string;
+    uniqueId: string;
+  };
+}
+
+interface FeedingRecordRemovedEvent {
+  uniqueId: string;
+  date: string;
+}
+
 const DashboardComponent = () => {
   const { user, logout, isAdmin, isVolunteer } = useAuth();
+  const { socket, isConnected } = useWebSocket();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ totalBeneficiaries: 0, fedToday: 0 });
+  const [stats, setStats] = useState<DashboardStats>({ totalBeneficiaries: 0, fedToday: 0 });
   const [notFedToday, setNotFedToday] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -20,11 +57,11 @@ const DashboardComponent = () => {
     try {
       const data = await getStats();
       setStats({
-        totalBeneficiaries: data.totalBeneficiaries || 0,
+        totalBeneficiaries: data.totalEmployees || 0,
         fedToday: data.fedToday || 0
       });
       // Calculate not fed today with proper checks
-      const total = data.totalBeneficiaries || 0;
+      const total = data.totalEmployees || 0;
       const fed = data.fedToday || 0;
       setNotFedToday(Math.max(0, total - fed));
     } catch (error) {
@@ -41,6 +78,42 @@ const DashboardComponent = () => {
     loadStats();
   }, [loadStats]);
 
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handler for stats updates
+    const handleStatsUpdate = () => {
+      loadStats();
+    };
+
+    // Handler for feeding record creation
+    const handleFeedingRecordCreated = (data: FeedingRecordEvent) => {
+      console.log('Feeding record created:', data);
+      // Update stats when a new feeding record is created
+      loadStats();
+    };
+
+    // Handler for feeding record removal
+    const handleFeedingRecordRemoved = (data: FeedingRecordRemovedEvent) => {
+      console.log('Feeding record removed:', data);
+      // Update stats when a feeding record is removed
+      loadStats();
+    };
+
+    // Register event listeners
+    socket.on('statsUpdated', handleStatsUpdate);
+    socket.on('feedingRecordCreated', handleFeedingRecordCreated);
+    socket.on('feedingRecordRemoved', handleFeedingRecordRemoved);
+
+    // Cleanup event listeners
+    return () => {
+      socket.off('statsUpdated', handleStatsUpdate);
+      socket.off('feedingRecordCreated', handleFeedingRecordCreated);
+      socket.off('feedingRecordRemoved', handleFeedingRecordRemoved);
+    };
+  }, [socket, loadStats]);
+
   const handleFedTodayClick = useCallback(() => {
     navigate('/fed-today');
   }, [navigate]);
@@ -54,8 +127,14 @@ const DashboardComponent = () => {
       <header className="border-b-2 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-primary">MealTrack</h1>
+            <h1 className="text-2xl font-bold text-primary">Africa Accommodation Providers</h1>
             <p className="text-sm text-muted-foreground">{user?.fullName} • {user?.role}</p>
+            {isConnected && (
+              <p className="text-xs text-green-500 flex items-center">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                Live updates connected
+              </p>
+            )}
           </div>
           <Button variant="outline" onClick={handleLogout} size="sm" className="w-full sm:w-auto">
             <LogOut className="mr-2 h-4 w-4" />
@@ -71,7 +150,7 @@ const DashboardComponent = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
-                <span className="text-sm sm:text-base">Total Beneficiaries</span>
+                <span className="text-sm sm:text-base">Total Employees</span>
               </CardTitle>
               <CardDescription>Registered in system</CardDescription>
             </CardHeader>
@@ -102,7 +181,7 @@ const DashboardComponent = () => {
                 <TrendingUp className="h-5 w-5 text-warning" />
                 <span className="text-sm sm:text-base">Not Fed Today</span>
               </CardTitle>
-              <CardDescription>Beneficiaries awaiting meals</CardDescription>
+              <CardDescription>Employees awaiting meals</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-3xl sm:text-4xl font-bold text-warning">{loading ? '...' : notFedToday}</p>
@@ -126,18 +205,18 @@ const DashboardComponent = () => {
               </Link>
 
               {(isAdmin || isVolunteer) && (
-                <Link to="/beneficiaries/register" className="block">
+                <Link to="/employees/register" className="block">
                   <Button variant="secondary" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold" size="lg">
                     <UserPlus className="h-6 w-6 sm:h-8 sm:w-8" />
-                    Register Beneficiary
+                    Register Employee
                   </Button>
                 </Link>
               )}
 
-              <Link to="/beneficiaries" className="block">
+              <Link to="/employees" className="block">
                 <Button variant="outline" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold border-2" size="lg">
                   <Users className="h-6 w-6 sm:h-8 sm:w-8" />
-                  View Beneficiaries
+                  View Employees
                 </Button>
               </Link>
 
@@ -157,7 +236,7 @@ const DashboardComponent = () => {
                 </Link>
               )}
 
-              <Link to="/beneficiaries" className="block">
+              <Link to="/employees" className="block">
                 <Button variant="outline" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold border-2" size="lg">
                   <Printer className="h-6 w-6 sm:h-8 sm:w-8" />
                   Print Cards
@@ -179,7 +258,7 @@ const DashboardComponent = () => {
               </div>
               <div>
                 <h4 className="font-semibold text-sm sm:text-base">Scan QR Code</h4>
-                <p className="text-xs sm:text-sm text-muted-foreground">Use the scanner to mark beneficiaries as fed</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Use the scanner to mark employees as fed</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -187,8 +266,8 @@ const DashboardComponent = () => {
                 <UserPlus className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h4 className="font-semibold text-sm sm:text-base">Register New Beneficiaries</h4>
-                <p className="text-xs sm:text-sm text-muted-foreground">Add new beneficiaries and generate QR codes</p>
+                <h4 className="font-semibold text-sm sm:text-base">Register New Employees</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">Add new employees and generate QR codes</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -206,7 +285,7 @@ const DashboardComponent = () => {
               </div>
               <div>
                 <h4 className="font-semibold text-sm sm:text-base">Print Cards</h4>
-                <p className="text-xs sm:text-sm text-muted-foreground">Generate and print beneficiary ID cards</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Generate and print employee ID cards</p>
               </div>
             </div>
             {isAdmin && (

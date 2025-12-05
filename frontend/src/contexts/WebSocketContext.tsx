@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+// Debug log to verify the API URL
+console.log('VITE_API_URL from env (WebSocket):', import.meta.env.VITE_API_URL);
+
 interface WebSocketContextType {
   socket: Socket | null;
   isConnected: boolean;

@@ -5,28 +5,28 @@ export const API_ENDPOINTS = {
     LOGIN: '/api/auth/login',
     LOGOUT: '/api/auth/logout'
   },
-  BENEFICIARIES: {
-    BASE: '/api/beneficiaries',
-    BY_ID: (id: string) => `/api/beneficiaries/${id}`,
-    BY_UID: (uid: string) => `/api/beneficiaries/uid/${uid}`,
-    QR_CODE: (id: string) => `/api/beneficiaries/${id}/qrcode`,
-    PRINT_CARDS: '/api/beneficiaries/print-cards',
-    PRINT_CARD: (id: string) => `/api/beneficiaries/${id}/print-card`
+  EMPLOYEES: {
+    BASE: '/api/employees',
+    BY_ID: (id: string) => `/api/employees/${id}`,
+    BY_UID: (uid: string) => `/api/employees/uid/${uid}`,
+    QR_CODE: (id: string) => `/api/employees/${id}/qrcode`,
+    PRINT_CARDS: '/api/employees/print-cards',
+    PRINT_CARD: (id: string) => `/api/employees/${id}/print-card`
   },
   FEEDING: {
     BASE: '/api/feeding',
     SCAN: '/api/feeding/scan',
     TODAY: '/api/feeding/today',
-    BY_BENEFICIARY: (uniqueId: string) => `/api/feeding/beneficiary/${uniqueId}`,
+    BY_EMPLOYEE: (uniqueId: string) => `/api/feeding/employee/${uniqueId}`,
     REMOVE_RECORD: (uniqueId: string) => `/api/feeding/record/${uniqueId}`
   },
   REPORTS: {
     BASE: '/api/reports',
     TODAY: '/api/reports/today',
     DATE_RANGE: '/api/reports/date-range',
-    BY_BENEFICIARY: (uniqueId: string) => `/api/reports/beneficiary/${uniqueId}`,
+    BY_EMPLOYEE: (uniqueId: string) => `/api/reports/employee/${uniqueId}`,
     STATISTICS: '/api/reports/statistics'
-  }
+  },
 };
 
 // App Constants
@@ -61,9 +61,9 @@ export const MESSAGES = {
   SUCCESS: {
     LOGIN: 'Logged in successfully',
     LOGOUT: 'Logged out successfully',
-    BENEFICIARY_CREATED: 'Beneficiary created successfully',
-    BENEFICIARY_UPDATED: 'Beneficiary updated successfully',
-    BENEFICIARY_DELETED: 'Beneficiary deleted successfully',
+    EMPLOYEE_CREATED: 'Employee created successfully',
+    EMPLOYEE_UPDATED: 'Employee updated successfully',
+    EMPLOYEE_DELETED: 'Employee deleted successfully',
     FEEDING_RECORDED: 'Feeding recorded successfully',
     FEEDING_REMOVED: 'Feeding record removed successfully'
   },

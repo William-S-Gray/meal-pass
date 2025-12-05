@@ -17,10 +17,10 @@ dotenv.config();
 const connectDB = require('./config/db');
 
 // Route files
-const beneficiaryRoutes = require('./routes/beneficiaryRoutes');
 const authRoutes = require('./routes/authRoutes');
 const feedingRoutes = require('./routes/feedingRoutes');
 const reportsRoutes = require('./routes/reportsRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -94,10 +94,10 @@ app.use('/qrcodes', cors({
 app.use(express.static(__dirname + '/public'));
 
 // Mount routers
-app.use('/api/beneficiaries', beneficiaryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/feeding', feedingRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/employees', employeeRoutes);
 
 // Health check endpoint for Render
 app.get('/health', async (req, res) => {

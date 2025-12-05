@@ -36,7 +36,7 @@ const CONFIG = {
   // Required API endpoints to test
   apiEndpoints: [
     '/',
-    '/api/beneficiaries',
+    '/api/employees',
     '/api/feeding/today'
   ]
 };

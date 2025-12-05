@@ -2,10 +2,10 @@ const express = require('express');
 const { protect } = require('../middleware/authMiddleware');
 const { 
   recordFeeding, 
-  removeTodaysRecord,
-  getTodaysRecords,
-  getRecordsByBeneficiary
-} = require('../controllers/feedingController');
+  getTodaysRecords, 
+  getRecordsByEmployee, 
+  removeTodaysRecord
+} = require('../controllers/employeeFeedingController'); // Changed to employee feeding controller
 
 const router = express.Router();
 
@@ -16,14 +16,13 @@ const authMiddleware = process.env.ENABLE_AUTH === 'true' ? [protect] : [];
 router.route('/scan')
   .post(authMiddleware, recordFeeding);
 
-router.route('/record/:uniqueId')
-  .delete(authMiddleware, removeTodaysRecord);
-
-// New routes for feeding records and statistics
-router.route('/today') // Changed from /records/today to /today
+router.route('/today')
   .get(authMiddleware, getTodaysRecords);
 
-router.route('/beneficiary/:uniqueId')
-  .get(authMiddleware, getRecordsByBeneficiary);
+router.route('/employee/:uniqueId') // Changed from /beneficiary to /employee
+  .get(authMiddleware, getRecordsByEmployee);
+
+router.route('/record/:uniqueId')
+  .delete(authMiddleware, removeTodaysRecord);
 
 module.exports = router;

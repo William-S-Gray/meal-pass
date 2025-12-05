@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getTodayFeedRecords, PaginatedFeedRecords, FeedRecord } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,7 @@ import { ArrowLeft, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-rea
 import { toast } from '@/hooks/use-toast';
 
 export default function FedToday() {
+  const { socket, isConnected } = useWebSocket();
   const navigate = useNavigate();
   const [feedRecords, setFeedRecords] = useState<FeedRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +22,33 @@ export default function FedToday() {
   useEffect(() => {
     loadFeedRecords();
   }, [currentPage, itemsPerPage]);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handler for feeding record creation
+    const handleFeedingRecordCreated = () => {
+      // Reload records when a new feeding record is created
+      loadFeedRecords();
+    };
+
+    // Handler for feeding record removal
+    const handleFeedingRecordRemoved = () => {
+      // Reload records when a feeding record is removed
+      loadFeedRecords();
+    };
+
+    // Register event listeners
+    socket.on('feedingRecordCreated', handleFeedingRecordCreated);
+    socket.on('feedingRecordRemoved', handleFeedingRecordRemoved);
+
+    // Cleanup event listeners
+    return () => {
+      socket.off('feedingRecordCreated', handleFeedingRecordCreated);
+      socket.off('feedingRecordRemoved', handleFeedingRecordRemoved);
+    };
+  }, [socket]);
 
   const loadFeedRecords = async () => {
     try {
@@ -65,14 +94,22 @@ export default function FedToday() {
                 Back to Dashboard
               </Button>
             </Link>
-            <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading} className="w-full sm:w-auto">
-              {loading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowLeft className="mr-2 h-4 w-4" />
+            <div className="flex items-center gap-2">
+              <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading} className="w-full sm:w-auto">
+                {loading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                )}
+                Refresh
+              </Button>
+              {isConnected && (
+                <span className="text-xs text-green-500 flex items-center">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                  Live
+                </span>
               )}
-              Refresh
-            </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -128,8 +165,8 @@ export default function FedToday() {
                     <TableBody>
                       {feedRecords.map((record) => (
                         <TableRow key={record.id}>
-                          <TableCell className="font-mono font-semibold text-xs sm:text-sm">{record.beneficiaryUid}</TableCell>
-                          <TableCell className="font-medium text-xs sm:text-sm">{record.beneficiaryName}</TableCell>
+                          <TableCell className="font-mono font-semibold text-xs sm:text-sm">{record.employeeUid}</TableCell>
+                          <TableCell className="font-medium text-xs sm:text-sm">{record.employeeName}</TableCell>
                           <TableCell className="text-xs sm:text-sm">{record.time}</TableCell>
                           <TableCell className="text-xs sm:text-sm">{record.scannerName}</TableCell>
                           <TableCell>

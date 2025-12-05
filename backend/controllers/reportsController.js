@@ -1,5 +1,5 @@
-const Beneficiary = require('../models/Beneficiary');
-const FeedingRecord = require('../models/FeedingRecord'); // Changed from FeedLog to FeedingRecord
+const Employee = require('../models/Employee');
+const FeedingRecord = require('../models/FeedingRecord');
 
 /**
  * @desc    Get daily feeding report
@@ -25,10 +25,10 @@ const getDailyReport = async (req, res, next) => {
     const dateString = today.toISOString().split('T')[0];
     
     // Get feeding records for today with pagination
-    const feedingRecords = await FeedingRecord.find({ // Changed from FeedLog to FeedingRecord
+    const feedingRecords = await FeedingRecord.find({
       date: dateString
     })
-      .populate('beneficiary', 'name gender group uniqueId')
+      .populate('employee', 'name department position uniqueId')
       .skip(skip)
       .limit(limit)
       .sort({ fedAt: -1 });
@@ -82,13 +82,13 @@ const getDateRangeReport = async (req, res, next) => {
     const skip = (page - 1) * limit;
     
     // Get feeding records for date range with pagination
-    const feedingRecords = await FeedingRecord.find({ // Changed from FeedLog to FeedingRecord
+    const feedingRecords = await FeedingRecord.find({
       date: {
         $gte: from,
         $lte: to
       }
     })
-      .populate('beneficiary', 'name gender group uniqueId')
+      .populate('employee', 'name department position uniqueId')
       .skip(skip)
       .limit(limit)
       .sort({ date: -1, fedAt: -1 });
@@ -117,11 +117,11 @@ const getDateRangeReport = async (req, res, next) => {
 };
 
 /**
- * @desc    Get feeding history for a specific beneficiary
- * @route   GET /api/reports/beneficiary/:uniqueId
+ * @desc    Get feeding history for a specific employee
+ * @route   GET /api/reports/employee/:uniqueId
  * @access  Private (Admin only)
  */
-const getBeneficiaryReport = async (req, res, next) => {
+const getEmployeeReport = async (req, res, next) => {
   try {
     // Check if admin
     if (req.admin && req.admin.role !== 'admin') {
@@ -134,12 +134,12 @@ const getBeneficiaryReport = async (req, res, next) => {
     const { uniqueId } = req.params;
     
     // Find beneficiary
-    const beneficiary = await Beneficiary.findOne({ uniqueId });
+    const employee = await Employee.findOne({ uniqueId });
     
-    if (!beneficiary) {
+    if (!employee) {
       return res.status(404).json({
         success: false,
-        error: 'Beneficiary not found'
+        error: 'Employee not found'
       });
     }
     
@@ -148,23 +148,23 @@ const getBeneficiaryReport = async (req, res, next) => {
     const skip = (page - 1) * limit;
     
     // Get feeding records for this beneficiary with pagination
-    const feedingRecords = await FeedingRecord.find({ beneficiary: beneficiary._id }) // Changed from FeedLog to FeedingRecord
+    const feedingRecords = await FeedingRecord.find({ employee: employee._id }) // Changed from FeedLog to FeedingRecord
       .skip(skip)
       .limit(limit)
       .sort({ date: -1, fedAt: -1 });
     
-    const total = await FeedingRecord.countDocuments({ beneficiary: beneficiary._id }); // Changed from FeedLog to FeedingRecord
+    const total = await FeedingRecord.countDocuments({ employee: employee._id }); // Changed from FeedLog to FeedingRecord
     
     res.status(200).json({
       success: true,
       count: feedingRecords.length,
       data: {
-        beneficiary: {
-          id: beneficiary._id,
-          uniqueId: beneficiary.uniqueId,
-          name: beneficiary.name,
-          gender: beneficiary.gender,
-          group: beneficiary.group
+        employee: {
+          id: employee._id,
+          uniqueId: employee.uniqueId,
+          name: employee.name,
+          department: employee.department,
+          position: employee.position
         },
         feedLogs: feedingRecords, // Keep the same name for frontend compatibility
         pagination: {
@@ -195,8 +195,8 @@ const getReportStatistics = async (req, res, next) => {
       });
     }
 
-    // Total beneficiaries
-    const totalBeneficiaries = await Beneficiary.countDocuments();
+    // Total employees
+    const totalEmployees = await Employee.countDocuments();
     
     // Get today's date
     const today = new Date();
@@ -208,8 +208,8 @@ const getReportStatistics = async (req, res, next) => {
     });
     
     // Calculate feed rate percentage
-    const feedRate = totalBeneficiaries > 0 
-      ? Math.round((totalFedToday / totalBeneficiaries) * 100) 
+    const feedRate = totalEmployees > 0 
+      ? Math.round((totalFedToday / totalEmployees) * 100) 
       : 0;
     
     // Get date range for weekly stats (last 7 days)
@@ -255,7 +255,7 @@ const getReportStatistics = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
-        totalBeneficiaries,
+        totalEmployees,
         totalFedToday,
         feedRate,
         weeklyStats: weeklyStats.reverse(), // Reverse to show oldest first
@@ -270,6 +270,6 @@ const getReportStatistics = async (req, res, next) => {
 module.exports = {
   getDailyReport,
   getDateRangeReport,
-  getBeneficiaryReport,
+  getEmployeeReport,
   getReportStatistics
 };

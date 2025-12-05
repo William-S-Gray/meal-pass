@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getFeedRecordsByDateRange, FeedRecord, exportFeedRecordsToCSV } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Download, Search } from 'lucide-react';
 
 export default function Reports() {
+  const { socket, isConnected } = useWebSocket();
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [feedRecords, setFeedRecords] = useState<FeedRecord[]>([]);
@@ -20,6 +22,33 @@ export default function Reports() {
   useEffect(() => {
     loadRecords();
   }, []);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handler for feeding record creation
+    const handleFeedingRecordCreated = () => {
+      // Reload records when a new feeding record is created
+      loadRecords();
+    };
+
+    // Handler for feeding record removal
+    const handleFeedingRecordRemoved = () => {
+      // Reload records when a feeding record is removed
+      loadRecords();
+    };
+
+    // Register event listeners
+    socket.on('feedingRecordCreated', handleFeedingRecordCreated);
+    socket.on('feedingRecordRemoved', handleFeedingRecordRemoved);
+
+    // Cleanup event listeners
+    return () => {
+      socket.off('feedingRecordCreated', handleFeedingRecordCreated);
+      socket.off('feedingRecordRemoved', handleFeedingRecordRemoved);
+    };
+  }, [socket]);
 
   const loadRecords = async () => {
     setLoading(true);
@@ -60,12 +89,20 @@ export default function Reports() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <Link to="/dashboard">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link to="/dashboard">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Dashboard
+              </Button>
+            </Link>
+            {isConnected && (
+              <span className="text-xs text-green-500 flex items-center">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                Live Updates
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
@@ -179,8 +216,8 @@ export default function Reports() {
                   <TableBody>
                     {feedRecords.map((record) => (
                       <TableRow key={record.id}>
-                        <TableCell className="font-mono font-semibold text-xs sm:text-sm">{record.beneficiaryUid}</TableCell>
-                        <TableCell className="text-xs sm:text-sm">{record.beneficiaryName}</TableCell>
+                        <TableCell className="font-mono font-semibold text-xs sm:text-sm">{record.employeeUid}</TableCell>
+                        <TableCell className="text-xs sm:text-sm">{record.employeeName}</TableCell>
                         <TableCell className="text-xs sm:text-sm">{new Date(record.date).toLocaleDateString()}</TableCell>
                         <TableCell className="text-xs sm:text-sm">{record.time}</TableCell>
                         <TableCell className="text-xs sm:text-sm">{record.scannerName}</TableCell>

@@ -42,13 +42,13 @@
 ## Post-Deployment Verification
 
 ### API Endpoints
-- [ ] `GET /api/beneficiaries` (returns list of beneficiaries)
+- [ ] `GET /api/employees` (returns list of employees)
 - [ ] `POST /api/auth/login` (authentication works)
 - [ ] `GET /health` (health check endpoint)
 
 ### Frontend Functionality
 - [ ] Login page loads correctly
-- [ ] Beneficiary list displays
+- [ ] Employee list displays
 - [ ] QR code generation works
 - [ ] Feeding status updates function
 - [ ] Reports page loads

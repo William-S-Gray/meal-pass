@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { 
   getDailyReport, 
   getDateRangeReport, 
-  getBeneficiaryReport, 
+  getEmployeeReport, 
   getReportStatistics,
   ReportStatistics,
   FeedRecord,
@@ -25,13 +26,12 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-// Define types for the beneficiary report data
-interface BeneficiaryInfo {
+// Define types for the employee report data
+interface EmployeeInfo {
   id: string;
   uniqueId: string;
   name: string;
-  gender: string;
-  group: string;
+  department: string;
 }
 
 interface FeedLog {
@@ -40,9 +40,9 @@ interface FeedLog {
   servedBy: string;
 }
 
-interface BeneficiaryReportData {
+interface EmployeeReportData {
   data: {
-    beneficiary: BeneficiaryInfo;
+    employee: EmployeeInfo;
     feedLogs: FeedLog[];
     pagination: {
       page: number;
@@ -54,22 +54,68 @@ interface BeneficiaryReportData {
 }
 
 export default function ReportsDashboard() {
-  const [activeTab, setActiveTab] = useState<'daily' | 'range' | 'beneficiary' | 'statistics'>('daily');
+  const { socket } = useWebSocket();
+  const [activeTab, setActiveTab] = useState<'daily' | 'range' | 'employee' | 'statistics'>('daily');
   const [stats, setStats] = useState<ReportStatistics | null>(null);
   const [dailyRecords, setDailyRecords] = useState<PaginatedReport<FeedRecord> | null>(null);
   const [rangeRecords, setRangeRecords] = useState<PaginatedReport<FeedRecord> | null>(null);
-  const [beneficiaryRecords, setBeneficiaryRecords] = useState<BeneficiaryReportData | null>(null);
+  const [employeeRecords, setEmployeeRecords] = useState<EmployeeReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0]
   });
-  const [beneficiaryId, setBeneficiaryId] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
 
   useEffect(() => {
     loadStatistics();
     loadDailyReport();
   }, []);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handler for stats updates
+    const handleStatsUpdate = () => {
+      loadStatistics();
+      if (activeTab === 'daily') {
+        loadDailyReport();
+      }
+    };
+
+    // Handler for feeding record creation
+    const handleFeedingRecordCreated = () => {
+      // Refresh current view
+      if (activeTab === 'daily') {
+        loadDailyReport();
+      } else if (activeTab === 'statistics') {
+        loadStatistics();
+      }
+    };
+
+    // Handler for feeding record removal
+    const handleFeedingRecordRemoved = () => {
+      // Refresh current view
+      if (activeTab === 'daily') {
+        loadDailyReport();
+      } else if (activeTab === 'statistics') {
+        loadStatistics();
+      }
+    };
+
+    // Register event listeners
+    socket.on('statsUpdated', handleStatsUpdate);
+    socket.on('feedingRecordCreated', handleFeedingRecordCreated);
+    socket.on('feedingRecordRemoved', handleFeedingRecordRemoved);
+
+    // Cleanup event listeners
+    return () => {
+      socket.off('statsUpdated', handleStatsUpdate);
+      socket.off('feedingRecordCreated', handleFeedingRecordCreated);
+      socket.off('feedingRecordRemoved', handleFeedingRecordRemoved);
+    };
+  }, [socket, activeTab]);
 
   const loadStatistics = async () => {
     try {
@@ -87,7 +133,7 @@ export default function ReportsDashboard() {
   const loadDailyReport = async () => {
     setLoading(true);
     try {
-      const data = await getDailyReport();
+      const data = await getDailyReport(1, 50);
       setDailyRecords(data);
     } catch (error) {
       toast({
@@ -103,7 +149,7 @@ export default function ReportsDashboard() {
   const loadDateRangeReport = async () => {
     setLoading(true);
     try {
-      const data = await getDateRangeReport(dateRange.from, dateRange.to);
+      const data = await getDateRangeReport(dateRange.from, dateRange.to, 1, 50);
       setRangeRecords(data);
     } catch (error) {
       toast({
@@ -116,24 +162,17 @@ export default function ReportsDashboard() {
     }
   };
 
-  const loadBeneficiaryReport = async () => {
-    if (!beneficiaryId.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter a beneficiary ID',
-        variant: 'destructive'
-      });
-      return;
-    }
-
+  const loadEmployeeReport = async () => {
+    if (!employeeId.trim()) return;
+    
     setLoading(true);
     try {
-      const data = await getBeneficiaryReport(beneficiaryId);
-      setBeneficiaryRecords(data);
+      const data = await getEmployeeReport(employeeId);
+      setEmployeeRecords(data);
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to load beneficiary report',
+        description: 'Failed to load employee report',
         variant: 'destructive'
       });
     } finally {
@@ -171,29 +210,33 @@ export default function ReportsDashboard() {
           <Button
             variant={activeTab === 'daily' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('daily')}
+            className="gap-2"
           >
-            <FileText className="mr-2 h-4 w-4" />
+            <CheckCircle className="h-4 w-4" />
             Daily Report
           </Button>
           <Button
             variant={activeTab === 'range' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('range')}
+            className="gap-2"
           >
-            <Calendar className="mr-2 h-4 w-4" />
+            <Calendar className="h-4 w-4" />
             Date Range
           </Button>
           <Button
-            variant={activeTab === 'beneficiary' ? 'default' : 'ghost'}
-            onClick={() => setActiveTab('beneficiary')}
+            variant={activeTab === 'employee' ? 'default' : 'ghost'}
+            onClick={() => setActiveTab('employee')}
+            className="gap-2"
           >
-            <Users className="mr-2 h-4 w-4" />
-            Beneficiary History
+            <Users className="h-4 w-4" />
+            Employee Report
           </Button>
           <Button
             variant={activeTab === 'statistics' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('statistics')}
+            className="gap-2"
           >
-            <TrendingUp className="mr-2 h-4 w-4" />
+            <TrendingUp className="h-4 w-4" />
             Statistics
           </Button>
         </div>
@@ -201,44 +244,59 @@ export default function ReportsDashboard() {
         {/* Daily Report Tab */}
         {activeTab === 'daily' && (
           <div className="space-y-6">
-            <Card className="border-2">
+            <Card>
               <CardHeader>
                 <CardTitle>Daily Feeding Report</CardTitle>
-                <CardDescription>All meals distributed today</CardDescription>
+                <CardDescription>All feeding records for today</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
                   <div className="flex justify-center items-center h-32">
-                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                    <span>Loading daily report...</span>
+                    <Loader2 className="h-8 w-8 animate-spin" />
                   </div>
                 ) : dailyRecords ? (
-                  <>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {dailyRecords.data.length} of {dailyRecords.pagination.total} records
+                      </p>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Export CSV
+                      </Button>
+                    </div>
+                    
                     <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Beneficiary ID</TableHead>
+                            <TableHead>UID</TableHead>
                             <TableHead>Name</TableHead>
-                            <TableHead>Date</TableHead>
+                            <TableHead>Department</TableHead>
                             <TableHead>Time</TableHead>
-                            <TableHead>Scanner</TableHead>
+                            <TableHead>Method</TableHead>
+                            <TableHead>Device</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {dailyRecords.data.length > 0 ? (
                             dailyRecords.data.map((record) => (
                               <TableRow key={record.id}>
-                                <TableCell className="font-mono">{record.beneficiaryUid}</TableCell>
-                                <TableCell>{record.beneficiaryName}</TableCell>
-                                <TableCell>{formatDate(record.date)}</TableCell>
-                                <TableCell>{record.time}</TableCell>
-                                <TableCell>{record.scannerName}</TableCell>
+                                <TableCell className="font-mono font-semibold">{record.employeeUid}</TableCell>
+                                <TableCell>{record.employeeName}</TableCell>
+                                <TableCell>{record.employee?.department || 'N/A'}</TableCell>
+                                <TableCell>{new Date(record.fedAt).toLocaleTimeString()}</TableCell>
+                                <TableCell>
+                                  <Badge variant={record.method === 'scan' ? 'default' : 'secondary'}>
+                                    {record.method}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{record.deviceId}</TableCell>
                               </TableRow>
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                 No feeding records found for today
                               </TableCell>
                             </TableRow>
@@ -246,22 +304,9 @@ export default function ReportsDashboard() {
                         </TableBody>
                       </Table>
                     </div>
-                    {dailyRecords.data.length > 0 && (
-                      <div className="mt-4 flex justify-between items-center">
-                        <p className="text-sm text-muted-foreground">
-                          Showing {dailyRecords.data.length} of {dailyRecords.pagination.total} records
-                        </p>
-                        <Button variant="outline" size="sm" onClick={loadDailyReport}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Export CSV
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No data available
                   </div>
+                ) : (
+                  <p>No data available</p>
                 )}
               </CardContent>
             </Card>
@@ -271,74 +316,86 @@ export default function ReportsDashboard() {
         {/* Date Range Tab */}
         {activeTab === 'range' && (
           <div className="space-y-6">
-            <Card className="border-2">
+            <Card>
               <CardHeader>
                 <CardTitle>Date Range Report</CardTitle>
-                <CardDescription>Meals distributed within a specific date range</CardDescription>
+                <CardDescription>Analyze feeding records over a specific period</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="fromDate">From Date</Label>
+                    <Label htmlFor="from-date">From</Label>
                     <Input
-                      id="fromDate"
+                      id="from-date"
                       type="date"
                       value={dateRange.from}
                       onChange={(e) => setDateRange({...dateRange, from: e.target.value})}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="toDate">To Date</Label>
+                    <Label htmlFor="to-date">To</Label>
                     <Input
-                      id="toDate"
+                      id="to-date"
                       type="date"
                       value={dateRange.to}
                       onChange={(e) => setDateRange({...dateRange, to: e.target.value})}
                     />
                   </div>
                   <div className="flex items-end">
-                    <Button 
-                      onClick={loadDateRangeReport} 
-                      disabled={loading}
-                      className="w-full"
-                    >
-                      {loading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Search className="mr-2 h-4 w-4" />
-                      )}
+                    <Button onClick={loadDateRangeReport} className="w-full">
+                      <Search className="mr-2 h-4 w-4" />
                       Generate Report
                     </Button>
                   </div>
                 </div>
 
-                {rangeRecords && (
-                  <>
+                {loading ? (
+                  <div className="flex justify-center items-center h-32">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : rangeRecords ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {rangeRecords.data.length} of {rangeRecords.pagination.total} records
+                      </p>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Export CSV
+                      </Button>
+                    </div>
+                    
                     <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Beneficiary ID</TableHead>
+                            <TableHead>UID</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Time</TableHead>
-                            <TableHead>Scanner</TableHead>
+                            <TableHead>Method</TableHead>
+                            <TableHead>Device</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {rangeRecords.data.length > 0 ? (
                             rangeRecords.data.map((record) => (
-                              <TableRow key={record.id}>
-                                <TableCell className="font-mono">{record.beneficiaryUid}</TableCell>
-                                <TableCell>{record.beneficiaryName}</TableCell>
+                              <TableRow key={`${record.id}-${record.date}`}>
+                                <TableCell className="font-mono font-semibold">{record.employeeUid}</TableCell>
+                                <TableCell>{record.employeeName}</TableCell>
                                 <TableCell>{formatDate(record.date)}</TableCell>
-                                <TableCell>{record.time}</TableCell>
-                                <TableCell>{record.scannerName}</TableCell>
+                                <TableCell>{new Date(record.fedAt).toLocaleTimeString()}</TableCell>
+                                <TableCell>
+                                  <Badge variant={record.method === 'scan' ? 'default' : 'secondary'}>
+                                    {record.method}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{record.deviceId}</TableCell>
                               </TableRow>
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                 No feeding records found for the selected date range
                               </TableCell>
                             </TableRow>
@@ -346,97 +403,104 @@ export default function ReportsDashboard() {
                         </TableBody>
                       </Table>
                     </div>
-                    {rangeRecords.data.length > 0 && (
-                      <div className="mt-4 flex justify-between items-center">
-                        <p className="text-sm text-muted-foreground">
-                          Showing {rangeRecords.data.length} of {rangeRecords.pagination.total} records
-                        </p>
-                        <Button variant="outline" size="sm">
-                          <Download className="mr-2 h-4 w-4" />
-                          Export CSV
-                        </Button>
-                      </div>
-                    )}
-                  </>
+                  </div>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">
+                    Select a date range and click "Generate Report" to view data
+                  </p>
                 )}
               </CardContent>
             </Card>
           </div>
         )}
 
-        {/* Beneficiary History Tab */}
-        {activeTab === 'beneficiary' && (
+        {/* Employee Report Tab */}
+        {activeTab === 'employee' && (
           <div className="space-y-6">
-            <Card className="border-2">
+            <Card>
               <CardHeader>
-                <CardTitle>Beneficiary Feeding History</CardTitle>
-                <CardDescription>View feeding history for a specific beneficiary</CardDescription>
+                <CardTitle>Employee Report</CardTitle>
+                <CardDescription>View detailed feeding history for a specific employee</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-4">
+                <div className="flex gap-2">
                   <div className="flex-1">
-                    <Label htmlFor="beneficiaryId">Beneficiary ID</Label>
                     <Input
-                      id="beneficiaryId"
-                      placeholder="Enter beneficiary ID (e.g., BNF-0001)"
-                      value={beneficiaryId}
-                      onChange={(e) => setBeneficiaryId(e.target.value)}
+                      placeholder="Enter Employee UID"
+                      value={employeeId}
+                      onChange={(e) => setEmployeeId(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && loadEmployeeReport()}
                     />
                   </div>
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={loadBeneficiaryReport} 
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Search className="mr-2 h-4 w-4" />
-                      )}
-                      Search
-                    </Button>
-                  </div>
+                  <Button onClick={loadEmployeeReport} className="gap-2">
+                    <Search className="h-4 w-4" />
+                    Search
+                  </Button>
                 </div>
 
-                {beneficiaryRecords && (
+                {loading ? (
+                  <div className="flex justify-center items-center h-32">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : employeeRecords ? (
                   <div className="space-y-6">
-                    <Card className="border">
-                      <CardHeader>
-                        <CardTitle>{beneficiaryRecords.data.beneficiary.name}</CardTitle>
-                        <CardDescription>
-                          ID: {beneficiaryRecords.data.beneficiary.uniqueId}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Gender</p>
-                            <p className="font-medium capitalize">{beneficiaryRecords.data.beneficiary.gender}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Group</p>
-                            <p className="font-medium">{beneficiaryRecords.data.beneficiary.group || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Total Meals</p>
-                            <p className="font-medium">{beneficiaryRecords.data.feedLogs.length}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Employee Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <p><span className="font-semibold">Name:</span> {employeeRecords.data.employee.name}</p>
+                          <p><span className="font-semibold">UID:</span> {employeeRecords.data.employee.uniqueId}</p>
+                          <p><span className="font-semibold">Department:</span> {employeeRecords.data.employee.department}</p>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Feeding Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-3xl font-bold text-center">
+                            {employeeRecords.data.feedLogs.length}
+                          </p>
+                          <p className="text-center text-muted-foreground">Total Meals</p>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Last Feeding</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {employeeRecords.data.feedLogs.length > 0 ? (
+                            <>
+                              <p className="font-semibold">
+                                {formatDate(employeeRecords.data.feedLogs[0].fedAt)}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(employeeRecords.data.feedLogs[0].fedAt).toLocaleTimeString()}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-muted-foreground">No feeding records</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                    
                     <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Date</TableHead>
                             <TableHead>Time</TableHead>
-                            <TableHead>Scanner</TableHead>
+                            <TableHead>Served By</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {beneficiaryRecords.data.feedLogs.length > 0 ? (
-                            beneficiaryRecords.data.feedLogs.map((log: FeedLog) => (
+                          {employeeRecords.data.feedLogs.length > 0 ? (
+                            employeeRecords.data.feedLogs.map((log: FeedLog) => (
                               <TableRow key={log._id}>
                                 <TableCell>{formatDate(log.fedAt)}</TableCell>
                                 <TableCell>{new Date(log.fedAt).toLocaleTimeString()}</TableCell>
@@ -446,7 +510,7 @@ export default function ReportsDashboard() {
                           ) : (
                             <TableRow>
                               <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                                No feeding records found for this beneficiary
+                                No feeding records found for this employee
                               </TableCell>
                             </TableRow>
                           )}
@@ -454,6 +518,10 @@ export default function ReportsDashboard() {
                       </Table>
                     </div>
                   </div>
+                ) : (
+                  <p className="text-center py-8 text-muted-foreground">
+                    Enter an Employee UID and click "Search" to view their report
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -469,10 +537,10 @@ export default function ReportsDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <Card className="border-2">
                     <CardHeader>
-                      <CardTitle>Total Beneficiaries</CardTitle>
+                      <CardTitle>Total Employees</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-4xl font-bold">{stats.totalBeneficiaries}</p>
+                      <p className="text-4xl font-bold">{stats.totalEmployees}</p>
                     </CardContent>
                   </Card>
 
@@ -498,76 +566,66 @@ export default function ReportsDashboard() {
                 {/* Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Weekly Trend Chart */}
-                  <Card className="border-2">
+                  <Card>
                     <CardHeader>
                       <CardTitle>Weekly Feeding Trend</CardTitle>
                       <CardDescription>Last 7 days</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={stats.weeklyStats}>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={stats.weeklyStats}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="date" 
-                            tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { weekday: 'short' })}
-                          />
+                          <XAxis dataKey="date" />
                           <YAxis />
-                          <Tooltip 
-                            formatter={(value) => [value, 'Meals']}
-                            labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                          />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="count" name="Meals Served" fill="#8884d8" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  {/* Monthly Trend Chart */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Monthly Feeding Trend</CardTitle>
+                      <CardDescription>Last 30 days</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={stats.monthlyStats}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
                           <Legend />
                           <Line 
                             type="monotone" 
                             dataKey="count" 
-                            stroke="#8884d8" 
-                            activeDot={{ r: 8 }} 
-                            name="Meals Distributed"
+                            name="Meals Served" 
+                            stroke="#82ca9d" 
+                            strokeWidth={2}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
                           />
                         </LineChart>
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>
 
-                  {/* Monthly Trend Chart */}
-                  <Card className="border-2">
+                  {/* Feed Distribution Pie Chart */}
+                  <Card className="lg:col-span-2">
                     <CardHeader>
-                      <CardTitle>Monthly Feeding Trend</CardTitle>
-                      <CardDescription>Last 30 days</CardDescription>
+                      <CardTitle>Feed Distribution</CardTitle>
+                      <CardDescription>Fed vs Not Fed Today</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={stats.monthlyStats}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="date" 
-                            tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          />
-                          <YAxis />
-                          <Tooltip 
-                            formatter={(value) => [value, 'Meals']}
-                            labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                          />
-                          <Legend />
-                          <Bar dataKey="count" fill="#82ca9d" name="Meals Distributed" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-
-                  {/* Fed vs Not Fed Pie Chart */}
-                  <Card className="border-2 lg:col-span-2">
-                    <CardHeader>
-                      <CardTitle>Fed vs Not Fed Today</CardTitle>
-                      <CardDescription>Current distribution status</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie
                             data={[
-                              { name: 'Fed Today', value: stats.totalFedToday },
-                              { name: 'Not Fed', value: stats.totalBeneficiaries - stats.totalFedToday }
+                              { name: 'Fed', value: stats.totalFedToday },
+                              { name: 'Not Fed', value: stats.totalEmployees - stats.totalFedToday }
                             ]}
                             cx="50%"
                             cy="50%"
@@ -577,10 +635,14 @@ export default function ReportsDashboard() {
                             dataKey="value"
                             label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                           >
-                            <Cell key="fed" fill={COLORS[0]} />
-                            <Cell key="not-fed" fill={COLORS[1]} />
+                            {[
+                              { name: 'Fed', value: stats.totalFedToday },
+                              { name: 'Not Fed', value: stats.totalEmployees - stats.totalFedToday }
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
                           </Pie>
-                          <Tooltip formatter={(value) => [value, 'Beneficiaries']} />
+                          <Tooltip formatter={(value) => [value, 'Meals']} />
                           <Legend />
                         </PieChart>
                       </ResponsiveContainer>
@@ -590,8 +652,7 @@ export default function ReportsDashboard() {
               </>
             ) : (
               <div className="flex justify-center items-center h-64">
-                <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                <span>Loading statistics...</span>
+                <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             )}
           </div>

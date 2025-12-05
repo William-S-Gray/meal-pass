@@ -51,9 +51,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
       <Card className="w-full max-w-md border-2 shadow-xl">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl sm:text-3xl">MealTrack</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl">Africa Accommodation Providers</CardTitle>
           <CardDescription className="text-base sm:text-lg">
-            Daily Feeding Management System
+            Meal Track System
           </CardDescription>
         </CardHeader>
         <CardContent>

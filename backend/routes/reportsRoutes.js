@@ -3,7 +3,7 @@ const { protect } = require('../middleware/authMiddleware');
 const { 
   getDailyReport,
   getDateRangeReport,
-  getBeneficiaryReport,
+  getEmployeeReport,
   getReportStatistics
 } = require('../controllers/reportsController');
 
@@ -19,8 +19,8 @@ router.route('/today')
 router.route('/date-range')
   .get(getDateRangeReport);
 
-router.route('/beneficiary/:uniqueId')
-  .get(getBeneficiaryReport);
+router.route('/employee/:uniqueId')
+  .get(getEmployeeReport);
 
 router.route('/statistics')
   .get(getReportStatistics);

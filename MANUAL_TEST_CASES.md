@@ -58,28 +58,28 @@
 3. Confirm deletion
 **Expected Result**: Beneficiary is marked as inactive, removed from active lists
 
-### TC-BEN-004: Load All Beneficiaries
-**Preconditions**: Multiple beneficiaries exist in database
+### TC-EMP-004: Load All Employees
+**Preconditions**: Multiple employees exist in database
 **Steps**:
-1. Navigate to beneficiaries list page
-**Expected Result**: All active beneficiaries are displayed with correct information
+1. Navigate to employees list page
+**Expected Result**: All active employees are displayed with correct information
 
-### TC-BEN-005: Fetch Single Beneficiary
-**Preconditions**: Beneficiary exists in database
+### TC-EMP-005: Fetch Single Employee
+**Preconditions**: Employee exists in database
 **Steps**:
-1. Navigate to beneficiary profile page with valid UID
-**Expected Result**: Correct beneficiary details are displayed
+1. Navigate to employee profile page with valid UID
+**Expected Result**: Correct employee details are displayed
 
-### TC-BEN-006: Catch Duplicate Unique IDs
-**Preconditions**: Beneficiary with specific unique ID exists
+### TC-EMP-006: Catch Duplicate Unique IDs
+**Preconditions**: Employee with specific unique ID exists
 **Steps**:
-1. Attempt to create new beneficiary with same unique ID
+1. Attempt to create new employee with same unique ID
 **Expected Result**: Error message displayed, duplicate creation prevented
 
-### TC-BEN-007: QR Code Generation Works
-**Preconditions**: Beneficiary exists
+### TC-EMP-007: QR Code Generation Works
+**Preconditions**: Employee exists
 **Steps**:
-1. View beneficiary profile
+1. View employee profile
 2. Check that QR code is displayed
 3. Download QR code
 **Expected Result**: QR code is visible and downloadable, contains correct unique ID
@@ -87,17 +87,17 @@
 ## 3. QR Code Scanning
 
 ### TC-QR-001: Valid Code Scanned
-**Preconditions**: Beneficiary with valid QR code exists
+**Preconditions**: Employee with valid QR code exists
 **Steps**:
 1. Navigate to QR scanner
 2. Scan valid QR code
-**Expected Result**: Success message, feeding record created, beneficiary marked as fed
+**Expected Result**: Success message, feeding record created, employee marked as fed
 
 ### TC-QR-002: Already-Fed Scan
-**Preconditions**: Beneficiary already fed today
+**Preconditions**: Employee already fed today
 **Steps**:
 1. Navigate to QR scanner
-2. Scan QR code of already-fed beneficiary
+2. Scan QR code of already-fed employee
 **Expected Result**: Warning message displayed, no duplicate record created
 
 ### TC-QR-003: Unknown UniqueId Scan
@@ -126,16 +126,16 @@
 ## 4. Feeding Records
 
 ### TC-FEED-001: Create Record
-**Preconditions**: Beneficiary exists
+**Preconditions**: Employee exists
 **Steps**:
 1. Scan valid QR code or use manual entry
 2. Submit feeding
-**Expected Result**: Feeding record created with correct timestamp and beneficiary info
+**Expected Result**: Feeding record created with correct timestamp and employee info
 
 ### TC-FEED-002: Prevent Double Feeding
-**Preconditions**: Beneficiary already fed today
+**Preconditions**: Employee already fed today
 **Steps**:
-1. Attempt to feed same beneficiary again
+1. Attempt to feed same employee again
 **Expected Result**: Error/warning message, no duplicate record created
 
 ### TC-FEED-003: Date-Based Lookups
@@ -153,11 +153,11 @@
 **Expected Result**: Report matches database records exactly
 
 ### TC-FEED-005: Undo Feeding (if implemented)
-**Preconditions**: Beneficiary was fed today
+**Preconditions**: Employee was fed today
 **Steps**:
-1. Navigate to beneficiary profile or feeding list
+1. Navigate to employee profile or feeding list
 2. Click "Undo" or "Mark as not fed"
-**Expected Result**: Feeding record removed, beneficiary marked as not fed
+**Expected Result**: Feeding record removed, employee marked as not fed
 
 ## 5. Reports
 
@@ -191,10 +191,10 @@
 ## 6. Bulk Printing
 
 ### TC-PRINT-001: 20–30 Card Sheet Template
-**Preconditions**: Multiple beneficiaries exist
+**Preconditions**: Multiple employees exist
 **Steps**:
 1. Navigate to bulk print page
-2. Select multiple beneficiaries
+2. Select multiple employees
 3. Generate print sheet
 **Expected Result**: A4 sheet with 20-30 cards properly formatted
 
@@ -213,11 +213,11 @@
 **Expected Result**: Cards aligned properly with consistent margins
 
 ### TC-PRINT-004: Single Card Export
-**Preconditions**: Beneficiary exists
+**Preconditions**: Employee exists
 **Steps**:
-1. Navigate to beneficiary profile
+1. Navigate to employee profile
 2. Click "Print Card"
-**Expected Result**: Single card template generated with correct beneficiary info
+**Expected Result**: Single card template generated with correct employee info
 
 ## 7. UI Tests
 
@@ -228,17 +228,17 @@
 **Expected Result**: All navigation works correctly, pages load without errors
 
 ### TC-UI-002: Pagination
-**Preconditions**: More than 10 beneficiaries exist
+**Preconditions**: More than 10 employees exist
 **Steps**:
-1. Navigate to beneficiaries list
+1. Navigate to employees list
 2. Use pagination controls
 **Expected Result**: Correct items displayed per page, pagination controls work
 
 ### TC-UI-003: Search & Filtering
-**Preconditions**: Multiple beneficiaries exist
+**Preconditions**: Multiple employees exist
 **Steps**:
-1. Use search bar to find beneficiary
-2. Use filters (group, gender, etc.)
+1. Use search bar to find employee
+2. Use filters (department, position, etc.)
 **Expected Result**: Search/filter results are accurate and update in real-time
 
 ### TC-UI-004: Toast/Alerts

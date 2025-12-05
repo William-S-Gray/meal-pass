@@ -38,14 +38,14 @@ Backend API for the Meal Distribution QR Tracking System.
 
 ## API Endpoints
 
-### Beneficiaries
-- `POST /api/beneficiaries` - Create beneficiary
-- `GET /api/beneficiaries` - Get all beneficiaries
-- `GET /api/beneficiaries/:id` - Get single beneficiary
-- `PUT /api/beneficiaries/:id` - Update beneficiary
-- `DELETE /api/beneficiaries/:id` - Delete beneficiary
-- `POST /api/beneficiaries/import` - Import beneficiaries from CSV
-- `GET /api/beneficiaries/export` - Export beneficiaries (CSV/JSON)
+### Employees
+- `POST /api/employees` - Create employee
+- `GET /api/employees` - Get all employees
+- `GET /api/employees/:id` - Get single employee
+- `PUT /api/employees/:id` - Update employee
+- `DELETE /api/employees/:id` - Delete employee
+- `POST /api/employees/import` - Import employees from CSV
+- `GET /api/employees/export` - Export employees (CSV/JSON)
 
 ### QR/Feeding
 - `POST /api/feed/scan` - Scan QR code and mark as fed
@@ -73,7 +73,7 @@ ENABLE_AUTH=true
 
 ## Seeding Data
 
-To seed sample beneficiaries data:
+To seed sample employee data:
 
 ```
 npm run seed

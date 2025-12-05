@@ -8,10 +8,10 @@ import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import RegisterBeneficiary from "./pages/RegisterBeneficiary";
-import BeneficiariesList from "./pages/BeneficiariesList";
-import BeneficiaryProfile from "./pages/BeneficiaryProfile";
-import EditBeneficiary from "./pages/EditBeneficiary";
+import RegisterEmployee from "./pages/RegisterEmployee";
+import EmployeesList from "./pages/EmployeesList";
+import EmployeeProfile from "./pages/EmployeeProfile";
+import EditEmployee from "./pages/EditEmployee";
 import QRScanner from "./pages/QRScanner";
 import Reports from "./pages/Reports";
 import ReportsDashboard from "./pages/ReportsDashboard";
@@ -72,24 +72,24 @@ const App = () => (
                   <QRScanner />
                 </ProtectedRoute>
               } />
-              <Route path="/beneficiaries/register" element={
+              <Route path="/employees/register" element={
                 <ProtectedRoute allowedRoles={['admin', 'volunteer']}>
-                  <RegisterBeneficiary />
+                  <RegisterEmployee />
                 </ProtectedRoute>
               } />
-              <Route path="/beneficiaries" element={
+              <Route path="/employees" element={
                 <ProtectedRoute>
-                  <BeneficiariesList />
+                  <EmployeesList />
                 </ProtectedRoute>
               } />
-              <Route path="/beneficiaries/:uid" element={
+              <Route path="/employees/:uid" element={
                 <ProtectedRoute>
-                  <BeneficiaryProfile />
+                  <EmployeeProfile />
                 </ProtectedRoute>
               } />
-              <Route path="/beneficiaries/edit/:uid" element={
+              <Route path="/employees/edit/:uid" element={
                 <ProtectedRoute allowedRoles={['admin', 'volunteer']}>
-                  <EditBeneficiary />
+                  <EditEmployee />
                 </ProtectedRoute>
               } />
               <Route path="/reports" element={

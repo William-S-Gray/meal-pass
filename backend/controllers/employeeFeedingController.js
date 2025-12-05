@@ -4,13 +4,14 @@ const logger = require('../utils/logger');
 const { record, query } = require('../validators/feedingValidator');
 
 /**
- * @desc    Record feeding event
+ * @desc    Record feeding event for employee
  * @route   POST /api/feeding/scan
  * @access  Private (Volunteer/Admin)
  * 
  * This endpoint prevents duplicate feedings by:
  * 1. Checking if a feeding record already exists for the same employee on the same day
- * 2. Using a compound unique index in the database for additional protection
+ * 2. Checking if the employee's access is still valid
+ * 3. Using a compound unique index in the database for additional protection
  */
 const recordFeeding = async (req, res, next) => {
   try {
@@ -34,11 +35,11 @@ const recordFeeding = async (req, res, next) => {
       return sendError(res, 404, error.message);
     }
     
-    if (error.message === 'Employee already fed today') {
+    if (error.message === 'Employee meal access expired') {
       return sendError(res, 400, error.message);
     }
     
-    if (error.message === 'Employee meal access expired') {
+    if (error.message === 'Employee already fed today') {
       return sendError(res, 400, error.message);
     }
     
@@ -85,7 +86,7 @@ const getRecordsByEmployee = async (req, res, next) => {
     const result = await employeeFeedingService.getRecordsByEmployee(uniqueId, value.page, value.limit);
     sendSuccess(res, 200, result.data, null, result.pagination);
   } catch (error) {
-    logger.error('Error in getRecordsByBeneficiary:', error);
+    logger.error('Error in getRecordsByEmployee:', error);
     sendError(res, 500, error.message);
   }
 };

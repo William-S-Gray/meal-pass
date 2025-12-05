@@ -2,6 +2,10 @@
 
 import axios from 'axios';
 
+// Debug log to verify the API URL
+console.log('VITE_API_URL from env:', import.meta.env.VITE_API_URL);
+console.log('Using baseURL:', import.meta.env.VITE_API_URL || 'http://localhost:5000');
+
 // Create axios instance
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
@@ -48,17 +52,19 @@ interface UserWithToken extends User {
   token: string;
 }
 
-export interface Beneficiary {
-  _id: string;  // Changed from 'id' to '_id' to match backend
-  uid: string; // BNF-XXXX format
-  fullName: string;
-  gender: 'male' | 'female' | 'other';
-  household?: string;
+export interface Employee {
+  _id: string;
+  uniqueId: string;
+  name: string;
+  phone?: string;
+  department?: string;
+  position?: string;
+  validUntil: string;
   qrCode: string;
+  photo?: string;
+  active?: boolean;
   createdAt: string;
-  fedToday?: boolean; // Add fedToday property
-  active?: boolean; // Add active property
-  dob?: string; // Add dob property
+  fedToday?: boolean;
 }
 
 // Response interface for QR scan
@@ -71,9 +77,9 @@ export interface QRScanResponse {
 export interface FeedingRecord {
   id: string;
   uniqueId: string;
-  beneficiary: {
+  employee: {
     name: string;
-    group: string;
+    department: string;
     uniqueId: string;
   };
   date: string; // YYYY-MM-DD
@@ -85,8 +91,8 @@ export interface FeedingRecord {
 // Interface for feed records (used in reports)
 export interface FeedRecord {
   id: string;
-  beneficiaryUid: string;
-  beneficiaryName: string;
+  employeeUid: string;
+  employeeName: string;
   date: string;
   time: string;
   scannerName: string;
@@ -97,9 +103,9 @@ export interface FeedRecord {
 interface BackendFeedingRecord {
   _id: string;
   uniqueId: string;
-  beneficiary: {
+  employee: {
     name: string;
-    group: string;
+    department: string;
     uniqueId: string;
   };
   date: string; // YYYY-MM-DD
@@ -111,7 +117,7 @@ interface BackendFeedingRecord {
 // Interface for backend feed log
 interface BackendFeedLog {
   _id: string;
-  beneficiaryId?: {
+  employeeId?: {
     uniqueId: string;
     name: string;
   };
@@ -122,7 +128,7 @@ interface BackendFeedLog {
 
 // Interface for report statistics
 export interface ReportStatistics {
-  totalBeneficiaries: number;
+  totalEmployees: number;
   totalFedToday: number;
   feedRate: number;
   weeklyStats: Array<{
@@ -254,24 +260,28 @@ export async function loginUser(email: string, password: string): Promise<User> 
   }
 }
 
-// ============ BENEFICIARY FUNCTIONS ============
+// ============ EMPLOYEE FUNCTIONS ============
 
-export async function createBeneficiary(data: Omit<Beneficiary, '_id' | 'uid' | 'qrCode' | 'createdAt' | 'notes'>): Promise<Beneficiary> {
+export async function createEmployee(data: Omit<Employee, '_id' | 'qrCode' | 'createdAt' | 'fedToday'>): Promise<Employee> {
   try {
     // Prepare form data
     const formData = new FormData();
-    formData.append('name', data.fullName);
-    formData.append('gender', data.gender);
-    formData.append('group', data.household || '');
+    formData.append('name', data.name);
+    if (data.uniqueId) formData.append('uniqueId', data.uniqueId);
+    if (data.phone) formData.append('phone', data.phone);
+    if (data.department) formData.append('department', data.department);
+    if (data.position) formData.append('position', data.position);
+    formData.append('validUntil', data.validUntil);
     
     // Log the data being sent for debugging
-    console.log('Sending beneficiary data:', {
-      name: data.fullName,
-      gender: data.gender,
-      group: data.household || ''
+    console.log('Sending employee data:', {
+      name: data.name,
+      uniqueId: data.uniqueId,
+      phone: data.phone,
+      department: data.department,
+      position: data.position,
+      validUntil: data.validUntil
     });
-    
-    // Notes field is not in backend model, so we exclude it
     
     const response = await postWithCacheClear<{ 
       success: boolean; 
@@ -280,24 +290,28 @@ export async function createBeneficiary(data: Omit<Beneficiary, '_id' | 'uid' | 
         _id: string; 
         uniqueId: string; 
         name: string; 
-        gender: string; 
-        group?: string; 
+        phone?: string;
+        department?: string;
+        position?: string;
+        validUntil: string;
         qrCodeUrl: string; 
         createdAt: string; 
         fedToday?: boolean; 
         active?: boolean 
       } 
-    }>('/api/beneficiaries', formData);
+    }>('/api/employees', formData);
     
     const result = response.data;
     
     // Map backend response to frontend interface
     return {
       _id: result._id,
-      uid: result.uniqueId,
-      fullName: result.name,
-      gender: result.gender.toLowerCase() as 'male' | 'female' | 'other',
-      household: result.group || '',
+      uniqueId: result.uniqueId,
+      name: result.name,
+      phone: result.phone,
+      department: result.department,
+      position: result.position,
+      validUntil: result.validUntil,
       qrCode: result.qrCodeUrl.startsWith('http') ? result.qrCodeUrl : `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
       createdAt: result.createdAt,
       fedToday: result.fedToday || false,
@@ -309,9 +323,9 @@ export async function createBeneficiary(data: Omit<Beneficiary, '_id' | 'uid' | 
   }
 }
 
-// Update the Beneficiary interface to include pagination info
-export interface PaginatedBeneficiaries {
-  data: Beneficiary[];
+// Update the Employee interface to include pagination info
+export interface PaginatedEmployees {
+  data: Employee[];
   pagination: {
     page: number;
     limit: number;
@@ -320,23 +334,25 @@ export interface PaginatedBeneficiaries {
   };
 }
 
-export async function getBeneficiaries(search?: string, page: number = 1, limit: number = 10): Promise<PaginatedBeneficiaries> {
+export async function getEmployees(search?: string, page: number = 1, limit: number = 10): Promise<PaginatedEmployees> {
   try {
-    let url = `/api/beneficiaries?page=${page}&limit=${limit}`;
+    let url = `/api/employees?page=${page}&limit=${limit}`;
     if (search) {
       url += `&search=${encodeURIComponent(search)}`;
     }
     
-    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; gender: string; group?: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean }[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
+    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean }[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
     const result = response;
     
     // Map backend response to frontend interface
-    const beneficiaries = result.data.map((item) => ({
+    const employees = result.data.map((item) => ({
       _id: item._id,
-      uid: item.uniqueId,
-      fullName: item.name,
-      gender: item.gender.toLowerCase() as 'male' | 'female' | 'other',
-      household: item.group || '',
+      uniqueId: item.uniqueId,
+      name: item.name,
+      phone: item.phone,
+      department: item.department,
+      position: item.position,
+      validUntil: item.validUntil,
       qrCode: item.qrCodeUrl.startsWith('http') ? item.qrCodeUrl : `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
       createdAt: item.createdAt,
       fedToday: item.fedToday || false,
@@ -344,7 +360,7 @@ export async function getBeneficiaries(search?: string, page: number = 1, limit:
     }));
     
     return {
-      data: beneficiaries,
+      data: employees,
       pagination: result.pagination
     };
   } catch (error) {
@@ -353,11 +369,11 @@ export async function getBeneficiaries(search?: string, page: number = 1, limit:
   }
 }
 
-export async function getBeneficiaryByUid(uid: string): Promise<Beneficiary | null> {
+export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
   try {
-    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; gender: string; group?: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/beneficiaries/uid/${uid}`);
+    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/employees/uid/${uid}`);
     
-    // If beneficiary not found, return null
+    // If employee not found, return null
     if ((response as unknown as { status: number }).status === 404) {
       return null;
     }
@@ -367,10 +383,12 @@ export async function getBeneficiaryByUid(uid: string): Promise<Beneficiary | nu
     // Map backend response to frontend interface
     return {
       _id: result.data._id,
-      uid: result.data.uniqueId,
-      fullName: result.data.name,
-      gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
-      household: result.data.group || '',
+      uniqueId: result.data.uniqueId,
+      name: result.data.name,
+      phone: result.data.phone,
+      department: result.data.department,
+      position: result.data.position,
+      validUntil: result.data.validUntil,
       qrCode: result.data.qrCodeUrl.startsWith('http') ? result.data.qrCodeUrl : `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
       createdAt: result.data.createdAt,
       fedToday: result.data.fedToday || false,
@@ -380,29 +398,33 @@ export async function getBeneficiaryByUid(uid: string): Promise<Beneficiary | nu
     if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
       return null;
     }
-    console.error('Failed to fetch beneficiary by UID:', error);
+    console.error('Failed to fetch employee by UID:', error);
     return null;
   }
 }
 
-export async function updateBeneficiary(id: string, data: Partial<Beneficiary>): Promise<Beneficiary> {
+export async function updateEmployee(id: string, data: Partial<Employee>): Promise<Employee> {
   try {
     const formData = new FormData();
     
-    if (data.fullName !== undefined) formData.append('name', data.fullName);
-    if (data.gender !== undefined) formData.append('gender', data.gender);
-    if (data.household !== undefined) formData.append('group', data.household);
+    if (data.name !== undefined) formData.append('name', data.name);
+    if (data.phone !== undefined) formData.append('phone', data.phone || '');
+    if (data.department !== undefined) formData.append('department', data.department || '');
+    if (data.position !== undefined) formData.append('position', data.position || '');
+    if (data.validUntil !== undefined) formData.append('validUntil', data.validUntil);
     
-    const response = await putWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; gender: string; group?: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/beneficiaries/${id}`, formData);
+    const response = await putWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, formData);
     const result = response;
     
     // Map backend response to frontend interface
     return {
       _id: result.data._id,
-      uid: result.data.uniqueId,
-      fullName: result.data.name,
-      gender: result.data.gender.toLowerCase() as 'male' | 'female' | 'other',
-      household: result.data.group || '',
+      uniqueId: result.data.uniqueId,
+      name: result.data.name,
+      phone: result.data.phone,
+      department: result.data.department,
+      position: result.data.position,
+      validUntil: result.data.validUntil,
       qrCode: result.data.qrCodeUrl.startsWith('http') ? result.data.qrCodeUrl : `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
       createdAt: result.data.createdAt,
       active: result.data.active !== undefined ? result.data.active : true
@@ -413,9 +435,9 @@ export async function updateBeneficiary(id: string, data: Partial<Beneficiary>):
   }
 }
 
-export async function deleteBeneficiary(id: string): Promise<void> {
+export async function deleteEmployee(id: string): Promise<void> {
   try {
-    await deleteWithCacheClear(`/api/beneficiaries/${id}`);
+    await deleteWithCacheClear(`/api/employees/${id}`);
   } catch (error) {
     handleApiError(error);
     throw error; // Re-throw to maintain existing error handling
@@ -423,9 +445,9 @@ export async function deleteBeneficiary(id: string): Promise<void> {
 }
 
 // ============ PRINTING FUNCTIONS ============
-export async function printBulkCards(beneficiaryIds: string[]): Promise<Blob> {
+export async function printBulkCards(employeeIds: string[]): Promise<Blob> {
   try {
-    const response = await apiClient.post('/api/beneficiaries/print-cards', { beneficiaryIds }, {
+    const response = await apiClient.post('/api/employees/print-cards', { employeeIds }, {
       responseType: 'blob',
       timeout: 60000 // Increase timeout for PDF generation
     });
@@ -444,9 +466,9 @@ export async function printBulkCards(beneficiaryIds: string[]): Promise<Blob> {
   }
 }
 
-export async function printSingleCard(beneficiaryId: string): Promise<Blob> {
+export async function printSingleCard(employeeId: string): Promise<Blob> {
   try {
-    const response = await apiClient.get(`/api/beneficiaries/${beneficiaryId}/print-card`, {
+    const response = await apiClient.get(`/api/employees/${employeeId}/print-card`, {
       responseType: 'blob',
       timeout: 60000 // Increase timeout for PDF generation
     });
@@ -466,9 +488,9 @@ export async function printSingleCard(beneficiaryId: string): Promise<Blob> {
 }
 
 // ============ QR CODE FUNCTIONS ============
-export async function downloadQRCode(beneficiaryId: string, beneficiaryUid: string): Promise<void> {
+export async function downloadQRCode(employeeId: string, employeeUid: string): Promise<void> {
   try {
-    const response = await apiClient.get(`/api/beneficiaries/${beneficiaryId}/qrcode`, {
+    const response = await apiClient.get(`/api/employees/${employeeId}/qrcode`, {
       responseType: 'blob'
     });
     
@@ -479,7 +501,7 @@ export async function downloadQRCode(beneficiaryId: string, beneficiaryUid: stri
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `beneficiary-qr-${beneficiaryUid}.png`;
+    a.download = `employee-qr-${employeeUid}.png`;
     
     // Trigger download
     document.body.appendChild(a);
@@ -504,7 +526,7 @@ export async function getTodayFeedingRecords(): Promise<FeedingRecord[]> {
     return result.data.map((item) => ({
       id: item._id,
       uniqueId: item.uniqueId,
-      beneficiary: item.beneficiary,
+      employee: item.employee,
       date: item.date,
       fedAt: item.fedAt,
       method: item.method,
@@ -516,15 +538,15 @@ export async function getTodayFeedingRecords(): Promise<FeedingRecord[]> {
   }
 }
 
-export async function getFeedingRecordsForBeneficiary(uniqueId: string): Promise<FeedingRecord[]> {
+export async function getFeedingRecordsForEmployee(uniqueId: string): Promise<FeedingRecord[]> {
   try {
-    const response = await cachedGet<{ data: BackendFeedingRecord[] }>(`/api/feeding/beneficiary/${uniqueId}`);
+    const response = await cachedGet<{ data: BackendFeedingRecord[] }>(`/api/feeding/employee/${uniqueId}`);
     const result = response;
     
     return result.data.map((item) => ({
       id: item._id,
       uniqueId: item.uniqueId,
-      beneficiary: item.beneficiary,
+      employee: item.employee,
       date: item.date,
       fedAt: item.fedAt,
       method: item.method,
@@ -549,16 +571,16 @@ export async function scanQRCode(uniqueId: string, deviceId: string, method: 'sc
     if (axios.isAxiosError(error)) {
       // Handle specific error cases
       if (error.response?.status === 400) {
-        // This is likely a "Beneficiary already fed today" error
+        // This is likely a "Employee already fed today" error
         return {
           status: 'already_fed',
-          message: error.response.data?.message || 'Beneficiary already fed today'
+          message: error.response.data?.message || 'Employee already fed today'
         };
       } else if (error.response?.status === 404) {
-        // This is likely a "Beneficiary not found" error
+        // This is likely a "Employee not found" error
         return {
           status: 'not_found',
-          message: error.response.data?.message || 'Beneficiary not found'
+          message: error.response.data?.message || 'Employee not found'
         };
       }
     }
@@ -609,8 +631,8 @@ export async function getDailyReport(page: number = 1, limit: number = 50): Prom
     // Map the backend response to the FeedRecord interface expected by the frontend
     const feedRecords = result.data.map((item) => ({
       id: item._id,
-      beneficiaryUid: item.beneficiaryId?.uniqueId || item.uniqueId,
-      beneficiaryName: item.beneficiaryId?.name || 'Unknown',
+      employeeUid: item.employeeId?.uniqueId || item.uniqueId,
+      employeeName: item.employeeId?.name || 'Unknown',
       date: item.fedAt ? new Date(item.fedAt).toISOString().split('T')[0] : '',
       time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
       scannerName: item.servedBy || 'Unknown',
@@ -635,8 +657,8 @@ export async function getDateRangeReport(from: string, to: string, page: number 
     // Map the backend response to the FeedRecord interface expected by the frontend
     const feedRecords = result.data.map((item) => ({
       id: item._id,
-      beneficiaryUid: item.beneficiaryId?.uniqueId || item.uniqueId,
-      beneficiaryName: item.beneficiaryId?.name || 'Unknown',
+      employeeUid: item.employeeId?.uniqueId || item.uniqueId,
+      employeeName: item.employeeId?.name || 'Unknown',
       date: item.fedAt ? new Date(item.fedAt).toISOString().split('T')[0] : '',
       time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
       scannerName: item.servedBy || 'Unknown',
@@ -653,14 +675,13 @@ export async function getDateRangeReport(from: string, to: string, page: number 
   }
 }
 
-interface BeneficiaryReportData {
+interface EmployeeReportData {
   data: {
-    beneficiary: {
+    employee: {
       id: string;
       uniqueId: string;
       name: string;
-      gender: string;
-      group: string;
+      department: string;
     };
     feedLogs: Array<{
       _id: string;
@@ -676,9 +697,9 @@ interface BeneficiaryReportData {
   };
 }
 
-export async function getBeneficiaryReport(uniqueId: string, page: number = 1, limit: number = 50): Promise<BeneficiaryReportData> {
+export async function getEmployeeReport(uniqueId: string, page: number = 1, limit: number = 50): Promise<EmployeeReportData> {
   try {
-    const response = await cachedGet<BeneficiaryReportData>(`/api/reports/beneficiary/${uniqueId}?page=${page}&limit=${limit}`);
+    const response = await cachedGet<EmployeeReportData>(`/api/reports/employee/${uniqueId}?page=${page}&limit=${limit}`);
     return response;
   } catch (error) {
     handleApiError(error);
@@ -742,19 +763,19 @@ export async function getCurrentUser(): Promise<User | null> {
 
 // ============ STATS FUNCTIONS ============
 export async function getStats(): Promise<{
-  totalBeneficiaries: number;
+  totalEmployees: number;
   fedToday: number;
 }> {
   try {
     // Use cached GET wrapper for better performance
-    // Get all beneficiaries by using a high limit
-    const beneficiariesResponse = await cachedGet<{ pagination: { total: number } }>('/api/beneficiaries?limit=100');
+    // Get all employees by using a high limit
+    const employeesResponse = await cachedGet<{ pagination: { total: number } }>('/api/employees?limit=100');
     // Get today's feeding records and count them
-    const fedResponse = await getTodayFeedRecords(1, 100); // Get all records for today
+    const fedResponse = await getTodayFeedingRecords(); // Get all records for today
     
     return {
-      totalBeneficiaries: beneficiariesResponse.pagination.total,
-      fedToday: fedResponse.pagination.total // Use the total from pagination
+      totalEmployees: employeesResponse.pagination.total,
+      fedToday: fedResponse.length
     };
   } catch (error) {
     handleApiError(error);
@@ -764,7 +785,7 @@ export async function getStats(): Promise<{
 
 // Interface for detailed statistics
 export interface DetailedStats {
-  totalBeneficiaries: number;
+  totalEmployees: number;
   totalFedToday: number;
   totalFedInRange: number;
   feedRate: number;
@@ -788,7 +809,7 @@ export async function getDetailedStats(startDate?: string, endDate?: string): Pr
     const result = response;
     
     return {
-      totalBeneficiaries: result.data.totalBeneficiaries,
+      totalEmployees: result.data.totalEmployees,
       totalFedToday: result.data.totalFedToday,
       totalFedInRange: result.data.totalFedInRange,
       feedRate: result.data.feedRate,
@@ -823,14 +844,14 @@ export async function getFeedRecordsByDateRange(startDate: string, endDate: stri
       url += `&site=${encodeURIComponent(site)}`;
     }
     
-    const response = await cachedGet<{ data: { id: string; beneficiaryUid: string; beneficiaryName: string; date: string; time: string; scannerName: string; status?: string }[] }>(url);
+    const response = await cachedGet<{ data: { id: string; employeeUid: string; employeeName: string; date: string; time: string; scannerName: string; status?: string }[] }>(url);
     const result = response;
     
     // Map the backend response to the FeedRecord interface expected by the frontend
     const feedRecords = result.data.map((item) => ({
       id: item.id,
-      beneficiaryUid: item.beneficiaryUid,
-      beneficiaryName: item.beneficiaryName,
+      employeeUid: item.employeeUid,
+      employeeName: item.employeeName,
       date: item.date,
       time: item.time,
       scannerName: item.scannerName,
@@ -854,8 +875,8 @@ export async function getTodayFeedRecords(page: number = 1, limit: number = 10):
     // Map the backend response to the FeedRecord interface expected by the frontend
     const feedRecords = result.data.map((item) => ({
       id: item._id,
-      beneficiaryUid: item.beneficiary?.uniqueId || item.uniqueId,
-      beneficiaryName: item.beneficiary?.name || 'Unknown',
+      employeeUid: item.employee?.uniqueId || item.uniqueId,
+      employeeName: item.employee?.name || 'Unknown',
       date: item.date,
       time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
       scannerName: item.deviceId || 'Unknown',
