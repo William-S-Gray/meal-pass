@@ -42,17 +42,29 @@ backend/
 
 ### Frontend Structure
 frontend/
+
 ├── src/
+
 │ ├── components/ # UI parts
+
 │ │ ├── ui/ # shadcn/ui primitives
+
 │ │ └── layout/ # Navigation, dashboard, modals
+
 │ ├── pages/ # Page views & routing
+
 │ ├── hooks/ # Custom hooks
+
 │ ├── lib/ # API calls
+
 │ ├── contexts/ # Auth & state management
+
 │ ├── utils/ # QR/Barcode helpers
+
 │ └── styles/ # Tailwind/CSS
+
 ├── public/ # Static assets
+
 └── index.html # App root
 
 ## 🔧 Key Features
