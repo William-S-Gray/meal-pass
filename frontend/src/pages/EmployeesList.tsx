@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format, parseISO, isBefore } from 'date-fns';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 export default function EmployeesList() {
   const { socket, isConnected } = useWebSocket();
@@ -147,6 +148,11 @@ export default function EmployeesList() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees' }]}
+          backButtonHref="/dashboard"
+          backButtonLabel="Back to Dashboard"
+        />
         {/* Search Form */}
         <Card className="mb-8 border-2">
           <CardHeader>

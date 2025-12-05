@@ -9,6 +9,7 @@ import {
   Users, Check, QrCode, UserPlus, FileText, LogOut, 
   BarChart, Printer, PlusCircle, TrendingUp 
 } from 'lucide-react';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 // Define the stats type
 interface DashboardStats {
@@ -144,6 +145,9 @@ const DashboardComponent = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-8">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Home' }]}
+        />
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card className="border-2">

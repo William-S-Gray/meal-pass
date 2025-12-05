@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, Download, Edit, Check, X, Loader2, Calendar, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format, parseISO, isBefore } from 'date-fns';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 export default function EmployeeProfile() {
   const { isAdmin } = useAuth();
@@ -154,7 +155,7 @@ export default function EmployeeProfile() {
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <Link to="/employees">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="sm:hidden">
               <ChevronLeft className="mr-2 h-4 w-4" />
               Back to List
             </Button>
@@ -163,6 +164,11 @@ export default function EmployeeProfile() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }, { label: employee?.name || 'Employee Profile' }]}
+          backButtonHref="/employees"
+          backButtonLabel="Back to Employees"
+        />
         {/* Employee Details */}
         <Card className="border-2">
           <CardHeader>

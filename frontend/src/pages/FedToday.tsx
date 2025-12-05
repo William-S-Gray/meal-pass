@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 export default function FedToday() {
   const { socket, isConnected } = useWebSocket();
@@ -89,7 +90,7 @@ export default function FedToday() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <Link to="/dashboard">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="sm:hidden">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Dashboard
               </Button>
@@ -115,6 +116,11 @@ export default function FedToday() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Fed Today' }]}
+          backButtonHref="/dashboard"
+          backButtonLabel="Back to Dashboard"
+        />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-primary">People Fed Today</h1>

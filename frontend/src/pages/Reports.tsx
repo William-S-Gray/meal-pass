@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, Download, Search } from 'lucide-react';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 export default function Reports() {
   const { socket, isConnected } = useWebSocket();
@@ -91,7 +92,7 @@ export default function Reports() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link to="/dashboard">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="sm:hidden">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Dashboard
               </Button>
@@ -107,6 +108,11 @@ export default function Reports() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Reports' }]}
+          backButtonHref="/dashboard"
+          backButtonLabel="Back to Dashboard"
+        />
         {/* Filters Card */}
         <Card className="border-2">
           <CardHeader>

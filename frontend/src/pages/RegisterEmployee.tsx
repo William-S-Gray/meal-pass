@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { toast } from '@/hooks/use-toast';
 import { ChevronLeft, Loader2, Download, Calendar } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 // Define error type for better type safety
 interface ApiError extends Error {
@@ -116,7 +117,7 @@ export default function RegisterEmployee() {
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <Link to="/employees">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="sm:hidden">
               <ChevronLeft className="mr-2 h-4 w-4" />
               Back to Employees
             </Button>
@@ -125,6 +126,11 @@ export default function RegisterEmployee() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }, { label: 'Register New Employee' }]}
+          backButtonHref="/employees"
+          backButtonLabel="Back to Employees"
+        />
         <Card className="border-2">
           <CardHeader>
             <CardTitle>Register New Employee</CardTitle>

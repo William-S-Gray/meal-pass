@@ -25,6 +25,7 @@ import {
   Loader2, Download, Search, FileText
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 // Define types for the employee report data
 interface EmployeeInfo {
@@ -191,7 +192,7 @@ export default function ReportsDashboard() {
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <Link to="/dashboard">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="sm:hidden">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Dashboard
             </Button>
@@ -200,6 +201,11 @@ export default function ReportsDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Reports Dashboard' }]}
+          backButtonHref="/dashboard"
+          backButtonLabel="Back to Dashboard"
+        />
         <div>
           <h1 className="text-3xl font-bold text-primary">Reports Dashboard</h1>
           <p className="text-muted-foreground">Comprehensive meal distribution analytics</p>
@@ -284,14 +290,14 @@ export default function ReportsDashboard() {
                               <TableRow key={record.id}>
                                 <TableCell className="font-mono font-semibold">{record.employeeUid}</TableCell>
                                 <TableCell>{record.employeeName}</TableCell>
-                                <TableCell>{record.employee?.department || 'N/A'}</TableCell>
-                                <TableCell>{new Date(record.fedAt).toLocaleTimeString()}</TableCell>
+                                <TableCell>N/A</TableCell>
+                                <TableCell>{record.time}</TableCell>
                                 <TableCell>
-                                  <Badge variant={record.method === 'scan' ? 'default' : 'secondary'}>
-                                    {record.method}
+                                  <Badge variant={record.status === 'duplicate' ? 'secondary' : 'default'}>
+                                    {record.status === 'duplicate' ? 'duplicate' : 'scan'}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>{record.deviceId}</TableCell>
+                                <TableCell>{record.scannerName}</TableCell>
                               </TableRow>
                             ))
                           ) : (
@@ -384,13 +390,13 @@ export default function ReportsDashboard() {
                                 <TableCell className="font-mono font-semibold">{record.employeeUid}</TableCell>
                                 <TableCell>{record.employeeName}</TableCell>
                                 <TableCell>{formatDate(record.date)}</TableCell>
-                                <TableCell>{new Date(record.fedAt).toLocaleTimeString()}</TableCell>
+                                <TableCell>{record.time}</TableCell>
                                 <TableCell>
-                                  <Badge variant={record.method === 'scan' ? 'default' : 'secondary'}>
-                                    {record.method}
+                                  <Badge variant={record.status === 'duplicate' ? 'secondary' : 'default'}>
+                                    {record.status === 'duplicate' ? 'duplicate' : 'scan'}
                                   </Badge>
                                 </TableCell>
-                                <TableCell>{record.deviceId}</TableCell>
+                                <TableCell>{record.scannerName}</TableCell>
                               </TableRow>
                             ))
                           ) : (

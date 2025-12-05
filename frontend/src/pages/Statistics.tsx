@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ArrowLeft, Calendar, TrendingUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 export default function Statistics() {
   const { socket, isConnected } = useWebSocket();
@@ -94,7 +95,7 @@ export default function Statistics() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link to="/dashboard">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="sm:hidden">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Dashboard
               </Button>
@@ -110,6 +111,11 @@ export default function Statistics() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Statistics' }]}
+          backButtonHref="/dashboard"
+          backButtonLabel="Back to Dashboard"
+        />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-primary">Statistics</h1>

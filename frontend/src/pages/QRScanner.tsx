@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { QrCode, Camera, CameraOff, Loader2, User, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
 import QrScanner from 'qr-scanner';
 import { format, parseISO, isBefore } from 'date-fns';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 // Add the EmployeeIDCard component inline to avoid import issues
 const EmployeeIDCard: React.FC<{ employee: Employee; businessName?: string }> = ({ 
@@ -279,7 +280,7 @@ export default function QRScanner() {
                   Live Connected
                 </span>
               )}
-              <Button variant="ghost" onClick={() => navigate('/dashboard')} size="sm">
+              <Button variant="ghost" onClick={() => navigate('/dashboard')} size="sm" className="sm:hidden">
                 Back to Dashboard
               </Button>
             </div>
@@ -288,6 +289,11 @@ export default function QRScanner() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'QR Scanner' }]}
+          backButtonHref="/dashboard"
+          backButtonLabel="Back to Dashboard"
+        />
         <div className="max-w-2xl mx-auto space-y-6">
           <Card className="border-2">
             <CardHeader>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/hooks/use-toast';
 import { ChevronLeft, Loader2, Calendar } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 // Define error type for better type safety
 interface ApiError extends Error {
@@ -129,7 +130,7 @@ export default function EditEmployee() {
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <Link to={`/employees/${employee.uniqueId}`}>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="sm:hidden">
               <ChevronLeft className="mr-2 h-4 w-4" />
               Back to Profile
             </Button>
@@ -138,6 +139,11 @@ export default function EditEmployee() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
+        <BreadcrumbNavigation 
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }, { label: employee?.name || 'Employee', href: `/employees/${employee?.uniqueId}` }, { label: 'Edit' }]}
+          backButtonHref={`/employees/${employee?.uniqueId}`}
+          backButtonLabel="Back to Profile"
+        />
         <Card className="border-2">
           <CardHeader>
             <CardTitle>Edit Employee</CardTitle>
