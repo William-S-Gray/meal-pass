@@ -15,11 +15,21 @@ import {
   User, 
   QrCode,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isBefore } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function EmployeesList() {
   const { toast } = useToast();
@@ -32,8 +42,8 @@ export default function EmployeesList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const limit = 10;
-
   const refresh = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get('refresh') === 'true';
@@ -41,7 +51,7 @@ export default function EmployeesList() {
 
   useEffect(() => {
     loadEmployees();
-  }, [currentPage, searchTerm, refresh]);
+  }, [currentPage, searchTerm, refresh, itemsPerPage]);
 
   // Listen for real-time updates
   useEffect(() => {
@@ -65,7 +75,7 @@ export default function EmployeesList() {
   const loadEmployees = async () => {
     setLoading(true);
     try {
-      const response = await getEmployees(searchTerm, currentPage, limit);
+      const response = await getEmployees(searchTerm, currentPage, itemsPerPage);
       setEmployees(response.data);
       setTotalPages(response.pagination.pages);
       setTotalCount(response.pagination.total);
@@ -114,6 +124,11 @@ export default function EmployeesList() {
     }
   };
 
+  const handleItemsPerPageChange = (newLimit: number) => {
+    setItemsPerPage(newLimit);
+    setCurrentPage(1);
+  };
+
   const formatDate = (dateString: string) => {
     return format(parseISO(dateString), 'MMM dd, yyyy');
   };
@@ -148,7 +163,6 @@ export default function EmployeesList() {
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-8">
         <BreadcrumbNavigation 
           items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees' }]}
@@ -212,12 +226,84 @@ export default function EmployeesList() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Table View for Larger Screens */}
+                <div className="hidden md:block overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Employee ID</TableHead>
+                        <TableHead>Gender</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Valid Until</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {employees.map((employee) => {
+                        const isExpired = isEmployeeExpired(employee.validUntil);
+                        
+                        return (
+                          <TableRow key={employee._id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/employees/${employee.uniqueId}`)}>
+                            <TableCell className="font-medium">{capitalizeName(employee.name)}</TableCell>
+                            <TableCell className="font-mono">{employee.uniqueId}</TableCell>
+                            <TableCell>{employee.gender}</TableCell>
+                            <TableCell>{employee.department || 'N/A'}</TableCell>
+                            <TableCell>{formatDate(employee.validUntil)}</TableCell>
+                            <TableCell>
+                              <Badge variant={isExpired ? "destructive" : "default"}>
+                                {isExpired ? "Expired" : "Active"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/employees/${employee.uniqueId}`);
+                                  }}
+                                >
+                                  <QrCode className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/employees/edit/${employee.uniqueId}`);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(employee._id, employee.name);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                
+                {/* Card View for Mobile Devices */}
+                <div className="md:hidden grid grid-cols-1 gap-4">
                   {employees.map((employee) => {
                     const isExpired = isEmployeeExpired(employee.validUntil);
                     
                     return (
-                      <Card key={employee._id} className="border-2 hover:shadow-md transition-shadow">
+                      <Card key={employee._id} className="border-2 hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/employees/${employee.uniqueId}`)}>
                         <CardHeader className="pb-2">
                           <div className="flex justify-between items-start">
                             <div>
@@ -251,7 +337,7 @@ export default function EmployeesList() {
                                 <span>{employee.department}</span>
                               </div>
                             )}
-
+                            
                             {employee.position && (
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">Position:</span>
@@ -286,21 +372,30 @@ export default function EmployeesList() {
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => navigate(`/employees/${employee.uniqueId}`)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/employees/${employee.uniqueId}`);
+                              }}
                             >
                               <QrCode className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => navigate(`/employees/edit/${employee.uniqueId}`)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/employees/edit/${employee.uniqueId}`);
+                              }}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleDelete(employee._id, employee.name)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(employee._id, employee.name);
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -312,14 +407,32 @@ export default function EmployeesList() {
                 </div>
                 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex justify-center items-center gap-2 mt-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Items per page:</span>
+                    <select 
+                      value={itemsPerPage} 
+                      onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                      className="border rounded p-1 text-sm"
+                      disabled={loading}
+                    >
+                      <option value="5">5</option>
+                      <option value="10">10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                    </select>
+                    <div className="text-sm text-muted-foreground">
+                      Showing {Math.min(itemsPerPage, totalCount - (currentPage - 1) * itemsPerPage)} of {totalCount} items
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
+                      disabled={currentPage === 1 || loading}
                     >
+                      <ChevronLeft className="h-4 w-4" />
                       Previous
                     </Button>
                     
@@ -331,12 +444,13 @@ export default function EmployeesList() {
                       variant="outline"
                       size="sm"
                       onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage === totalPages || loading}
                     >
                       Next
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
-                )}
+                </div>
               </div>
             )}
           </CardContent>
