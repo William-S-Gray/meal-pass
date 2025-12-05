@@ -778,15 +778,12 @@ export async function getStats(): Promise<{
   fedToday: number;
 }> {
   try {
-    // Use cached GET wrapper for better performance
-    // Get all employees by using a high limit
-    const employeesResponse = await cachedGet<{ pagination: { total: number } }>('/api/employees?limit=100');
-    // Get today's feeding records and count them
-    const fedResponse = await getTodayFeedingRecords(); // Get all records for today
+    // Use the dedicated stats endpoint which provides all the data we need
+    const response = await cachedGet<{ data: { totalEmployees: number; totalFedToday: number } }>('/api/feeding/stats');
     
     return {
-      totalEmployees: employeesResponse.pagination.total,
-      fedToday: fedResponse.length
+      totalEmployees: response.data.totalEmployees,
+      fedToday: response.data.totalFedToday
     };
   } catch (error) {
     handleApiError(error);

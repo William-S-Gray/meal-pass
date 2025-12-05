@@ -59,7 +59,7 @@ const DashboardComponent = () => {
       const data = await getStats();
       setStats({
         totalEmployees: data.totalEmployees || 0,
-        fedToday: data.totalFedToday || 0
+        fedToday: data.fedToday || 0
       });
       // Calculate not fed today with proper checks
       const total = data.totalEmployees || 0;
