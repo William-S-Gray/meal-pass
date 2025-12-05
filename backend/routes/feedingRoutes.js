@@ -4,7 +4,8 @@ const {
   recordFeeding, 
   getTodaysRecords, 
   getRecordsByEmployee, 
-  removeTodaysRecord
+  removeTodaysRecord,
+  getFeedingStats
 } = require('../controllers/employeeFeedingController'); // Changed to employee feeding controller
 
 const router = express.Router();
@@ -19,10 +20,13 @@ router.route('/scan')
 router.route('/today')
   .get(authMiddleware, getTodaysRecords);
 
-router.route('/employee/:uniqueId') // Changed from /beneficiary to /employee
+router.route('/employee/:uniqueId') // Get feeding records for an employee
   .get(authMiddleware, getRecordsByEmployee);
 
 router.route('/record/:uniqueId')
   .delete(authMiddleware, removeTodaysRecord);
+
+router.route('/stats')
+  .get(authMiddleware, getFeedingStats);
 
 module.exports = router;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meal Pass Beneficiary Cards</title>
+    <title>Meal Pass Employee Cards</title>
     <style>
         /* Print Styles */
 @media print {
@@ -50,7 +50,7 @@
         page-break-inside: avoid;
     }
     
-    .beneficiary-card {
+    .employee-card {
         width: 85mm;
         height: 55mm;
         border: 1pt solid #333;
@@ -75,7 +75,7 @@
         text-align: right;
     }
     
-    .beneficiary-info {
+    .employee-info {
         text-align: center;
         flex-grow: 1;
         display: flex;
@@ -83,14 +83,14 @@
         justify-content: center;
     }
     
-    .beneficiary-name {
+    .employee-name {
         font-size: 14pt;
         font-weight: bold;
         margin: 2mm 0;
         word-wrap: break-word;
     }
     
-    .beneficiary-id {
+    .employee-id {
         font-size: 11pt;
         font-family: 'Courier New', monospace;
         margin: 1mm 0;
@@ -117,7 +117,7 @@
     }
     
     /* Ensure no page breaks inside cards */
-    .beneficiary-card, .card-grid {
+    .employee-card, .card-grid {
         page-break-inside: avoid;
     }
 }
@@ -153,7 +153,7 @@
         gap: 5mm;
     }
     
-    .beneficiary-card {
+    .employee-card {
         width: 85mm;
         height: 55mm;
         border: 1pt solid #333;
@@ -178,7 +178,7 @@
         text-align: right;
     }
     
-    .beneficiary-info {
+    .employee-info {
         text-align: center;
         flex-grow: 1;
         display: flex;
@@ -186,14 +186,14 @@
         justify-content: center;
     }
     
-    .beneficiary-name {
+    .employee-name {
         font-size: 14pt;
         font-weight: bold;
         margin: 2mm 0;
         word-wrap: break-word;
     }
     
-    .beneficiary-id {
+    .employee-id {
         font-size: 11pt;
         font-family: 'Courier New', monospace;
         margin: 1mm 0;
@@ -230,16 +230,15 @@
     </div>
     
     <div class="card-grid" id="cardGrid">
-        
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">John Doe</div>
-                <div class="beneficiary-id">MP-001</div>
+            <div class="employee-info">
+                <div class="employee-name">John Doe</div>
+                <div class="employee-id">MP-001</div>
             </div>
             
             <div class="qr-container">
@@ -247,16 +246,15 @@
             </div>
         </div>
         
-
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">Jane Smith</div>
-                <div class="beneficiary-id">MP-002</div>
+            <div class="employee-info">
+                <div class="employee-name">Jane Smith</div>
+                <div class="employee-id">MP-002</div>
             </div>
             
             <div class="qr-container">
@@ -264,16 +262,15 @@
             </div>
         </div>
         
-
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">Robert Johnson</div>
-                <div class="beneficiary-id">MP-003</div>
+            <div class="employee-info">
+                <div class="employee-name">Robert Johnson</div>
+                <div class="employee-id">MP-003</div>
             </div>
             
             <div class="qr-container">
@@ -281,16 +278,15 @@
             </div>
         </div>
         
-
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">Emily Williams</div>
-                <div class="beneficiary-id">MP-004</div>
+            <div class="employee-info">
+                <div class="employee-name">Emily Davis</div>
+                <div class="employee-id">MP-004</div>
             </div>
             
             <div class="qr-container">
@@ -298,16 +294,15 @@
             </div>
         </div>
         
-
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">Michael Brown</div>
-                <div class="beneficiary-id">MP-005</div>
+            <div class="employee-info">
+                <div class="employee-name">Michael Wilson</div>
+                <div class="employee-id">MP-005</div>
             </div>
             
             <div class="qr-container">
@@ -315,16 +310,15 @@
             </div>
         </div>
         
-
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">Sarah Davis</div>
-                <div class="beneficiary-id">MP-006</div>
+            <div class="employee-info">
+                <div class="employee-name">Sarah Brown</div>
+                <div class="employee-id">MP-006</div>
             </div>
             
             <div class="qr-container">
@@ -332,16 +326,15 @@
             </div>
         </div>
         
-
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">David Miller</div>
-                <div class="beneficiary-id">MP-007</div>
+            <div class="employee-info">
+                <div class="employee-name">David Taylor</div>
+                <div class="employee-id">MP-007</div>
             </div>
             
             <div class="qr-container">
@@ -349,16 +342,15 @@
             </div>
         </div>
         
-
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">Lisa Wilson</div>
-                <div class="beneficiary-id">MP-008</div>
+            <div class="employee-info">
+                <div class="employee-name">Lisa Wilson</div>
+                <div class="employee-id">MP-008</div>
             </div>
             
             <div class="qr-container">
@@ -366,16 +358,15 @@
             </div>
         </div>
         
-
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">James Moore</div>
-                <div class="beneficiary-id">MP-009</div>
+            <div class="employee-info">
+                <div class="employee-name">James Moore</div>
+                <div class="employee-id">MP-009</div>
             </div>
             
             <div class="qr-container">
@@ -383,16 +374,15 @@
             </div>
         </div>
         
-
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">Patricia Taylor</div>
-                <div class="beneficiary-id">MP-010</div>
+            <div class="employee-info">
+                <div class="employee-name">Patricia Taylor</div>
+                <div class="employee-id">MP-010</div>
             </div>
             
             <div class="qr-container">

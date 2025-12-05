@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const Beneficiary = require('./backend/models/Beneficiary');
+const Employee = require('./backend/models/Employee');
 const FeedingRecord = require('./backend/models/FeedingRecord');
 const Admin = require('./backend/models/Admin');
 const { generateUniqueId } = require('./backend/utils/idGenerator');
@@ -18,7 +18,7 @@ db.once('open', async () => {
     console.log('Connected to MongoDB');
 
     // Clear existing data
-    await Beneficiary.deleteMany({});
+    await Employee.deleteMany({});
     await FeedingRecord.deleteMany({});
     await Admin.deleteMany({});
     
@@ -38,25 +38,26 @@ db.once('open', async () => {
     await admin.save();
     console.log('Created admin user');
 
-    // Create 30 test beneficiaries
-    const beneficiaries = [];
-    const groups = ['Group A', 'Group B', 'Group C', 'Group D', 'Group E'];
-    const genders = ['male', 'female'];
+    // Create 30 test employees
+    const employees = [];
+    const departments = ['Housekeeping', 'Front Desk', 'Maintenance', 'Security', 'Kitchen'];
+    const genders = ['Male', 'Female'];
     
     for (let i = 1; i <= 30; i++) {
-      const beneficiary = {
-        name: `Beneficiary ${i}`,
+      const employee = {
+        name: `Employee ${i}`,
         gender: genders[Math.floor(Math.random() * genders.length)],
-        age: Math.floor(Math.random() * 50) + 18, // Age between 18-67
-        group: groups[Math.floor(Math.random() * groups.length)],
-        uniqueId: generateUniqueId()
+        department: departments[Math.floor(Math.random() * departments.length)],
+        position: `Position ${i}`,
+        uniqueId: generateUniqueId(),
+        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
       };
       
-      beneficiaries.push(beneficiary);
+      employees.push(employee);
     }
     
-    const createdBeneficiaries = await Beneficiary.insertMany(beneficiaries);
-    console.log(`Created ${createdBeneficiaries.length} beneficiaries`);
+    const createdEmployees = await Employee.insertMany(employees);
+    console.log(`Created ${createdEmployees.length} employees`);
 
     // Create 50 feeding records
     const feedingRecords = [];
@@ -71,13 +72,13 @@ db.once('open', async () => {
     }
     
     for (let i = 1; i <= 50; i++) {
-      const randomBeneficiary = createdBeneficiaries[Math.floor(Math.random() * createdBeneficiaries.length)];
+      const randomEmployee = createdEmployees[Math.floor(Math.random() * createdEmployees.length)];
       const randomDate = dates[Math.floor(Math.random() * dates.length)];
       const dateString = randomDate.toISOString().split('T')[0];
       
       const feedingRecord = {
-        uniqueId: randomBeneficiary.uniqueId,
-        beneficiary: randomBeneficiary._id,
+        uniqueId: randomEmployee.uniqueId,
+        employee: randomEmployee._id,
         date: dateString,
         fedAt: randomDate,
         method: Math.random() > 0.5 ? 'scan' : 'manual',

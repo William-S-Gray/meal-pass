@@ -13,6 +13,8 @@ import { QrCode, Camera, CameraOff, Loader2, User, Calendar, AlertTriangle, Chec
 import QrScanner from 'qr-scanner';
 import { format, parseISO, isBefore } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
+import { useToast } from "@/hooks/use-toast";
+import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
 
 // Add the EmployeeIDCard component inline to avoid import issues
 const EmployeeIDCard: React.FC<{ employee: Employee; businessName?: string }> = ({ 
@@ -31,9 +33,17 @@ const EmployeeIDCard: React.FC<{ employee: Employee; businessName?: string }> = 
         {/* Left Side - Employee Info */}
         <div className="flex-1 pr-2">
           <div className="mb-2">
-            <h3 className="font-bold text-sm truncate">{employee.name}</h3>
+            <h3 className="font-bold text-sm truncate">{capitalizeName(employee.name)}</h3>
             <p className="text-xs text-gray-600">{employee.uniqueId}</p>
           </div>
+          
+          {employee.gender && (
+            <div className="mb-1">
+              <p className="text-xs">
+                <span className="font-semibold">Gender:</span> {employee.gender}
+              </p>
+            </div>
+          )}
           
           {employee.department && (
             <div className="mb-1">
@@ -42,7 +52,7 @@ const EmployeeIDCard: React.FC<{ employee: Employee; businessName?: string }> = 
               </p>
             </div>
           )}
-          
+
           {employee.position && (
             <div className="mb-1">
               <p className="text-xs">
@@ -86,6 +96,9 @@ export default function QRScanner() {
   const { isConnected } = useWebSocket();
   const [scanning, setScanning] = useState(false);
   const [manualInput, setManualInput] = useState('');
+  const [bulkInput, setBulkInput] = useState('');
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [bulkResults, setBulkResults] = useState<Array<{id: string, status: string, message: string, employee?: Employee}>>([]);
   const [loading, setLoading] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [scanResult, setScanResult] = useState<{
@@ -99,6 +112,11 @@ export default function QRScanner() {
 
   // Cleanup scanner on unmount
   useEffect(() => {
+    // Initialize video element to be hidden
+    if (videoRef.current) {
+      videoRef.current.style.display = 'none';
+    }
+    
     return () => {
       if (qrScannerRef.current) {
         qrScannerRef.current.stop();
@@ -113,9 +131,23 @@ export default function QRScanner() {
     try {
       setScanning(true);
       
+      // Check for camera permissions first
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop()); // Stop the stream immediately
+      
+      // Ensure the video element is properly set up
+      if (videoRef.current) {
+        videoRef.current.style.display = 'block';
+      }
+      
+      // Destroy any existing scanner instance
+      if (qrScannerRef.current) {
+        qrScannerRef.current.destroy();
+      }
+      
       // Initialize QR scanner
       qrScannerRef.current = new QrScanner(
-        videoRef.current,
+        videoRef.current!,
         (result) => {
           handleScan(result.data);
         },
@@ -131,7 +163,7 @@ export default function QRScanner() {
       console.error('Failed to start camera:', error);
       toast({
         title: 'Camera Error',
-        description: 'Failed to access camera. Please check permissions.',
+        description: error instanceof Error ? error.message : 'Failed to access camera. Please check permissions.',
         variant: 'destructive'
       });
       setScanning(false);
@@ -145,6 +177,11 @@ export default function QRScanner() {
       qrScannerRef.current = null;
     }
     setScanning(false);
+    
+    // Hide the video element when not scanning
+    if (videoRef.current) {
+      videoRef.current.style.display = 'none';
+    }
   };
 
   const handleScan = async (uniqueId: string) => {
@@ -206,59 +243,158 @@ export default function QRScanner() {
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualInput.trim()) return;
-
-    setLoading(true);
-
-    try {
-      // First, get employee details to check validity
-      const employee = await getEmployeeByUid(manualInput.trim());
+    
+    if (isBulkMode) {
+      // Handle bulk submission
+      if (!bulkInput.trim()) return;
       
-      if (!employee) {
-        setScanResult({
-          status: 'not_found',
-          message: 'Employee not found in system'
+      setLoading(true);
+      setBulkResults([]);
+      
+      try {
+        // Split input by newlines and commas, then clean and filter
+        const employeeIds = bulkInput
+          .split(/[\n,]+/)
+          .map(id => id.trim())
+          .filter(id => id.length > 0);
+        
+        if (employeeIds.length === 0) {
+          toast({
+            title: 'Error',
+            description: 'No valid employee IDs found',
+            variant: 'destructive'
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // Process each employee ID
+        const results = [];
+        for (const employeeId of employeeIds) {
+          try {
+            // First, get employee details to check validity
+            const employee = await getEmployeeByUid(employeeId);
+            
+            if (!employee) {
+              results.push({
+                id: employeeId,
+                status: 'not_found',
+                message: 'Employee not found in system'
+              });
+              continue;
+            }
+            
+            // Check if employee is expired
+            const currentDate = new Date();
+            const validUntilDate = parseISO(employee.validUntil);
+            
+            if (isBefore(validUntilDate, currentDate)) {
+              results.push({
+                id: employeeId,
+                status: 'expired',
+                message: 'Employee meal access expired',
+                employee
+              });
+              continue;
+            }
+            
+            // If employee is valid, proceed with manual entry
+            const deviceId = user?.fullName || 'Manual Entry';
+            const result = await scanQRCode(employeeId, deviceId, 'manual');
+            
+            results.push({
+              id: employeeId,
+              status: result.status,
+              message: result.message,
+              employee
+            });
+          } catch (error) {
+            console.error(`Error processing employee ${employeeId}:`, error);
+            results.push({
+              id: employeeId,
+              status: 'error',
+              message: error instanceof Error ? error.message : 'Failed to process employee'
+            });
+          }
+        }
+        
+        setBulkResults(results);
+        
+        // Show summary toast
+        const successCount = results.filter(r => r.status === 'success').length;
+        const errorCount = results.length - successCount;
+        
+        toast({
+          title: 'Bulk Processing Complete',
+          description: `Successfully processed: ${successCount}, Errors: ${errorCount}`,
+          variant: successCount > 0 ? 'default' : 'destructive'
         });
-        setShowResult(true);
+      } catch (error) {
+        console.error('Bulk entry error:', error);
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to process bulk entry',
+          variant: 'destructive'
+        });
+      } finally {
         setLoading(false);
-        return;
       }
-
-      // Check if employee is expired
-      const currentDate = new Date();
-      const validUntilDate = parseISO(employee.validUntil);
+    } else {
+      // Handle single submission
+      if (!manualInput.trim()) return;
       
-      if (isBefore(validUntilDate, currentDate)) {
+      setLoading(true);
+      
+      try {
+        // First, get employee details to check validity
+        const employee = await getEmployeeByUid(manualInput.trim());
+        
+        if (!employee) {
+          setScanResult({
+            status: 'not_found',
+            message: 'Employee not found in system'
+          });
+          setShowResult(true);
+          setLoading(false);
+          return;
+        }
+        
+        // Check if employee is expired
+        const currentDate = new Date();
+        const validUntilDate = parseISO(employee.validUntil);
+        
+        if (isBefore(validUntilDate, currentDate)) {
+          setScanResult({
+            status: 'expired',
+            message: 'Employee meal access expired',
+            employee
+          });
+          setShowResult(true);
+          setLoading(false);
+          return;
+        }
+        
+        // If employee is valid, proceed with manual entry
+        const deviceId = user?.fullName || 'Manual Entry';
+        const result = await scanQRCode(manualInput.trim(), deviceId, 'manual');
+        
         setScanResult({
-          status: 'expired',
-          message: 'Employee meal access expired',
+          status: result.status,
+          message: result.message,
           employee
         });
         setShowResult(true);
+        setManualInput('');
+      } catch (error) {
+        console.error('Manual entry error:', error);
+        setScanResult({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Failed to process manual entry'
+        });
+        setShowResult(true);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      // If employee is valid, proceed with manual entry
-      const deviceId = user?.fullName || 'Manual Entry';
-      const result = await scanQRCode(manualInput.trim(), deviceId, 'manual');
-      
-      setScanResult({
-        status: result.status,
-        message: result.message,
-        employee
-      });
-      setShowResult(true);
-      setManualInput('');
-    } catch (error) {
-      console.error('Manual entry error:', error);
-      setScanResult({
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to process manual entry'
-      });
-      setShowResult(true);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -355,25 +491,106 @@ export default function QRScanner() {
               <CardDescription>Enter employee ID manually if scanning is not possible</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleManualSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="employee-id">Employee ID</Label>
-                  <Input
-                    id="employee-id"
-                    value={manualInput}
-                    onChange={(e) => setManualInput(e.target.value)}
-                    placeholder="Enter employee unique ID"
-                    disabled={loading}
-                  />
-                </div>
-                <Button type="submit" className="w-full gap-2" disabled={loading || !manualInput.trim()}>
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <User className="h-4 w-4" />
-                  )}
-                  Mark as Fed
+              {/* Toggle between single and bulk mode */}
+              <div className="flex mb-4">
+                <Button
+                  variant={!isBulkMode ? "default" : "outline"}
+                  onClick={() => setIsBulkMode(false)}
+                  className="rounded-r-none"
+                >
+                  Single Entry
                 </Button>
+                <Button
+                  variant={isBulkMode ? "default" : "outline"}
+                  onClick={() => setIsBulkMode(true)}
+                  className="rounded-l-none"
+                >
+                  Bulk Entry
+                </Button>
+              </div>
+              
+              <form onSubmit={handleManualSubmit} className="space-y-4">
+                {!isBulkMode ? (
+                  // Single entry mode
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="employee-id">Employee ID</Label>
+                      <Input
+                        id="employee-id"
+                        value={manualInput}
+                        onChange={(e) => setManualInput(e.target.value)}
+                        placeholder="Enter employee unique ID"
+                        disabled={loading}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full gap-2" disabled={loading || !manualInput.trim()}>
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <User className="h-4 w-4" />
+                      )}
+                      Mark as Fed
+                    </Button>
+                  </>
+                ) : (
+                  // Bulk entry mode
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="bulk-ids">Employee IDs (one per line or comma separated)</Label>
+                      <textarea
+                        id="bulk-ids"
+                        value={bulkInput}
+                        onChange={(e) => setBulkInput(e.target.value)}
+                        placeholder="Enter employee IDs, one per line or separated by commas&#10;Example:&#10;EMP001&#10;EMP002&#10;EMP003&#10;&#10;Or: EMP001, EMP002, EMP003"
+                        disabled={loading}
+                        className="w-full min-h-[120px] p-3 border border-input rounded-md bg-background text-foreground"
+                      />
+                    </div>
+                    <Button type="submit" className="w-full gap-2" disabled={loading || !bulkInput.trim()}>
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <User className="h-4 w-4" />
+                      )}
+                      Mark All as Fed
+                    </Button>
+                    
+                    {/* Bulk results display */}
+                    {bulkResults.length > 0 && (
+                      <div className="mt-4">
+                        <h3 className="font-medium mb-2">Results:</h3>
+                        <div className="max-h-60 overflow-y-auto border rounded-md">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted">
+                              <tr>
+                                <th className="text-left p-2">ID</th>
+                                <th className="text-left p-2">Status</th>
+                                <th className="text-left p-2">Message</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bulkResults.map((result, index) => (
+                                <tr key={index} className={index % 2 === 0 ? 'bg-muted/50' : ''}>
+                                  <td className="p-2 font-mono">{result.id}</td>
+                                  <td className="p-2">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                                      result.status === 'success' ? 'bg-green-100 text-green-800' :
+                                      result.status === 'already_fed' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-red-100 text-red-800'
+                                    }`}>
+                                      {result.status}
+                                    </span>
+                                  </td>
+                                  <td className="p-2">{result.message}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </form>
             </CardContent>
           </Card>

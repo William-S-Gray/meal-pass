@@ -1,30 +1,30 @@
 /**
- * Generates a printable card sheet for beneficiaries
- * @param {Array} beneficiaries - Array of beneficiary objects with name, uniqueId, and qrCodeUrl
+ * Generates a printable card sheet for employees
+ * @param {Array} employees - Array of employee objects with name, uniqueId, and qrCodeUrl
  * @param {string} outputPath - Path to save the generated HTML file
  */
-function generateCardSheet(beneficiaries, outputPath) {
+function generateCardSheet(employees, outputPath) {
     // Validate input
-    if (!Array.isArray(beneficiaries)) {
-        throw new Error('Beneficiaries must be an array');
+    if (!Array.isArray(employees)) {
+        throw new Error('Employees must be an array');
     }
     
-    // Create card HTML for each beneficiary
-    const cardsHtml = beneficiaries.map(beneficiary => {
+    // Create card HTML for each employee
+    const cardsHtml = employees.map(employee => {
         return `
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">${escapeHtml(beneficiary.name)}</div>
-                <div class="beneficiary-id">${escapeHtml(beneficiary.uniqueId)}</div>
+            <div class="employee-info">
+                <div class="employee-name">${escapeHtml(employee.name)}</div>
+                <div class="employee-id">${escapeHtml(employee.uniqueId)}</div>
             </div>
             
             <div class="qr-container">
-                <img src="${escapeHtml(beneficiary.qrCodeUrl)}" alt="QR Code" class="qr-code" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjYiPkNSQyBOb3QgRm91bmQ8L3RleHQ+PC9zdmc+';">
+                <img src="${escapeHtml(employee.qrCodeUrl)}" alt="QR Code" class="qr-code" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjYiPkNSQyBOb3QgRm91bmQ8L3RleHQ+PC9zdmc+';">
             </div>
         </div>
         `;
@@ -36,7 +36,7 @@ function generateCardSheet(beneficiaries, outputPath) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meal Pass Beneficiary Cards</title>
+    <title>Meal Pass Employee Cards</title>
     <link rel="stylesheet" href="./cardSheet.css">
 </head>
 <body>
@@ -65,7 +65,7 @@ function generateCardSheet(beneficiaries, outputPath) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'beneficiary-cards.html';
+        a.download = 'employee-cards.html';
         document.body.appendChild(a);
         a.click();
         
@@ -104,11 +104,11 @@ function escapeHtml(text) {
 }
 
 // Example usage:
-// const beneficiaries = [
+// const employees = [
 //     { name: "John Doe", uniqueId: "MP-001", qrCodeUrl: "https://example.com/qr1.png" },
 //     { name: "Jane Doe", uniqueId: "MP-002", qrCodeUrl: "https://example.com/qr2.png" }
 // ];
-// generateCardSheet(beneficiaries);
+// generateCardSheet(employees);
 
 // For Node.js usage:
 if (typeof module !== 'undefined' && module.exports) {

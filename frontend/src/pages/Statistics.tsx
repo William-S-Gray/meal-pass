@@ -77,7 +77,7 @@ export default function Statistics() {
   };
 
   const chartData = stats ? [
-    { name: 'Total Beneficiaries', value: stats.totalEmployees },
+    { name: 'Total Employees', value: stats.totalEmployees },
     { name: 'Fed Today', value: stats.totalFedToday },
     { name: 'Fed in Range', value: stats.totalFedInRange }
   ] : [];
@@ -173,7 +173,7 @@ export default function Statistics() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="border-2">
                 <CardHeader>
-                  <CardTitle className="text-base sm:text-lg">Total Beneficiaries</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Total Employees</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl sm:text-4xl font-bold">{stats.totalEmployees}</p>
@@ -237,7 +237,7 @@ export default function Statistics() {
                     <TrendingUp className="h-5 w-5" />
                     Fed vs Not Fed
                   </CardTitle>
-                  <CardDescription>Proportion of beneficiaries fed today</CardDescription>
+                  <CardDescription>Proportion of employees fed today</CardDescription>
                 </CardHeader>
                 <CardContent className="h-64 sm:h-80">
                   <ResponsiveContainer width="100%" height="100%">
@@ -256,7 +256,7 @@ export default function Statistics() {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => [value, 'Beneficiaries']} />
+                      <Tooltip formatter={(value) => [value, 'Employees']} />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>

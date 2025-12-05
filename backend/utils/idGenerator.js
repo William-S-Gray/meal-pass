@@ -1,22 +1,22 @@
-const Beneficiary = require('../models/Beneficiary');
+const Employee = require('../models/Employee');
 
 /**
- * Generates a unique ID in the format: BEN-{year}-{increment}
+ * Generates a unique ID in the format: EMP-{year}-{increment}
  * @returns {Promise<string>} The generated unique ID
  */
 const generateUniqueId = async () => {
   const year = new Date().getFullYear();
   
   // Find the highest increment number for this year
-  const lastBeneficiary = await Beneficiary
-    .findOne({ uniqueId: new RegExp(`^BEN-${year}-`) })
+  const lastEmployee = await Employee
+    .findOne({ uniqueId: new RegExp(`^EMP-${year}-`) })
     .sort({ uniqueId: -1 })
     .limit(1);
   
   let increment = 1;
   
-  if (lastBeneficiary) {
-    const lastIdParts = lastBeneficiary.uniqueId.split('-');
+  if (lastEmployee) {
+    const lastIdParts = lastEmployee.uniqueId.split('-');
     if (lastIdParts.length === 3) {
       increment = parseInt(lastIdParts[2]) + 1;
     }
@@ -26,10 +26,10 @@ const generateUniqueId = async () => {
   const formattedIncrement = increment.toString().padStart(4, '0');
   
   // Ensure the generated ID is unique by checking if it already exists
-  const uniqueId = `BEN-${year}-${formattedIncrement}`;
-  const existingBeneficiary = await Beneficiary.findOne({ uniqueId });
+  const uniqueId = `EMP-${year}-${formattedIncrement}`;
+  const existingEmployee = await Employee.findOne({ uniqueId });
   
-  if (existingBeneficiary) {
+  if (existingEmployee) {
     // If it exists, increment and try again
     return await generateUniqueId();
   }

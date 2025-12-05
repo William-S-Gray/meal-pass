@@ -1,23 +1,15 @@
-# Meal Pass Beneficiary Card Sheet Generator
+# Employee ID Card Templates
 
-This package provides a print-ready card sheet template for generating beneficiary ID cards for the Meal Pass Program.
+This directory contains templates for generating printable employee ID cards for the Meal Pass system.
 
-## Features
+## Files
 
-- **Print-Ready**: Designed for A4 paper with proper margins and layout
-- **Responsive Grid**: 4 cards per row, 5-6 rows per page (20-30 cards total)
-- **Card Size**: 85mm x 55mm (credit card size)
-- **High Print Quality**: Optimized for 300 DPI printing
-- **Cross-Browser Compatible**: Works in Chrome, Firefox, Safari
-- **No Backend Required**: Pure HTML/CSS/JS solution
-
-## Files Included
-
-1. `cardSheet.html` - Main HTML template
-2. `cardSheet.css` - Print-optimized styles
-3. `generateCardSheet.js` - JavaScript generator for browser use
-4. `generateCardSheetNode.js` - Node.js script for server-side generation
-5. `sample-usage.html` - Demo page with form interface
+- `EmployeeIDCard.tsx` - React component for individual employee ID cards
+- `cardSheet.html` - HTML template for printing multiple employee cards on a single sheet
+- `cardSheet.css` - CSS styling for the card sheet
+- `generateCardSheet.js` - JavaScript function to generate card sheets
+- `generateCardSheetNode.js` - Node.js script for server-side card sheet generation
+- `sample-usage.html` - Example usage of the card sheet generator
 
 ## Usage
 
@@ -28,59 +20,58 @@ This package provides a print-ready card sheet template for generating beneficia
 <script src="./generateCardSheet.js"></script>
 ```
 
-2. Call the generator function with beneficiary data:
+2. Call the generator function with employee data:
 ```javascript
-const beneficiaries = [
+const employees = [
   { name: "John Doe", uniqueId: "MP-001", qrCodeUrl: "https://example.com/qr1.png" },
   { name: "Jane Smith", uniqueId: "MP-002", qrCodeUrl: "https://example.com/qr2.png" }
 ];
 
-generateCardSheet(beneficiaries);
+generateCardSheet(employees);
 ```
 
 ### Node.js Usage
 
 Run the script directly:
 ```bash
-npm run generate-cards
+node generateCardSheetNode.js
 ```
 
-Or use it programmatically:
+Or import the function in your Node.js application:
 ```javascript
 const { generateCardSheet } = require('./generateCardSheetNode.js');
 
-const beneficiaries = [
+const employees = [
   { name: "John Doe", uniqueId: "MP-001", qrCodeUrl: "https://example.com/qr1.png" },
   { name: "Jane Smith", uniqueId: "MP-002", qrCodeUrl: "https://example.com/qr2.png" }
 ];
 
-generateCardSheet(beneficiaries, './output/cards.html');
+const htmlContent = generateCardSheet(employees);
+// Save htmlContent to a file or send as HTTP response
 ```
-
-## Printing Instructions
-
-1. Open the generated HTML file in Google Chrome
-2. Press `Ctrl+P` (or `Cmd+P` on Mac) to open Print dialog
-3. Set these options:
-   - Destination: "Save as PDF" (for digital) or your printer
-   - Layout: Portrait
-   - Paper size: A4
-   - Margins: Default
-4. Click "Save" or "Print"
 
 ## Customization
 
-You can modify the `cardSheet.css` file to customize:
-- Card dimensions
-- Colors and fonts
-- Layout (grid columns/rows)
-- Margins and spacing
+You can customize the appearance by modifying:
+- `cardSheet.css` - Change fonts, colors, layout
+- `cardSheet.html` - Modify the overall structure
+- `EmployeeIDCard.tsx` - Adjust the React component for individual cards
 
-## Requirements
+## Printing
 
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- Node.js (for server-side generation)
+The card sheet is designed to print on standard A4 paper with 4 columns and 6 rows of cards (24 cards per sheet). Each card measures 85mm x 55mm, which is the standard credit card size.
 
-## Support
+To print:
+1. Open the generated HTML file in a browser
+2. Use Ctrl+P (Cmd+P on Mac) to open the print dialog
+3. Select your printer and paper size (A4 recommended)
+4. Set margins to "None" or "Minimum"
+5. Enable "Background graphics" if available
+6. Print
 
-For issues or feature requests, please contact the development team.
+## Troubleshooting
+
+If QR codes are not displaying:
+- Check that the URLs are accessible
+- Verify that the image URLs are absolute (starting with http:// or https://)
+- The fallback SVG will display "CRC Not Found" if images fail to load

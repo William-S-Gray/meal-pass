@@ -1,62 +1,33 @@
-# Meal Pass Application - Manual Test Cases
+# Manual Test Cases
 
-## 1. Authentication
+This document outlines the manual test cases for verifying the functionality of the Meal Pass system.
 
-### TC-AUTH-001: Login Success
-**Preconditions**: Valid admin credentials exist in database
+## 1. Employee Management
+
+### TC-EMP-001: Register New Employee
+**Preconditions**: User is logged in with admin or volunteer role
 **Steps**:
-1. Navigate to login page
-2. Enter valid username and password
-3. Click "Login" button
-**Expected Result**: User is redirected to dashboard, authentication token is stored
+1. Navigate to "Register Employee" page
+2. Fill in all required fields (Full Name, Unique ID, Valid Until date)
+3. Click "Register Employee"
+**Expected Result**: Employee is created successfully, QR code is generated, success message displayed
 
-### TC-AUTH-002: Login Failure
-**Preconditions**: None
+### TC-EMP-002: Edit Employee Information
+**Preconditions**: Employee exists in database
 **Steps**:
-1. Navigate to login page
-2. Enter invalid username/password combination
-3. Click "Login" button
-**Expected Result**: Error message displayed, user remains on login page
-
-### TC-AUTH-003: Token Expiration
-**Preconditions**: User is logged in with expired token
-**Steps**:
-1. Wait for token to expire (or manually expire it)
-2. Attempt to access protected route
-**Expected Result**: Redirected to login page with session expired message
-
-### TC-AUTH-004: Protected Route Rejection
-**Preconditions**: User is not authenticated
-**Steps**:
-1. Directly navigate to protected route (e.g., /dashboard)
-**Expected Result**: Redirected to login page
-
-## 2. Beneficiaries
-
-### TC-BEN-001: Create Beneficiary
-**Preconditions**: User is authenticated as admin
-**Steps**:
-1. Navigate to "Register Beneficiary" page
-2. Fill in all required fields (name, gender, age/group)
-3. Click "Register" button
-**Expected Result**: Beneficiary is created, QR code is generated, success message displayed
-
-### TC-BEN-002: Edit Beneficiary
-**Preconditions**: Beneficiary exists in database
-**Steps**:
-1. Navigate to beneficiary list
-2. Click "Edit" on a beneficiary
+1. Navigate to employee list
+2. Click "Edit" on an employee
 3. Modify one or more fields
-4. Save changes
-**Expected Result**: Beneficiary information is updated, confirmation message displayed
+4. Click "Save Changes"
+**Expected Result**: Employee information is updated, success message displayed
 
-### TC-BEN-003: Delete Beneficiary
-**Preconditions**: Beneficiary exists in database
+### TC-EMP-003: Delete Employee
+**Preconditions**: Employee exists in database
 **Steps**:
-1. Navigate to beneficiary list
-2. Click "Delete" on a beneficiary
+1. Navigate to employee list
+2. Click "Delete" on an employee
 3. Confirm deletion
-**Expected Result**: Beneficiary is marked as inactive, removed from active lists
+**Expected Result**: Employee is marked as inactive, removed from active lists
 
 ### TC-EMP-004: Load All Employees
 **Preconditions**: Multiple employees exist in database
@@ -84,7 +55,7 @@
 3. Download QR code
 **Expected Result**: QR code is visible and downloadable, contains correct unique ID
 
-## 3. QR Code Scanning
+## 2. QR Code Scanning
 
 ### TC-QR-001: Valid Code Scanned
 **Preconditions**: Employee with valid QR code exists
@@ -100,155 +71,147 @@
 2. Scan QR code of already-fed employee
 **Expected Result**: Warning message displayed, no duplicate record created
 
-### TC-QR-003: Unknown UniqueId Scan
-**Preconditions**: QR code with non-existent unique ID
+### TC-QR-003: Invalid Code Scanned
+**Preconditions**: None
 **Steps**:
 1. Navigate to QR scanner
-2. Scan QR code with invalid unique ID
-**Expected Result**: Error message displayed, no record created
+2. Scan invalid/nonexistent QR code
+**Expected Result**: Error message displayed, no feeding record created
 
-### TC-QR-004: Scanner Offline
-**Preconditions**: Internet connection lost
+### TC-QR-004: Expired Employee Access
+**Preconditions**: Employee with expired access exists
 **Steps**:
 1. Navigate to QR scanner
-2. Attempt to scan QR code
-**Expected Result**: Offline error message, retry option provided
+2. Scan QR code of expired employee
+**Expected Result**: Error message displayed, no feeding record created
 
-### TC-QR-005: Manual Entry Fallback
-**Preconditions**: Camera not available or malfunctioning
+## 3. Manual Entry
+
+### TC-MAN-001: Valid Manual Entry
+**Preconditions**: Employee exists in database
 **Steps**:
 1. Navigate to QR scanner
 2. Switch to manual entry mode
-3. Enter valid unique ID
-4. Submit
-**Expected Result**: Same result as scanning, feeding record created
+3. Enter valid employee ID
+4. Click "Submit"
+**Expected Result**: Success message, feeding record created, employee marked as fed
 
-## 4. Feeding Records
-
-### TC-FEED-001: Create Record
-**Preconditions**: Employee exists
+### TC-MAN-002: Invalid Manual Entry
+**Preconditions**: None
 **Steps**:
-1. Scan valid QR code or use manual entry
-2. Submit feeding
-**Expected Result**: Feeding record created with correct timestamp and employee info
+1. Navigate to QR scanner
+2. Switch to manual entry mode
+3. Enter invalid/nonexistent employee ID
+4. Click "Submit"
+**Expected Result**: Error message displayed, no feeding record created
 
-### TC-FEED-002: Prevent Double Feeding
-**Preconditions**: Employee already fed today
+### TC-MAN-003: Bulk Manual Entry
+**Preconditions**: Multiple employees exist in database
 **Steps**:
-1. Attempt to feed same employee again
-**Expected Result**: Error/warning message, no duplicate record created
+1. Navigate to QR scanner
+2. Switch to manual entry mode
+3. Toggle bulk entry mode
+4. Enter multiple valid employee IDs (comma-separated)
+5. Click "Submit"
+**Expected Result**: Success message for each employee, feeding records created
 
-### TC-FEED-003: Date-Based Lookups
-**Preconditions**: Feeding records exist for multiple dates
-**Steps**:
-1. Navigate to "Fed Today" or "Feeding History" page
-2. Filter by specific date range
-**Expected Result**: Only records within date range displayed
+## 4. Reports & Statistics
 
-### TC-FEED-004: Reports Accuracy
-**Preconditions**: Multiple feeding records exist
-**Steps**:
-1. Generate daily report
-2. Compare with actual database records
-**Expected Result**: Report matches database records exactly
-
-### TC-FEED-005: Undo Feeding (if implemented)
-**Preconditions**: Employee was fed today
-**Steps**:
-1. Navigate to employee profile or feeding list
-2. Click "Undo" or "Mark as not fed"
-**Expected Result**: Feeding record removed, employee marked as not fed
-
-## 5. Reports
-
-### TC-REP-001: Daily Report
+### TC-REP-001: View Daily Reports
 **Preconditions**: Feeding records exist for today
 **Steps**:
-1. Navigate to daily report page
-**Expected Result**: All feeding records for today displayed accurately
+1. Navigate to Reports page
+2. View today's feeding records
+**Expected Result**: All today's feeding records are displayed correctly
 
-### TC-REP-002: Range Report
-**Preconditions**: Feeding records exist for multiple dates
-**Steps**:
-1. Navigate to reports page
-2. Select date range
-3. Generate report
-**Expected Result**: All feeding records within date range displayed
-
-### TC-REP-003: Statistics
-**Preconditions**: Multiple feeding records exist
-**Steps**:
-1. Navigate to statistics/dashboard page
-**Expected Result**: Charts and statistics display accurate data
-
-### TC-REP-004: Export PDF/CSV
+### TC-REP-002: Export Reports to CSV
 **Preconditions**: Feeding records exist
 **Steps**:
-1. Navigate to report page
-2. Click "Export PDF" or "Export CSV"
-**Expected Result**: File downloads with correct data in proper format
+1. Navigate to Reports page
+2. Apply any filters if desired
+3. Click "Export to CSV"
+**Expected Result**: CSV file is downloaded containing filtered data
 
-## 6. Bulk Printing
-
-### TC-PRINT-001: 20–30 Card Sheet Template
-**Preconditions**: Multiple employees exist
+### TC-STAT-001: View Statistics Dashboard
+**Preconditions**: Feeding records exist
 **Steps**:
-1. Navigate to bulk print page
-2. Select multiple employees
-3. Generate print sheet
-**Expected Result**: A4 sheet with 20-30 cards properly formatted
+1. Navigate to Statistics page (admin only)
+2. View dashboard metrics
+**Expected Result**: All statistics are calculated and displayed correctly
 
-### TC-PRINT-002: Print Resolution Tests
-**Preconditions**: Print template generated
+### TC-STAT-002: Filter Statistics by Date Range
+**Preconditions**: Feeding records exist across multiple dates
 **Steps**:
-1. Print generated template
-2. Check print quality
-**Expected Result**: Text and QR codes清晰可读, no blurriness
+1. Navigate to Statistics page
+2. Select date range
+3. Click "Apply Filter"
+**Expected Result**: Statistics are recalculated for selected date range
 
-### TC-PRINT-003: Alignment Tests
-**Preconditions**: Print template generated
-**Steps**:
-1. Print generated template
-2. Check card alignment on page
-**Expected Result**: Cards aligned properly with consistent margins
+## 5. Printing
 
-### TC-PRINT-004: Single Card Export
+### TC-PRN-001: Print Single Employee Card
 **Preconditions**: Employee exists
 **Steps**:
 1. Navigate to employee profile
 2. Click "Print Card"
-**Expected Result**: Single card template generated with correct employee info
+**Expected Result**: PDF download starts with correctly formatted employee card
 
-## 7. UI Tests
-
-### TC-UI-001: Navigation
-**Preconditions**: User is logged in
-**Steps**:
-1. Use all navigation elements (sidebar, top menu, breadcrumbs)
-**Expected Result**: All navigation works correctly, pages load without errors
-
-### TC-UI-002: Pagination
-**Preconditions**: More than 10 employees exist
-**Steps**:
-1. Navigate to employees list
-2. Use pagination controls
-**Expected Result**: Correct items displayed per page, pagination controls work
-
-### TC-UI-003: Search & Filtering
+### TC-PRN-002: Print Multiple Employee Cards
 **Preconditions**: Multiple employees exist
 **Steps**:
-1. Use search bar to find employee
-2. Use filters (department, position, etc.)
-**Expected Result**: Search/filter results are accurate and update in real-time
+1. Navigate to employee list
+2. Select multiple employees
+3. Click "Print Selected Cards"
+**Expected Result**: PDF download starts with correctly formatted employee cards for selected employees
 
-### TC-UI-004: Toast/Alerts
-**Preconditions**: Various actions that trigger messages
-**Steps**:
-1. Perform actions that should trigger messages (success, error, warning)
-**Expected Result**: Appropriate toast/alert messages displayed with correct content
+## 6. Navigation & UI
 
-### TC-UI-005: Loading States
-**Preconditions**: Slow network connection or large data sets
+### TC-UI-001: Responsive Design
+**Preconditions**: None
 **Steps**:
-1. Perform actions that require API calls
-**Expected Result**: Loading spinners or placeholders displayed during data fetch
+1. Access application on desktop browser
+2. Access application on mobile device
+3. Access application on tablet
+**Expected Result**: Application is usable and properly formatted on all device sizes
+
+### TC-UI-002: Role-Based Access Control
+**Preconditions**: Users exist with different roles (admin, volunteer, reporter)
+**Steps**:
+1. Log in as admin
+2. Navigate to restricted pages
+3. Log in as volunteer
+4. Attempt to access admin-only pages
+5. Log in as reporter
+6. Attempt to access admin/volunteer pages
+**Expected Result**: Users can only access pages appropriate to their role
+
+### TC-UI-003: Session Management
+**Preconditions**: User is logged in
+**Steps**:
+1. Leave application idle for extended period
+2. Attempt to perform action
+**Expected Result**: User is redirected to login page due to session timeout
+
+## 7. Authentication
+
+### TC-AUTH-001: Successful Login
+**Preconditions**: Valid admin credentials exist
+**Steps**:
+1. Navigate to login page
+2. Enter valid credentials
+3. Click "Login"
+**Expected Result**: User is redirected to dashboard, session established
+
+### TC-AUTH-002: Failed Login
+**Preconditions**: None
+**Steps**:
+1. Navigate to login page
+2. Enter invalid credentials
+3. Click "Login"
+**Expected Result**: Error message displayed, login not successful
+
+### TC-AUTH-003: Logout
+**Preconditions**: User is logged in
+**Steps**:
+1. Click "Logout" button
+**Expected Result**: User is redirected to login page, session destroyed

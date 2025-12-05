@@ -2,12 +2,12 @@ describe('Card Printing', () => {
   beforeEach(() => {
     // Login as admin before each test
     cy.loginAsAdmin();
-    cy.visit('/beneficiaries');
+    cy.visit('/employees');
   });
 
-  it('should print a single beneficiary card', () => {
-    // Find the first beneficiary in the list and click print
-    cy.get('[data-testid="beneficiary-row"]').first().within(() => {
+  it('should print a single employee card', () => {
+    // Find the first employee in the list and click print
+    cy.get('[data-testid="employee-row"]').first().within(() => {
       cy.get('[data-testid="print-button"]').click();
     });
     
@@ -21,8 +21,8 @@ describe('Card Printing', () => {
     cy.get('[data-testid="success-message"]').should('be.visible');
   });
 
-  it('should bulk print beneficiary cards', () => {
-    // Select multiple beneficiaries
+  it('should bulk print employee cards', () => {
+    // Select multiple employees
     cy.get('[data-testid="select-all-checkbox"]').click();
     
     // Click bulk print button

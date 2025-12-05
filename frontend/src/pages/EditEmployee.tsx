@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { ChevronLeft, Loader2, Calendar } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Define error type for better type safety
 interface ApiError extends Error {
@@ -21,14 +22,15 @@ interface ApiError extends Error {
 }
 
 export default function EditEmployee() {
-  const { uid } = useParams<{ uid: string }>();
+  const { toast } = useToast();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [employee, setEmployee] = useState<Employee | null>(null);
-
   const [formData, setFormData] = useState({
     name: '',
+    gender: 'Male' as 'Male' | 'Female' | 'Other',
     phone: '',
     department: '',
     position: '',
@@ -36,18 +38,32 @@ export default function EditEmployee() {
   });
 
   useEffect(() => {
-    if (uid) {
-      loadEmployee(uid);
+    if (id) {
+      loadEmployee(id);
     }
-  }, [uid]);
+  }, [id]);
 
-  const loadEmployee = async (uid: string) => {
+  useEffect(() => {
+    if (employee) {
+      setFormData({
+        name: employee.name,
+        gender: employee.gender,
+        phone: employee.phone || '',
+        department: employee.department || '',
+        position: employee.position || '',
+        validUntil: employee.validUntil
+      });
+    }
+  }, [employee]);
+
+  const loadEmployee = async (id: string) => {
     try {
-      const employeeData = await getEmployeeByUid(uid);
+      const employeeData = await getEmployeeByUid(id);
       if (employeeData) {
         setEmployee(employeeData);
         setFormData({
           name: employeeData.name,
+          gender: employeeData.gender,
           phone: employeeData.phone || '',
           department: employeeData.department || '',
           position: employeeData.position || '',
@@ -151,16 +167,36 @@ export default function EditEmployee() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="John Doe"
-                  required
-                  disabled={updating}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="John Doe"
+                    required
+                    disabled={updating}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gender *</Label>
+                  <Select 
+                    value={formData.gender} 
+                    onValueChange={(value) => setFormData({ ...formData, gender: value as 'Male' | 'Female' | 'Other' })}
+                    disabled={updating}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

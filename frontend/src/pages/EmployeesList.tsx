@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getEmployees, deleteEmployee, Employee } from '@/lib/api';
+import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -219,7 +220,7 @@ export default function EmployeesList() {
                         <CardHeader className="pb-2">
                           <div className="flex justify-between items-start">
                             <div>
-                              <CardTitle className="text-lg">{employee.name}</CardTitle>
+                              <CardTitle className="text-lg">{capitalizeName(employee.name)}</CardTitle>
                               <CardDescription className="font-mono">{employee.uniqueId}</CardDescription>
                             </div>
                             <Badge variant={isExpired ? "destructive" : "default"}>
@@ -229,13 +230,27 @@ export default function EmployeesList() {
                         </CardHeader>
                         <CardContent className="pt-2">
                           <div className="space-y-2 text-sm">
+                            {employee.phone && (
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Phone:</span>
+                                <span>{employee.phone}</span>
+                              </div>
+                            )}
+                            
+                            {employee.gender && (
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Gender:</span>
+                                <span>{employee.gender}</span>
+                              </div>
+                            )}
+                            
                             {employee.department && (
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">Department:</span>
                                 <span>{employee.department}</span>
                               </div>
                             )}
-                            
+
                             {employee.position && (
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">Position:</span>

@@ -13,7 +13,7 @@ import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 // Define the stats type
 interface DashboardStats {
-  totalBeneficiaries: number;
+  totalEmployees: number;
   fedToday: number;
 }
 
@@ -50,7 +50,7 @@ const DashboardComponent = () => {
   const { user, logout, isAdmin, isVolunteer } = useAuth();
   const { socket, isConnected } = useWebSocket();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats>({ totalBeneficiaries: 0, fedToday: 0 });
+  const [stats, setStats] = useState<DashboardStats>({ totalEmployees: 0, fedToday: 0 });
   const [notFedToday, setNotFedToday] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -58,8 +58,8 @@ const DashboardComponent = () => {
     try {
       const data = await getStats();
       setStats({
-        totalBeneficiaries: data.totalEmployees || 0,
-        fedToday: data.fedToday || 0
+        totalEmployees: data.totalEmployees || 0,
+        fedToday: data.totalFedToday || 0
       });
       // Calculate not fed today with proper checks
       const total = data.totalEmployees || 0;
@@ -68,7 +68,7 @@ const DashboardComponent = () => {
     } catch (error) {
       console.error('Failed to load stats:', error);
       // Set defaults on error
-      setStats({ totalBeneficiaries: 0, fedToday: 0 });
+      setStats({ totalEmployees: 0, fedToday: 0 });
       setNotFedToday(0);
     } finally {
       setLoading(false);
@@ -159,7 +159,7 @@ const DashboardComponent = () => {
               <CardDescription>Registered in system</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl sm:text-4xl font-bold">{loading ? '...' : stats.totalBeneficiaries}</p>
+              <p className="text-3xl sm:text-4xl font-bold">{loading ? '...' : stats.totalEmployees}</p>
             </CardContent>
           </Card>
 

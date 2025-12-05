@@ -1,16 +1,16 @@
-describe('Beneficiary Management', () => {
+describe('Employee Management', () => {
   beforeEach(() => {
     // Login as admin before each test
     cy.loginAsAdmin();
-    cy.visit('/beneficiaries');
+    cy.visit('/employees');
   });
 
-  it('should add a new beneficiary', () => {
-    cy.get('[data-testid="add-beneficiary-button"]').click();
+  it('should add a new employee', () => {
+    cy.get('[data-testid="add-employee-button"]').click();
     
     cy.get('[data-testid="name-input"]').type('John Doe');
     cy.get('[data-testid="gender-select"]').select('male');
-    cy.get('[data-testid="age-input"]').type('30');
+    cy.get('[data-testid="valid-until-input"]').type('2026-12-31');
     
     cy.get('[data-testid="register-button"]').click();
     
@@ -18,9 +18,9 @@ describe('Beneficiary Management', () => {
     cy.contains('John Doe').should('be.visible');
   });
 
-  it('should edit an existing beneficiary', () => {
-    // Find the first beneficiary in the list and click edit
-    cy.get('[data-testid="beneficiary-row"]').first().within(() => {
+  it('should edit an existing employee', () => {
+    // Find the first employee in the list and click edit
+    cy.get('[data-testid="employee-row"]').first().within(() => {
       cy.get('[data-testid="edit-button"]').click();
     });
     
@@ -31,9 +31,9 @@ describe('Beneficiary Management', () => {
     cy.contains('Jane Smith').should('be.visible');
   });
 
-  it('should delete a beneficiary', () => {
-    // Find the first beneficiary in the list and click delete
-    cy.get('[data-testid="beneficiary-row"]').first().within(() => {
+  it('should delete an employee', () => {
+    // Find the first employee in the list and click delete
+    cy.get('[data-testid="employee-row"]').first().within(() => {
       cy.get('[data-testid="delete-button"]').click();
     });
     

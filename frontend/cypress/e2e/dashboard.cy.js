@@ -7,20 +7,20 @@ describe('Dashboard Flow', () => {
 
   it('should display dashboard metrics correctly', () => {
     // Verify all dashboard metrics are present
-    cy.get('[data-testid="total-beneficiaries"]').should('be.visible');
+    cy.get('[data-testid="total-employees"]').should('be.visible');
     cy.get('[data-testid="total-fed-today"]').should('be.visible');
     cy.get('[data-testid="total-not-fed-today"]').should('be.visible');
     cy.get('[data-testid="monthly-feeding-graph"]').should('be.visible');
     
     // Verify quick action buttons
-    cy.get('[data-testid="add-beneficiary-button"]').should('be.visible');
+    cy.get('[data-testid="add-employee-button"]').should('be.visible');
     cy.get('[data-testid="print-bulk-cards-button"]').should('be.visible');
     cy.get('[data-testid="view-reports-button"]').should('be.visible');
   });
 
-  it('should navigate to beneficiary list from quick actions', () => {
-    cy.get('[data-testid="view-beneficiaries-button"]').click();
-    cy.url().should('include', '/beneficiaries');
+  it('should navigate to employee list from quick actions', () => {
+    cy.get('[data-testid="view-employees-button"]').click();
+    cy.url().should('include', '/employees');
   });
 
   it('should navigate to reports from quick actions', () => {

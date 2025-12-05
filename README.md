@@ -73,7 +73,7 @@ frontend/
 - Register employees with:
   - Full name
   - Position/Department
-  - **Household Identifier → now called: Unique Employee Code**
+  - **Unique Employee Code**
   - Validity period (start & end date)
   - ID photo upload
 - Automatic:
@@ -131,32 +131,37 @@ frontend/
 ```bash
 git clone <repository-url>
 cd meal-pass
-2. Install Backend
-bash
-Copy code
+```
+
+#### 2. Install Backend
+```bash
 cd backend
 npm install
-3. Install Frontend
-bash
-Copy code
+```
+
+#### 3. Install Frontend
+```bash
 cd ../frontend
 npm install
-4. Environment Variables
-🖥️ Backend .env
-ini
-Copy code
+```
+
+#### 4. Environment Variables
+
+**Backend .env**
+```ini
 PORT=5000
 MONGODB_URI=your_mongo_url_here
 JWT_SECRET=your_secure_secret_here
 JWT_EXPIRE=30d
 ENABLE_AUTH=true
+```
 
-<<<<<<< HEAD
-# Frontend (.env)
+**Frontend (.env)**
+```ini
 VITE_API_URL=http://localhost:5000
 ```
 
-5. **Start the development servers:**
+#### 5. **Start the development servers:**
 ```bash
 # Terminal 1 - Backend
 cd backend
@@ -198,283 +203,168 @@ npm run dev
 
 - Input validation and sanitization
 - JWT authentication with expiration
+- Role-based access control (Admin, Volunteer, Reporter)
 - Password hashing with bcrypt
 - CORS protection
 - Rate limiting
-- Helmet.js security headers
-- MongoDB injection prevention
-
-## 📈 Performance Optimizations
-
-- Database indexing for faster queries
-- Pagination for large datasets
-- Caching strategies
-- Lazy loading components
-- Code splitting
-- Image optimization
-
-## 🛠️ Development Guidelines
-
-### Coding Standards
-- TypeScript for type safety
-- ESLint and Prettier for code formatting
-- Consistent naming conventions
-- Modular, reusable components
-- Comprehensive error handling
-
-### Git Workflow
-- Feature branching
-- Pull requests with code review
-- Semantic commit messages
-- Automated testing
-
-### Testing
-- Unit tests with Jest
-- Integration tests
-- End-to-end tests with Cypress
+- Secure HTTP headers
 
 ## 🎨 UI/UX Features
 
-- Responsive design
-- Dark/light mode support
-- Real-time notifications
-- Intuitive navigation
-- Accessible components
-- Loading states and skeletons
-
-## 📤 Deployment
-
-### Production Build
-```bash
-=======
-# Deployment
-FRONTEND_URL=https://your-frontend.onrender.com
-BASE_URL=https://your-backend.onrender.com
-🌐 Frontend .env
-ini
-Copy code
-VITE_API_URL=https://your-backend.onrender.com
-🎬 Start Development
-bash
-Copy code
->>>>>>> 25b2993b7bc691625ef018f2a1ef11a8207140c1
-# Backend
-cd backend
-npm run dev
-
-# Frontend
-cd frontend
-npm run dev
-📡 API Routes Summary
-🔐 Authentication
-Method	Route	Description
-POST	/api/auth/login	Employee/admin login
-
-👤 Employees
-Method	Route	Description
-GET	/api/employees	All employees (paginated)
-POST	/api/employees	Register employee
-PUT	/api/employees/:id	Update employee
-DELETE	/api/employees/:id	Remove employee
-GET	/api/employees/:id/qrcode	Download QR/Barcode
-GET	/api/employees/uid/:uid	Search by Unique Employee Code
-
-🍽️ Feeding
-Method	Route	Description
-POST	/api/feeding/scan	Scan for feeding
-GET	/api/feeding/today	Today's feeding
-GET	/api/feeding/employee/:uid	History
-DELETE	/api/feeding/record/:uid	Remove feed record
-
-🔒 Security
-QR/Barcode secured with encrypted UID
-
-JWT authentication with expiration
-
-Role-based access
-
-Request validation
-
-MongoDB injection prevention
-
-Helmet security headers
-
-Rate limiting
-
-🛠️ Technologies & Tools
-Category	Tools
-Backend	Node.js, Express.js, MongoDB
-Frontend	React, Vite, Tailwind, ShadCN UI
-Auth	JWT, bcrypt
-Scanning	HTML5 camera APIs, QR/Barcode generation
-Reports	Dynamic charts, CSV/PDF exports
-
-📤 Deployment (Render)
-Backend → Web Service
-Frontend → Static Site
-
-👉 Follow configurations as previously documented:
-
-Build commands
-
-<<<<<<< HEAD
-For support, please open an issue on the GitHub repository or contact the development team.
-
-# Meal Tracking System for Africa Accommodation Providers
-
-This is a comprehensive meal tracking system designed for Africa Accommodation Providers to manage employee meals using QR/Barcode scanning technology.
-
-## Features
-
-- Employee registration with unique identifiers
-- QR code generation for each employee
-- Expiration date validation for employee access
-- Mobile-responsive QR scanner for meal distribution
-- Printable employee ID cards
-- Real-time feeding status tracking
-- Comprehensive reporting and analytics
-
-## System Requirements
-
-### Employee Registration
-
-During employee registration, administrators must fill in the following information:
-
-- Full Name
-- Unique Identifier
-- Validity Period (validUntil date)
-- Optional fields:
-  - Phone Number
-  - Department
-  - Position
-  - Photo
-
-### Validation Rules
-
-- The system validates the validity period before allowing any employee to be fed
-- Expired employees are blocked with an alert message: "Employee meal access expired"
-- Duplicate unique identifiers are prevented during registration
-
-### ID Card Generation
-
-Generated employee ID cards include:
-
-- Business Name: Africa Accommodation Providers
-- Employee Name
-- Unique Identifier
-- Validity Date
-- QR Code (representing the Unique Identifier)
-
-ID cards are printable in ID card format (300px width).
-
-### QR/Barcode Scanner
-
-The scanner works on:
-
-- Mobile devices
-- Dedicated barcode scanners
-- Manual entry option
-
-### User Interface
-
-- Login Page shows business header: "Africa Accommodation Providers - Meal Track System"
-- Dashboard displays: "Africa Accommodation Providers" and logged-in user name
-
-## Technical Architecture
-
-### Backend
-
-- Node.js + Express
-- MongoDB with Mongoose
-- RESTful API design
-- JWT-based authentication
-- QR code generation with qrcode library
-- PDF generation for ID cards
-
-### Frontend
-
-- React with TypeScript
-- Tailwind CSS for styling
-- shadcn/ui components
 - Responsive design for all device sizes
-- QR scanner library for barcode scanning
+- Dark/light mode support
+- Real-time updates with WebSocket
+- Toast notifications
+- Loading states and skeleton screens
+- Accessible UI components
+- Keyboard navigation support
 
-### Database Collections
+## 📱 Mobile Features
 
-- `employees` - Employee records with validity dates
-- `feedingrecords` - Meal feeding logs
-- `admins` - System administrator accounts
+- Camera-based QR scanning
+- Manual entry fallback
+- Offline capability for basic operations
+- Touch-friendly interface
+- Fast loading times
 
-### API Endpoints
+## 🖨️ Printing Features
 
-#### Employee Management
-- `POST /api/employees` - Register new employee
-- `GET /api/employees` - List all employees
-- `GET /api/employees/:id` - Get employee by ID
-- `GET /api/employees/uid/:uid` - Get employee by unique ID
-- `PUT /api/employees/:id` - Update employee
-- `DELETE /api/employees/:id` - Delete employee
-- `GET /api/employees/:id/qrcode` - Download employee QR code
-- `GET /api/employees/:id/qrcode/dataurl` - Get QR code as DataURL
+- Individual employee card printing
+- Bulk card printing (up to 40 cards per sheet)
+- QR code download
+- Standard ID card size (85mm x 55mm)
+- Printable in both portrait and landscape orientations
 
-#### Feeding Management
-- `POST /api/feeding/scan` - Record employee meal
-- `GET /api/feeding/today` - Get today's feeding records
-- `GET /api/feeding/employee/:uniqueId` - Get feeding records for employee
-- `DELETE /api/feeding/record/:uniqueId` - Remove today's feeding record
+## 📈 Analytics & Reporting
 
-#### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
+- Real-time dashboard
+- Daily/weekly/monthly statistics
+- Employee feeding history
+- Export to CSV/PDF
+- Visual charts and graphs
+- Custom date range filtering
 
-#### Reporting
-- `GET /api/reports/today` - Daily report
-- `GET /api/reports/date-range` - Date range report
-- `GET /api/reports/employee/:uniqueId` - Employee-specific report
-- `GET /api/reports/statistics` - System statistics
+## 👥 User Roles
 
-## Testing
+### Admin
+- Full system access
+- Employee management
+- Report generation
+- System configuration
 
-The system includes comprehensive test suites covering:
+### Volunteer
+- Employee registration
+- QR scanning
+- Manual entry
+- Basic reporting
 
-- Validity period checking (not expired → Meal allowed)
-- Expiration blocking (expired → Meal blocked)
-- Duplicate unique identifier prevention
-- QR scan validation for valid employees
-- Printed ID card content verification
+### Reporter
+- View reports
+- Export data
+- No modification rights
 
-## Deployment
+## 🛠️ Development Features
 
-The system is containerized with Docker and can be deployed to cloud platforms like Render or Heroku.
+- Hot reloading
+- TypeScript support
+- ESLint and Prettier
+- Husky pre-commit hooks
+- Docker support
+- CI/CD ready
+- Comprehensive test suite
 
-## Contributing
+## 🐳 Docker Deployment
 
-Contributions are welcome! Please fork the repository and submit pull requests.
+### Using Docker Compose
+```bash
+docker-compose up --build
+```
 
-## License
+### Production Deployment
+```bash
+docker-compose -f docker-compose.prod.yml up --build
+```
 
-MIT License
-=======
-Publish directory (dist)
+## ☁️ Cloud Deployment
 
-CORS whitelist must include frontend URL
+### Render.com
+- Ready for one-click deployment
+- Environment variables configured
+- Automatic SSL
 
-Enable static QR/Barcode access via public directory
+### Other Platforms
+- Heroku
+- AWS
+- Google Cloud
+- Azure
 
-🎨 Branding
-Element	Name
-Organization	Africa Accommodation Providers
-System	Meal-Pass Employee Feeding System
-ID Type	Employee Meal ID
+## 🧪 Testing
 
-🤝 Contributing
-We welcome feature improvements & bug fixes.
+### Backend Tests
+```bash
+cd backend
+npm test
+```
 
-Fork → 2. Branch → 3. Commit → 4. Pull Request.
+### Frontend Tests
+```bash
+cd frontend
+npm test
+```
 
-📄 License
-MIT License — Free for personal and commercial use.
+### Test Coverage
+- Unit tests for services
+- Integration tests for controllers
+- End-to-end tests for critical flows
+- API contract testing
 
-🆘 Support
-For issues or requests, open a GitHub issue or contact the development team.
->>>>>>> 25b2993b7bc691625ef018f2a1ef11a8207140c1
+## 📚 Documentation
+
+### Code Documentation
+- JSDoc for backend functions
+- TypeScript interfaces
+- Component prop documentation
+
+### User Guides
+- Admin manual
+- Volunteer guide
+- Reporter handbook
+
+### Technical Documentation
+- API specification
+- Database schema
+- Architecture diagrams
+- Deployment guides
+
+## 🆘 Troubleshooting
+
+### Common Issues
+- Camera permissions
+- Network connectivity
+- Database connection
+- Authentication errors
+
+### Debugging Tools
+- Browser developer tools
+- MongoDB Compass
+- Postman for API testing
+- Logging utilities
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🙏 Acknowledgments
+
+- Africa Accommodation Providers for the project opportunity
+- MERN stack community
+- shadcn/ui for beautiful components
+- All contributors and testers

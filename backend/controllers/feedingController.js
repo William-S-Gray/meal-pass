@@ -23,7 +23,13 @@ const recordFeeding = async (req, res, next) => {
       logger.warn('Feeding record validation failed', { error: error.details });
       return sendValidationError(res, error);
     }
-
+    
+    // Additional validation: Check if uniqueId is provided
+    if (!value.uniqueId) {
+      logger.warn('Unique ID is required for feeding record');
+      return sendError(res, 400, 'Unique ID is required');
+    }
+    
     const result = await employeeFeedingService.recordFeeding(value);
     logger.info('Feeding recorded successfully', { uniqueId: value.uniqueId });
     sendSuccess(res, 201, result, 'Feeding recorded successfully');
@@ -85,7 +91,7 @@ const getRecordsByEmployee = async (req, res, next) => {
     const result = await employeeFeedingService.getRecordsByEmployee(uniqueId, value.page, value.limit);
     sendSuccess(res, 200, result.data, null, result.pagination);
   } catch (error) {
-    logger.error('Error in getRecordsByBeneficiary:', error);
+    logger.error('Error in getRecordsByEmployee:', error);
     sendError(res, 500, error.message);
   }
 };

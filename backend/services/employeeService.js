@@ -4,6 +4,21 @@ const { generateUniqueId } = require('../utils/helpers');
 const logger = require('../utils/logger');
 
 /**
+ * Capitalizes a name properly (First letter of each word uppercase, rest lowercase)
+ * @param {string} name - The name to capitalize
+ * @returns {string} The properly capitalized name
+ */
+function capitalizeName(name) {
+  if (!name) return '';
+  
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * Format employee response data
  * @param {Object} employee - Employee document
  * @returns {Object} Formatted employee data
@@ -12,7 +27,7 @@ const formatEmployeeResponse = (employee) => {
   return {
     _id: employee._id,
     uniqueId: employee.uniqueId,
-    name: employee.name,
+    name: capitalizeName(employee.name), // Capitalize name when formatting response
     phone: employee.phone,
     department: employee.department,
     position: employee.position,

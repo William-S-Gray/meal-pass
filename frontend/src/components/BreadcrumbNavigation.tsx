@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import React, { Fragment } from 'react';
 import { 
   Breadcrumb, 
   BreadcrumbList, 
@@ -48,9 +49,9 @@ export default function BreadcrumbNavigation({
             </BreadcrumbItem>
             
             {items.map((item, index) => (
-              <>
+              <Fragment key={index}>
                 <BreadcrumbSeparator />
-                <BreadcrumbItem key={index}>
+                <BreadcrumbItem>
                   {item.href ? (
                     <BreadcrumbLink asChild>
                       <Link to={item.href}>{item.label}</Link>
@@ -59,7 +60,7 @@ export default function BreadcrumbNavigation({
                     <BreadcrumbPage>{item.label}</BreadcrumbPage>
                   )}
                 </BreadcrumbItem>
-              </>
+              </Fragment>
             ))}
           </BreadcrumbList>
         </Breadcrumb>

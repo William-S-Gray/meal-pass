@@ -11,23 +11,23 @@ describe('QR Scanning', () => {
       // Simulate scanning a valid QR code
       cy.window().then((win) => {
         win.dispatchEvent(new CustomEvent('qr-code-scanned', {
-          detail: { uniqueId: 'BEN-2025-0001' }
+          detail: { uniqueId: 'EMP-2025-0001' }
         }));
       });
     });
     
     // Verify success message
     cy.get('[data-testid="scan-success"]').should('be.visible');
-    cy.get('[data-testid="beneficiary-name"]').should('be.visible');
+    cy.get('[data-testid="employee-name"]').should('be.visible');
   });
 
-  it('should show error for already-fed beneficiary', () => {
-    // Mock scanning an already-fed beneficiary
+  it('should show error for already-fed employee', () => {
+    // Mock scanning an already-fed employee
     cy.get('[data-testid="qr-scanner"]').then(() => {
       // Simulate scanning an already-fed QR code
       cy.window().then((win) => {
         win.dispatchEvent(new CustomEvent('qr-code-scanned', {
-          detail: { uniqueId: 'BEN-2025-0002' } // Assume this beneficiary is already fed
+          detail: { uniqueId: 'EMP-2025-0002' } // Assume this employee is already fed
         }));
       });
     });
@@ -56,7 +56,7 @@ describe('QR Scanning', () => {
     cy.get('[data-testid="manual-entry-toggle"]').click();
     
     // Enter unique ID manually
-    cy.get('[data-testid="manual-id-input"]').type('BEN-2025-0001');
+    cy.get('[data-testid="manual-id-input"]').type('EMP-2025-0001');
     cy.get('[data-testid="submit-manual-entry"]').click();
     
     // Verify success message

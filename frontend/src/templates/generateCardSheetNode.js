@@ -1,5 +1,5 @@
 /**
- * Node.js script to generate a printable card sheet for beneficiaries
+ * Node.js script to generate a printable card sheet for employees
  * This script can be run from the command line to generate HTML files
  */
 
@@ -13,32 +13,32 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Generates a printable card sheet for beneficiaries and saves it to a file
- * @param {Array} beneficiaries - Array of beneficiary objects with name, uniqueId, and qrCodeUrl
+ * Generates a printable card sheet for employees and saves it to a file
+ * @param {Array} employees - Array of employee objects with name, uniqueId, and qrCodeUrl
  * @param {string} outputPath - Path to save the generated HTML file
  */
-async function generateCardSheet(beneficiaries, outputPath) {
+async function generateCardSheet(employees, outputPath) {
     // Validate input
-    if (!Array.isArray(beneficiaries)) {
-        throw new Error('Beneficiaries must be an array');
+    if (!Array.isArray(employees)) {
+        throw new Error('Employees must be an array');
     }
     
-    // Create card HTML for each beneficiary
-    const cardsHtml = beneficiaries.map(beneficiary => {
+    // Create card HTML for each employee
+    const cardsHtml = employees.map(employee => {
         return `
-        <div class="beneficiary-card">
+        <div class="employee-card">
             <div class="card-header">
                 <div class="logo-placeholder"></div>
                 <div class="organization-name">Meal Pass Program 2025</div>
             </div>
             
-            <div class="beneficiary-info">
-                <div class="beneficiary-name">${escapeHtml(beneficiary.name)}</div>
-                <div class="beneficiary-id">${escapeHtml(beneficiary.uniqueId)}</div>
+            <div class="employee-info">
+                <div class="employee-name">${escapeHtml(employee.name)}</div>
+                <div class="employee-id">${escapeHtml(employee.uniqueId)}</div>
             </div>
             
             <div class="qr-container">
-                <img src="${escapeHtml(beneficiary.qrCodeUrl)}" alt="QR Code" class="qr-code" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjYiPkNSQyBOb3QgRm91bmQ8L3RleHQ+PC9zdmc+';">
+                <img src="${escapeHtml(employee.qrCodeUrl)}" alt="QR Code" class="qr-code" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2NjYiPkNSQyBOb3QgRm91bmQ8L3RleHQ+PC9zdmc+';">
             </div>
         </div>
         `;
@@ -56,9 +56,9 @@ async function generateCardSheet(beneficiaries, outputPath) {
             @page { size: A4; margin: 10mm; }
             body { margin: 0; font-family: Arial, sans-serif; }
             .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5mm; }
-            .beneficiary-card { width: 85mm; height: 55mm; border: 1pt solid #333; padding: 3mm; box-sizing: border-box; }
-            .beneficiary-name { font-size: 14pt; font-weight: bold; }
-            .beneficiary-id { font-size: 11pt; font-family: 'Courier New', monospace; }
+            .employee-card { width: 85mm; height: 55mm; border: 1pt solid #333; padding: 3mm; box-sizing: border-box; }
+            .employee-name { font-size: 14pt; font-weight: bold; }
+            .employee-id { font-size: 11pt; font-family: 'Courier New', monospace; }
             .qr-code { width: 25mm; height: 25mm; }
         }
         `;
@@ -70,7 +70,7 @@ async function generateCardSheet(beneficiaries, outputPath) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meal Pass Beneficiary Cards</title>
+    <title>Meal Pass Employee Cards</title>
     <style>
         ${cssContent}
     </style>
@@ -119,15 +119,15 @@ function escapeHtml(text) {
 if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`) {
     console.log('Starting card sheet generation...');
     
-    // Example beneficiaries data
-    const beneficiaries = [
+    // Example employees data
+    const employees = [
         { name: "John Doe", uniqueId: "MP-001", qrCodeUrl: "https://example.com/qr1.png" },
         { name: "Jane Smith", uniqueId: "MP-002", qrCodeUrl: "https://example.com/qr2.png" },
         { name: "Robert Johnson", uniqueId: "MP-003", qrCodeUrl: "https://example.com/qr3.png" },
-        { name: "Emily Williams", uniqueId: "MP-004", qrCodeUrl: "https://example.com/qr4.png" },
-        { name: "Michael Brown", uniqueId: "MP-005", qrCodeUrl: "https://example.com/qr5.png" },
-        { name: "Sarah Davis", uniqueId: "MP-006", qrCodeUrl: "https://example.com/qr6.png" },
-        { name: "David Miller", uniqueId: "MP-007", qrCodeUrl: "https://example.com/qr7.png" },
+        { name: "Emily Davis", uniqueId: "MP-004", qrCodeUrl: "https://example.com/qr4.png" },
+        { name: "Michael Wilson", uniqueId: "MP-005", qrCodeUrl: "https://example.com/qr5.png" },
+        { name: "Sarah Brown", uniqueId: "MP-006", qrCodeUrl: "https://example.com/qr6.png" },
+        { name: "David Taylor", uniqueId: "MP-007", qrCodeUrl: "https://example.com/qr7.png" },
         { name: "Lisa Wilson", uniqueId: "MP-008", qrCodeUrl: "https://example.com/qr8.png" },
         { name: "James Moore", uniqueId: "MP-009", qrCodeUrl: "https://example.com/qr9.png" },
         { name: "Patricia Taylor", uniqueId: "MP-010", qrCodeUrl: "https://example.com/qr10.png" }
@@ -139,7 +139,7 @@ if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`) {
     console.log(`Output path: ${outputPath}`);
     
     try {
-        await generateCardSheet(beneficiaries, outputPath);
+        await generateCardSheet(employees, outputPath);
         console.log('Card sheet generation completed successfully!');
     } catch (error) {
         console.error('Error generating card sheet:', error);

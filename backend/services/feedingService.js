@@ -1,5 +1,5 @@
 const FeedingRecord = require('../models/FeedingRecord');
-const Beneficiary = require('../models/Beneficiary');
+const Employee = require('../models/Employee');
 const logger = require('../utils/logger');
 
 /**
@@ -11,7 +11,7 @@ const formatFeedingRecordResponse = (record) => {
   return {
     id: record._id,
     uniqueId: record.uniqueId,
-    beneficiary: record.beneficiary,
+    employee: record.employee,
     date: record.date,
     fedAt: record.fedAt,
     method: record.method,
@@ -30,15 +30,15 @@ const recordFeeding = async (feedingData) => {
   try {
     logger.info('Recording feeding event', { uniqueId: feedingData.uniqueId });
     
-    // Check if beneficiary exists and is active using lean for better performance
-    const beneficiary = await Beneficiary.findOne({ 
+    // Check if employee exists and is active using lean for better performance
+    const employee = await Employee.findOne({ 
       uniqueId: feedingData.uniqueId, 
       active: true 
     }).lean();
     
-    if (!beneficiary) {
-      logger.warn('Beneficiary not found or inactive', { uniqueId: feedingData.uniqueId });
-      throw new Error('Beneficiary not found or inactive');
+    if (!employee) {
+      logger.warn('Employee not found or inactive', { uniqueId: feedingData.uniqueId });
+      throw new Error('Employee not found or inactive');
     }
     
     // Check if already fed today using lean for better performance
@@ -49,17 +49,17 @@ const recordFeeding = async (feedingData) => {
     }).lean();
     
     if (existingRecord) {
-      logger.warn('Beneficiary already fed today', { uniqueId: feedingData.uniqueId, date: today });
-      throw new Error('Beneficiary already fed today');
+      logger.warn('Employee already fed today', { uniqueId: feedingData.uniqueId, date: today });
+      throw new Error('Employee already fed today');
     }
     
     // Create feeding record
     const feedingRecord = new FeedingRecord({
       ...feedingData,
-      beneficiary: {
-        name: beneficiary.name,
-        group: beneficiary.group,
-        uniqueId: beneficiary.uniqueId
+      employee: {
+        name: employee.name,
+        group: employee.group,
+        uniqueId: employee.uniqueId
       },
       date: today,
       fedAt: new Date()
@@ -114,15 +114,15 @@ const getTodaysRecords = async (page = 1, limit = 10) => {
 };
 
 /**
- * Get feeding records for a beneficiary
- * @param {string} uniqueId - Beneficiary unique ID
+ * Get feeding records for an employee
+ * @param {string} uniqueId - Employee unique ID
  * @param {number} page - Page number
  * @param {number} limit - Items per page
  * @returns {Object} Paginated feeding records
  */
-const getRecordsByBeneficiary = async (uniqueId, page = 1, limit = 10) => {
+const getRecordsByEmployee = async (uniqueId, page = 1, limit = 10) => {
   try {
-    logger.info('Fetching feeding records for beneficiary', { uniqueId, page, limit });
+    logger.info('Fetching feeding records for employee', { uniqueId, page, limit });
     
     const records = await FeedingRecord.find({ uniqueId })
       .sort({ date: -1, fedAt: -1 })
@@ -142,17 +142,17 @@ const getRecordsByBeneficiary = async (uniqueId, page = 1, limit = 10) => {
       }
     };
     
-    logger.info('Beneficiary feeding records fetched successfully', { uniqueId, count: records.length });
+    logger.info('Employee feeding records fetched successfully', { uniqueId, count: records.length });
     return result;
   } catch (error) {
-    logger.error('Error fetching beneficiary feeding records', { uniqueId, error: error.message });
+    logger.error('Error fetching employee feeding records', { uniqueId, error: error.message });
     throw error;
   }
 };
 
 /**
- * Remove today's feeding record for a beneficiary
- * @param {string} uniqueId - Beneficiary unique ID
+ * Remove today's feeding record for an employee
+ * @param {string} uniqueId - Employee unique ID
  * @returns {boolean} Success status
  */
 const removeTodaysRecord = async (uniqueId) => {
@@ -182,6 +182,6 @@ const removeTodaysRecord = async (uniqueId) => {
 module.exports = {
   recordFeeding,
   getTodaysRecords,
-  getRecordsByBeneficiary,
+  getRecordsByEmployee,
   removeTodaysRecord
 };

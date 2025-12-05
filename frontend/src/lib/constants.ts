@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
     BY_ID: (id: string) => `/api/employees/${id}`,
     BY_UID: (uid: string) => `/api/employees/uid/${uid}`,
     QR_CODE: (id: string) => `/api/employees/${id}/qrcode`,
+    QR_CODE_BY_UID: (uid: string) => `/api/employees/uid/${uid}/qrcode`,
     PRINT_CARDS: '/api/employees/print-cards',
     PRINT_CARD: (id: string) => `/api/employees/${id}/print-card`
   },

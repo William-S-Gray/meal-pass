@@ -10,6 +10,7 @@ import {
   Employee, 
   FeedingRecord 
 } from '@/lib/api';
+import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -165,7 +166,7 @@ export default function EmployeeProfile() {
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         <BreadcrumbNavigation 
-          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }, { label: employee?.name || 'Employee Profile' }]}
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }, { label: capitalizeName(employee?.name) || 'Employee Profile' }]}
           backButtonHref="/employees"
           backButtonLabel="Back to Employees"
         />
@@ -174,7 +175,7 @@ export default function EmployeeProfile() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
-                <CardTitle className="text-2xl">{employee.name}</CardTitle>
+                <CardTitle className="text-2xl">{capitalizeName(employee.name)}</CardTitle>
                 <CardDescription className="text-lg mt-1">
                   <span className="font-mono font-semibold">{employee.uniqueId}</span>
                 </CardDescription>
@@ -226,6 +227,13 @@ export default function EmployeeProfile() {
                   <div>
                     <p className="text-sm text-muted-foreground">Phone</p>
                     <p className="text-base font-medium">{employee.phone}</p>
+                  </div>
+                )}
+                
+                {employee.gender && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Gender</p>
+                    <p className="text-base font-medium">{employee.gender}</p>
                   </div>
                 )}
                 

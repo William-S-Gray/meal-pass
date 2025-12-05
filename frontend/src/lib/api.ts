@@ -56,6 +56,7 @@ export interface Employee {
   _id: string;
   uniqueId: string;
   name: string;
+  gender: 'Male' | 'Female' | 'Other';
   phone?: string;
   department?: string;
   position?: string;
@@ -267,6 +268,7 @@ export async function createEmployee(data: Omit<Employee, '_id' | 'qrCode' | 'cr
     // Prepare form data
     const formData = new FormData();
     formData.append('name', data.name);
+    formData.append('gender', data.gender);
     if (data.uniqueId) formData.append('uniqueId', data.uniqueId);
     if (data.phone) formData.append('phone', data.phone);
     if (data.department) formData.append('department', data.department);
@@ -276,6 +278,7 @@ export async function createEmployee(data: Omit<Employee, '_id' | 'qrCode' | 'cr
     // Log the data being sent for debugging
     console.log('Sending employee data:', {
       name: data.name,
+      gender: data.gender,
       uniqueId: data.uniqueId,
       phone: data.phone,
       department: data.department,
@@ -290,6 +293,7 @@ export async function createEmployee(data: Omit<Employee, '_id' | 'qrCode' | 'cr
         _id: string; 
         uniqueId: string; 
         name: string; 
+        gender: 'Male' | 'Female' | 'Other';
         phone?: string;
         department?: string;
         position?: string;
@@ -308,6 +312,7 @@ export async function createEmployee(data: Omit<Employee, '_id' | 'qrCode' | 'cr
       _id: result._id,
       uniqueId: result.uniqueId,
       name: result.name,
+      gender: result.gender,
       phone: result.phone,
       department: result.department,
       position: result.position,
@@ -341,7 +346,7 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
       url += `&search=${encodeURIComponent(search)}`;
     }
     
-    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean }[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
+    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean }[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
     const result = response;
     
     // Map backend response to frontend interface
@@ -349,6 +354,7 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
       _id: item._id,
       uniqueId: item.uniqueId,
       name: item.name,
+      gender: item.gender,
       phone: item.phone,
       department: item.department,
       position: item.position,
@@ -371,28 +377,29 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
 
 export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
   try {
-    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/employees/uid/${uid}`);
+    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/employees/uid/${uid}`);
     
     // If employee not found, return null
     if ((response as unknown as { status: number }).status === 404) {
       return null;
     }
     
-    const result = response;
+    const result = response.data;
     
     // Map backend response to frontend interface
     return {
-      _id: result.data._id,
-      uniqueId: result.data.uniqueId,
-      name: result.data.name,
-      phone: result.data.phone,
-      department: result.data.department,
-      position: result.data.position,
-      validUntil: result.data.validUntil,
-      qrCode: result.data.qrCodeUrl.startsWith('http') ? result.data.qrCodeUrl : `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
-      createdAt: result.data.createdAt,
-      fedToday: result.data.fedToday || false,
-      active: result.data.active !== undefined ? result.data.active : true
+      _id: result._id,
+      uniqueId: result.uniqueId,
+      name: result.name,
+      gender: result.gender,
+      phone: result.phone,
+      department: result.department,
+      position: result.position,
+      validUntil: result.validUntil,
+      qrCode: result.qrCodeUrl.startsWith('http') ? result.qrCodeUrl : `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
+      createdAt: result.createdAt,
+      fedToday: result.fedToday || false,
+      active: result.active !== undefined ? result.active : true
     };
   } catch (error) {
     if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
@@ -408,26 +415,29 @@ export async function updateEmployee(id: string, data: Partial<Employee>): Promi
     const formData = new FormData();
     
     if (data.name !== undefined) formData.append('name', data.name);
+    if (data.gender !== undefined) formData.append('gender', data.gender);
     if (data.phone !== undefined) formData.append('phone', data.phone || '');
     if (data.department !== undefined) formData.append('department', data.department || '');
     if (data.position !== undefined) formData.append('position', data.position || '');
     if (data.validUntil !== undefined) formData.append('validUntil', data.validUntil);
     
-    const response = await putWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, formData);
-    const result = response;
+    const response = await putWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, formData);
+    const result = response.data;
     
     // Map backend response to frontend interface
     return {
-      _id: result.data._id,
-      uniqueId: result.data.uniqueId,
-      name: result.data.name,
-      phone: result.data.phone,
-      department: result.data.department,
-      position: result.data.position,
-      validUntil: result.data.validUntil,
-      qrCode: result.data.qrCodeUrl.startsWith('http') ? result.data.qrCodeUrl : `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`,
-      createdAt: result.data.createdAt,
-      active: result.data.active !== undefined ? result.data.active : true
+      _id: result._id,
+      uniqueId: result.uniqueId,
+      name: result.name,
+      gender: result.gender,
+      phone: result.phone,
+      department: result.department,
+      position: result.position,
+      validUntil: result.validUntil,
+      qrCode: result.qrCodeUrl.startsWith('http') ? result.qrCodeUrl : `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
+      createdAt: result.createdAt,
+      fedToday: false, // fedToday is not returned from update
+      active: result.active !== undefined ? result.active : true
     };
   } catch (error) {
     handleApiError(error);
@@ -490,7 +500,8 @@ export async function printSingleCard(employeeId: string): Promise<Blob> {
 // ============ QR CODE FUNCTIONS ============
 export async function downloadQRCode(employeeId: string, employeeUid: string): Promise<void> {
   try {
-    const response = await apiClient.get(`/api/employees/${employeeId}/qrcode`, {
+    // Use the new endpoint that accepts uniqueId instead of _id
+    const response = await apiClient.get(`/api/employees/uid/${employeeUid}/qrcode`, {
       responseType: 'blob'
     });
     

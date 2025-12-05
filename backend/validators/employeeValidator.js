@@ -7,6 +7,10 @@ const create = Joi.object({
     'string.min': 'Employee name must be at least 1 character',
     'string.max': 'Employee name must be less than 100 characters'
   }),
+  gender: Joi.string().required().valid('Male', 'Female', 'Other').messages({
+    'any.only': 'Gender must be Male, Female, or Other',
+    'any.required': 'Gender is required'
+  }),
   uniqueId: Joi.string().optional().trim().max(50).messages({
     'string.max': 'Unique ID must be less than 50 characters'
   }),
@@ -33,6 +37,9 @@ const update = Joi.object({
   name: Joi.string().optional().trim().min(1).max(100).messages({
     'string.min': 'Employee name must be at least 1 character',
     'string.max': 'Employee name must be less than 100 characters'
+  }),
+  gender: Joi.string().optional().valid('Male', 'Female', 'Other').messages({
+    'any.only': 'Gender must be Male, Female, or Other'
   }),
   phone: Joi.string().optional().trim().max(20).messages({
     'string.max': 'Phone number must be less than 20 characters'

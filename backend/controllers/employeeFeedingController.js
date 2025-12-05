@@ -92,6 +92,25 @@ const getRecordsByEmployee = async (req, res, next) => {
 };
 
 /**
+ * @desc    Get statistics for feeding dashboard
+ * @route   GET /api/feeding/stats
+ * @access  Private (Volunteer/Admin)
+ */
+const getFeedingStats = async (req, res, next) => {
+  try {
+    // Get stats from employee feeding service
+    const stats = await employeeFeedingService.getFeedingStats(
+      req.query.startDate, 
+      req.query.endDate
+    );
+    sendSuccess(res, 200, stats);
+  } catch (error) {
+    logger.error('Error in getFeedingStats:', error);
+    sendError(res, 500, error.message);
+  }
+};
+
+/**
  * @desc    Remove today's feeding record
  * @route   DELETE /api/feeding/record/:uniqueId
  * @access  Private (Volunteer/Admin)
@@ -116,5 +135,6 @@ module.exports = {
   recordFeeding,
   getTodaysRecords,
   getRecordsByEmployee,
+  getFeedingStats,
   removeTodaysRecord
 };

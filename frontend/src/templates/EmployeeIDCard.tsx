@@ -1,5 +1,6 @@
 import React from 'react';
 import { Employee } from '@/lib/api';
+import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
 import { format, parseISO } from 'date-fns';
 
 interface EmployeeIDCardProps {
@@ -23,9 +24,17 @@ const EmployeeIDCard: React.FC<EmployeeIDCardProps> = ({
         {/* Left Side - Employee Info */}
         <div className="flex-1 pr-2">
           <div className="mb-2">
-            <h3 className="font-bold text-sm truncate">{employee.name}</h3>
+            <h3 className="font-bold text-sm truncate">{capitalizeName(employee.name)}</h3>
             <p className="text-xs text-gray-600">{employee.uniqueId}</p>
           </div>
+          
+          {employee.gender && (
+            <div className="mb-1">
+              <p className="text-xs">
+                <span className="font-semibold">Gender:</span> {employee.gender}
+              </p>
+            </div>
+          )}
           
           {employee.department && (
             <div className="mb-1">
@@ -34,7 +43,7 @@ const EmployeeIDCard: React.FC<EmployeeIDCardProps> = ({
               </p>
             </div>
           )}
-          
+
           {employee.position && (
             <div className="mb-1">
               <p className="text-xs">

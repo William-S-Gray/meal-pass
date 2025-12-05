@@ -6,9 +6,10 @@ const feedingRecordSchema = new mongoose.Schema({
     required: true,
     index: true // Add index for uniqueId
   },
-  beneficiary: {
+  employee: {
     name: String,
-    group: String,
+    department: String,
+    position: String,
     uniqueId: String
   },
   date: {
@@ -44,6 +45,6 @@ feedingRecordSchema.index({ date: 1, fedAt: -1 });
 
 // Additional indexes for common queries
 feedingRecordSchema.index({ deviceId: 1, fedAt: -1 }); // For querying by device
-feedingRecordSchema.index({ 'beneficiary.uniqueId': 1, fedAt: -1 }); // For querying by beneficiary
+feedingRecordSchema.index({ 'employee.uniqueId': 1, fedAt: -1 }); // For querying by employee
 
 module.exports = mongoose.model('FeedingRecord', feedingRecordSchema);

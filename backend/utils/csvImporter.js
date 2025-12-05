@@ -2,10 +2,10 @@ const csv = require('csv-parser');
 const fs = require('fs');
 const { generateUniqueId } = require('./idGenerator');
 const { generateQRCode } = require('./generateQR');
-const Beneficiary = require('../models/Beneficiary');
+const Employee = require('../models/Employee');
 
 /**
- * Imports beneficiaries from a CSV file
+ * Imports employees from a CSV file
  * Expected CSV columns: name, gender, group
  * @param {string} filePath - Path to the CSV file
  * @returns {Promise<Object>} Import results
@@ -39,8 +39,8 @@ const importFromCSV = async (filePath) => {
               // Generate QR code
               const qrCodeUrl = await generateQRCode(uniqueId);
               
-              // Create beneficiary
-              const beneficiary = new Beneficiary({
+              // Create employee
+              const employee = new Employee({
                 name: row.name.trim(),
                 gender: row.gender.trim(),
                 group: row.group.trim(),
@@ -48,7 +48,7 @@ const importFromCSV = async (filePath) => {
                 qrCodeUrl
               });
               
-              await beneficiary.save();
+              await employee.save();
               successCount++;
             } catch (error) {
               errors.push({

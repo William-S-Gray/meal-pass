@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from "@/hooks/use-toast";
+import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
 import { ChevronLeft, Loader2, Download, Calendar } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
@@ -24,13 +25,16 @@ interface ApiError extends Error {
 }
 
 export default function RegisterEmployee() {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [createdEmployee, setCreatedEmployee] = useState<Employee | null>(null);
+  const [isRegistered, setIsRegistered] = useState(false); // New state to track registration status
 
   const [formData, setFormData] = useState({
     name: '',
+    gender: 'Male' as 'Male' | 'Female' | 'Other',
     uniqueId: '',
     phone: '',
     department: '',
@@ -41,7 +45,7 @@ export default function RegisterEmployee() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.validUntil) {
+    if (!formData.name || !formData.gender || !formData.validUntil) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
@@ -54,6 +58,7 @@ export default function RegisterEmployee() {
     try {
       const employee = await createEmployee(formData);
       setCreatedEmployee(employee);
+      setIsRegistered(true); // Set registration status to true
       setShowQRModal(true);
       toast({
         title: 'Success',
@@ -138,16 +143,36 @@ export default function RegisterEmployee() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="John Doe"
-                  required
-                  disabled={loading}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="John Doe"
+                    required
+                    disabled={loading || isRegistered} // Disable when registered
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gender *</Label>
+                  <Select 
+                    value={formData.gender} 
+                    onValueChange={(value) => setFormData({ ...formData, gender: value as 'Male' | 'Female' | 'Other' })}
+                    disabled={loading || isRegistered}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -158,7 +183,7 @@ export default function RegisterEmployee() {
                     value={formData.uniqueId}
                     onChange={(e) => setFormData({ ...formData, uniqueId: e.target.value })}
                     placeholder="EMP-001"
-                    disabled={loading}
+                    disabled={loading || isRegistered} // Disable when registered
                   />
                 </div>
                 
@@ -169,7 +194,7 @@ export default function RegisterEmployee() {
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="+1234567890"
-                    disabled={loading}
+                    disabled={loading || isRegistered} // Disable when registered
                   />
                 </div>
               </div>
@@ -182,7 +207,7 @@ export default function RegisterEmployee() {
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                     placeholder="HR, IT, Operations..."
-                    disabled={loading}
+                    disabled={loading || isRegistered} // Disable when registered
                   />
                 </div>
                 
@@ -193,7 +218,7 @@ export default function RegisterEmployee() {
                     value={formData.position}
                     onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                     placeholder="Manager, Developer, Analyst..."
-                    disabled={loading}
+                    disabled={loading || isRegistered} // Disable when registered
                   />
                 </div>
               </div>
@@ -207,7 +232,7 @@ export default function RegisterEmployee() {
                     value={formData.validUntil}
                     onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
                     required
-                    disabled={loading}
+                    disabled={loading || isRegistered} // Disable when registered
                     className="pr-10"
                   />
                   <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -215,20 +240,33 @@ export default function RegisterEmployee() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button type="submit" className="flex-1" disabled={loading}>
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={loading || isRegistered} // Disable when registered
+                >
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Registering...
                     </>
+                  ) : isRegistered ? (
+                    'Registered' // Show "Registered" text when registered
                   ) : (
                     'Register & Generate QR'
                   )}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/dashboard')} disabled={loading} className="w-full sm:w-auto">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate('/dashboard')} 
+                  disabled={loading} 
+                  className="w-full sm:w-auto"
+                >
                   Cancel
                 </Button>
               </div>
+
             </form>
           </CardContent>
         </Card>
@@ -252,7 +290,7 @@ export default function RegisterEmployee() {
               />
               <div className="text-center">
                 <p className="text-xl font-bold sm:text-2xl">{createdEmployee?.uniqueId}</p>
-                <p className="text-sm text-muted-foreground">{createdEmployee?.name}</p>
+                <p className="text-sm text-muted-foreground">{capitalizeName(createdEmployee?.name)}</p>
                 {createdEmployee?.validUntil && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Valid Until: {format(parseISO(createdEmployee.validUntil), 'MMM dd, yyyy')}

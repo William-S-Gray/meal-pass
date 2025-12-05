@@ -10,16 +10,31 @@ const logger = require('../utils/logger');
 const formatFeedingRecordResponse = (record) => {
   return {
     id: record._id,
-    uniqueId: record.uniqueId,
-    employee: record.employee,
+    employeeUid: record.uniqueId,
+    employeeName: capitalizeName(record.employee.name), // Capitalize name in response
     date: record.date,
-    fedAt: record.fedAt,
-    method: record.method,
-    deviceId: record.deviceId,
+    time: record.time,
+    scannerName: record.scanner?.name || 'Unknown',
+    status: record.status,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt
   };
 };
+
+/**
+ * Capitalizes a name properly (First letter of each word uppercase, rest lowercase)
+ * @param {string} name - The name to capitalize
+ * @returns {string} The properly capitalized name
+ */
+function capitalizeName(name) {
+  if (!name) return '';
+  
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 /**
  * Record a feeding event for an employee
@@ -222,9 +237,72 @@ const removeTodaysRecord = async (uniqueId) => {
   }
 };
 
+/**
+ * Get feeding statistics
+ * @param {string} startDate - Start date for range query
+ * @param {string} endDate - End date for range query
+ * @returns {Object} Statistics data
+ */
+const getFeedingStats = async (startDate, endDate) => {
+  try {
+    // Total employees
+    const totalEmployees = await Employee.countDocuments({ active: true });
+    
+    // Get today's date
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0];
+    
+    // Total fed today
+    const totalFedToday = await FeedingRecord.countDocuments({
+      date: dateString
+    });
+    
+    // Calculate feed rate percentage
+    const feedRate = totalEmployees > 0 
+      ? Math.round((totalFedToday / totalEmployees) * 100) 
+      : 0;
+    
+    // Set date range defaults if not provided
+    let rangeStartDate = startDate 
+      ? new Date(startDate) 
+      : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Default to 7 days ago
+    
+    let rangeEndDate = endDate 
+      ? new Date(endDate) 
+      : new Date();
+    
+    // Format dates to YYYY-MM-DD
+    const startDateString = rangeStartDate.toISOString().split('T')[0];
+    const endDateString = rangeEndDate.toISOString().split('T')[0];
+    
+    // Total fed in date range
+    const totalFedInRange = await FeedingRecord.countDocuments({
+      date: {
+        $gte: startDateString,
+        $lte: endDateString
+      }
+    });
+    
+    return {
+      totalEmployees,
+      totalFedToday,
+      totalFedInRange,
+      feedRate,
+      dateRange: {
+        startDate: startDateString,
+        endDate: endDateString
+      }
+    };
+  } catch (error) {
+    logger.error('Error getting feeding stats', { error: error.message });
+    throw error;
+  }
+};
+
 module.exports = {
   recordFeeding,
   getTodaysRecords,
   getRecordsByEmployee,
-  removeTodaysRecord
+  removeTodaysRecord,
+  getFeedingStats
 };

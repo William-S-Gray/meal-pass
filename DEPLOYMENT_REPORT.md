@@ -56,7 +56,7 @@ This document outlines the successful implementation of a zero-downtime blue/gre
 
 ✅ **API Validation:**
 - Authentication endpoints
-- Beneficiary management
+- Employee management
 - QR generation and scanning
 - Feeding records
 - Reporting functionality

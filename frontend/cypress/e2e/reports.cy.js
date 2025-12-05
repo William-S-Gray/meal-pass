@@ -39,7 +39,7 @@ describe('Reports Generation', () => {
     cy.get('[data-testid="fed-vs-not-fed-chart"]').should('be.visible');
     
     // Verify statistics cards
-    cy.get('[data-testid="total-beneficiaries-card"]').should('be.visible');
+    cy.get('[data-testid="total-employees-card"]').should('be.visible');
     cy.get('[data-testid="total-fed-today-card"]').should('be.visible');
     cy.get('[data-testid="total-not-fed-today-card"]').should('be.visible');
   });

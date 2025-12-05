@@ -8,7 +8,10 @@ const {
   updateEmployee, 
   deleteEmployee, 
   downloadQRCode,
+  downloadQRCodeByUid,
   getQRCodeDataUrl,
+  printBulkCards,
+  printSingleCard,
   upload
 } = require('../controllers/employeeController');
 
@@ -41,12 +44,23 @@ router.route('/:id')
 router.route('/uid/:uid')
   .get(authMiddleware, getEmployeeByUid);
 
-// QR Code download route
+// QR Code download route by ID
 router.route('/:id/qrcode')
   .get(authMiddleware, downloadQRCode);
+
+// QR Code download route by UID (NEW)
+router.route('/uid/:uid/qrcode')
+  .get(authMiddleware, downloadQRCodeByUid);
 
 // QR Code DataURL route
 router.route('/:id/qrcode/dataurl')
   .get(authMiddleware, getQRCodeDataUrl);
+
+// Print card routes
+router.route('/print-cards')
+  .post(authMiddleware, printBulkCards);
+
+router.route('/:id/print-card')
+  .get(authMiddleware, printSingleCard);
 
 module.exports = router;

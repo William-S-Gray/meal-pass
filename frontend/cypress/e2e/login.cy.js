@@ -9,7 +9,7 @@ describe('Login Flow', () => {
     cy.get('[data-testid="login-button"]').click();
     
     cy.url().should('include', '/dashboard');
-    cy.get('[data-testid="welcome-message"]').should('contain', 'Welcome');
+    cy.get('[data-testid="welcome-message"]').should('contain', 'Welcome to Africa Accommodation Providers');
   });
 
   it('should show error with invalid credentials', () => {

@@ -13,6 +13,12 @@ const employeeSchema = new mongoose.Schema({
     trim: true,
     index: true // Add index for name
   },
+  gender: {
+    type: String,
+    required: true,
+    enum: ['Male', 'Female', 'Other'],
+    index: true // Add index for gender
+  },
   phone: {
     type: String,
     required: false,
@@ -54,5 +60,6 @@ employeeSchema.index({ department: 1 });
 employeeSchema.index({ createdAt: -1 }); // For sorting by creation date
 employeeSchema.index({ uniqueId: 1, active: 1 }); // Composite index for common queries
 employeeSchema.index({ validUntil: 1 }); // Index for validity checking
+employeeSchema.index({ gender: 1 }); // Index for gender queries
 
 module.exports = mongoose.model('Employee', employeeSchema);

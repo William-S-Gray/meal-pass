@@ -29,9 +29,9 @@ const ScanPage = () => {
         <div className="max-w-2xl mx-auto">
           <div className="bg-card border-2 rounded-xl shadow-sm p-6">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-primary mb-2">Scan Beneficiary QR Code</h2>
+              <h2 className="text-2xl font-bold text-primary mb-2">Scan Employee QR Code</h2>
               <p className="text-muted-foreground">
-                Point your camera at a beneficiary's QR code to record their meal
+                Point your camera at an employee's QR code to record their meal
               </p>
             </div>
 
@@ -40,7 +40,7 @@ const ScanPage = () => {
             </div>
 
             <div className="text-center text-sm text-muted-foreground">
-              <p>QR codes contain only the beneficiary's unique ID for privacy protection.</p>
+              <p>QR codes contain only the employee's unique ID for privacy protection.</p>
             </div>
           </div>
         </div>

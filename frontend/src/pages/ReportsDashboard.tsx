@@ -10,6 +10,7 @@ import {
   FeedRecord,
   PaginatedReport
 } from '@/lib/api';
+import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -289,7 +290,7 @@ export default function ReportsDashboard() {
                             dailyRecords.data.map((record) => (
                               <TableRow key={record.id}>
                                 <TableCell className="font-mono font-semibold">{record.employeeUid}</TableCell>
-                                <TableCell>{record.employeeName}</TableCell>
+                                <TableCell>{capitalizeName(record.employeeName)}</TableCell>
                                 <TableCell>N/A</TableCell>
                                 <TableCell>{record.time}</TableCell>
                                 <TableCell>
@@ -388,7 +389,7 @@ export default function ReportsDashboard() {
                             rangeRecords.data.map((record) => (
                               <TableRow key={`${record.id}-${record.date}`}>
                                 <TableCell className="font-mono font-semibold">{record.employeeUid}</TableCell>
-                                <TableCell>{record.employeeName}</TableCell>
+                                <TableCell>{capitalizeName(record.employeeName)}</TableCell>
                                 <TableCell>{formatDate(record.date)}</TableCell>
                                 <TableCell>{record.time}</TableCell>
                                 <TableCell>
@@ -456,7 +457,7 @@ export default function ReportsDashboard() {
                           <CardTitle>Employee Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                          <p><span className="font-semibold">Name:</span> {employeeRecords.data.employee.name}</p>
+                          <p><span className="font-semibold">Name:</span> {capitalizeName(employeeRecords.data.employee.name)}</p>
                           <p><span className="font-semibold">UID:</span> {employeeRecords.data.employee.uniqueId}</p>
                           <p><span className="font-semibold">Department:</span> {employeeRecords.data.employee.department}</p>
                         </CardContent>

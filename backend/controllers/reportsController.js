@@ -2,6 +2,21 @@ const Employee = require('../models/Employee');
 const FeedingRecord = require('../models/FeedingRecord');
 
 /**
+ * Capitalizes a name properly (First letter of each word uppercase, rest lowercase)
+ * @param {string} name - The name to capitalize
+ * @returns {string} The properly capitalized name
+ */
+function capitalizeName(name) {
+  if (!name) return '';
+  
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * @desc    Get daily feeding report
  * @route   GET /api/reports/today
  * @access  Private (Admin only)
@@ -33,14 +48,23 @@ const getDailyReport = async (req, res, next) => {
       .limit(limit)
       .sort({ fedAt: -1 });
     
-    const total = await FeedingRecord.countDocuments({ // Changed from FeedLog to FeedingRecord
+    // Format the response to capitalize names
+    const formattedRecords = feedingRecords.map(record => ({
+      ...record.toObject(),
+      employee: record.employee ? {
+        ...record.employee.toObject(),
+        name: capitalizeName(record.employee.name)
+      } : record.employee
+    }));
+    
+    const total = await FeedingRecord.countDocuments({
       date: dateString
     });
     
     res.status(200).json({
       success: true,
-      count: feedingRecords.length,
-      data: feedingRecords,
+      count: formattedRecords.length,
+      data: formattedRecords,
       pagination: {
         page,
         limit,
@@ -93,7 +117,16 @@ const getDateRangeReport = async (req, res, next) => {
       .limit(limit)
       .sort({ date: -1, fedAt: -1 });
     
-    const total = await FeedingRecord.countDocuments({ // Changed from FeedLog to FeedingRecord
+    // Format the response to capitalize names
+    const formattedRecords = feedingRecords.map(record => ({
+      ...record.toObject(),
+      employee: record.employee ? {
+        ...record.employee.toObject(),
+        name: capitalizeName(record.employee.name)
+      } : record.employee
+    }));
+    
+    const total = await FeedingRecord.countDocuments({
       date: {
         $gte: from,
         $lte: to
@@ -102,8 +135,8 @@ const getDateRangeReport = async (req, res, next) => {
     
     res.status(200).json({
       success: true,
-      count: feedingRecords.length,
-      data: feedingRecords,
+      count: formattedRecords.length,
+      data: formattedRecords,
       pagination: {
         page,
         limit,
@@ -133,7 +166,7 @@ const getEmployeeReport = async (req, res, next) => {
 
     const { uniqueId } = req.params;
     
-    // Find beneficiary
+    // Find employee
     const employee = await Employee.findOne({ uniqueId });
     
     if (!employee) {
@@ -147,13 +180,13 @@ const getEmployeeReport = async (req, res, next) => {
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
     
-    // Get feeding records for this beneficiary with pagination
-    const feedingRecords = await FeedingRecord.find({ employee: employee._id }) // Changed from FeedLog to FeedingRecord
+    // Get feeding records for this employee with pagination
+    const feedingRecords = await FeedingRecord.find({ employee: employee._id })
       .skip(skip)
       .limit(limit)
       .sort({ date: -1, fedAt: -1 });
     
-    const total = await FeedingRecord.countDocuments({ employee: employee._id }); // Changed from FeedLog to FeedingRecord
+    const total = await FeedingRecord.countDocuments({ employee: employee._id });
     
     res.status(200).json({
       success: true,
@@ -162,11 +195,11 @@ const getEmployeeReport = async (req, res, next) => {
         employee: {
           id: employee._id,
           uniqueId: employee.uniqueId,
-          name: employee.name,
+          name: capitalizeName(employee.name), // Capitalize employee name
           department: employee.department,
           position: employee.position
         },
-        feedLogs: feedingRecords, // Keep the same name for frontend compatibility
+        feedLogs: feedingRecords,
         pagination: {
           page,
           limit,
@@ -203,7 +236,7 @@ const getReportStatistics = async (req, res, next) => {
     const dateString = today.toISOString().split('T')[0];
     
     // Total fed today
-    const totalFedToday = await FeedingRecord.countDocuments({ // Changed from FeedLog to FeedingRecord
+    const totalFedToday = await FeedingRecord.countDocuments({
       date: dateString
     });
     
@@ -224,7 +257,7 @@ const getReportStatistics = async (req, res, next) => {
       
       const dayString = date.toISOString().split('T')[0];
       
-      const count = await FeedingRecord.countDocuments({ // Changed from FeedLog to FeedingRecord
+      const count = await FeedingRecord.countDocuments({
         date: dayString
       });
       
@@ -242,7 +275,7 @@ const getReportStatistics = async (req, res, next) => {
       
       const dayString = date.toISOString().split('T')[0];
       
-      const count = await FeedingRecord.countDocuments({ // Changed from FeedLog to FeedingRecord
+      const count = await FeedingRecord.countDocuments({
         date: dayString
       });
       

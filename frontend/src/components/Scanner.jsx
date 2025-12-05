@@ -155,7 +155,7 @@ const Scanner = ({ onScanResult }) => {
                   id="manualId"
                   value={manualId}
                   onChange={(e) => setManualId(e.target.value)}
-                  placeholder="Enter Beneficiary ID"
+                  placeholder="Enter Employee ID"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   autoFocus
                 />

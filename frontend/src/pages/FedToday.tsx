@@ -6,7 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
+import { 
+  Calendar, 
+  Download, 
+  ChevronLeft, 
+  ChevronRight,
+  Loader2, 
+  AlertTriangle,
+  CheckCircle
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
@@ -91,7 +100,7 @@ export default function FedToday() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <Link to="/dashboard">
               <Button variant="ghost" size="sm" className="sm:hidden">
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ChevronLeft className="mr-2 h-4 w-4" />
                 Back to Dashboard
               </Button>
             </Link>
@@ -100,7 +109,7 @@ export default function FedToday() {
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <ChevronLeft className="mr-2 h-4 w-4" />
                 )}
                 Refresh
               </Button>
@@ -124,10 +133,10 @@ export default function FedToday() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-primary">People Fed Today</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">List of beneficiaries who received meals today</p>
+            <p className="text-muted-foreground text-sm sm:text-base">List of employees who received meals today</p>
           </div>
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-muted-foreground" />
+            <Calendar className="h-5 w-5 text-muted-foreground" />
             <span className="text-xs sm:text-sm text-muted-foreground">
               {new Date().toLocaleDateString('en-US', { 
                 weekday: 'long', 
@@ -142,7 +151,7 @@ export default function FedToday() {
         <Card className="border-2">
           <CardHeader>
             <CardTitle>Feed Records</CardTitle>
-            <CardDescription>Showing {feedRecords.length} beneficiaries fed today</CardDescription>
+            <CardDescription>Showing {feedRecords.length} employees fed today</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -152,7 +161,7 @@ export default function FedToday() {
               </div>
             ) : feedRecords.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No beneficiaries have been fed today yet.</p>
+                <p className="text-muted-foreground">No employees have been fed today yet.</p>
               </div>
             ) : (
               <>
@@ -161,7 +170,7 @@ export default function FedToday() {
                   <Table className="min-w-[600px] md:min-w-full">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs sm:text-sm">Beneficiary ID</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Employee ID</TableHead>
                         <TableHead className="text-xs sm:text-sm">Name</TableHead>
                         <TableHead className="text-xs sm:text-sm">Time</TableHead>
                         <TableHead className="text-xs sm:text-sm">Scanner</TableHead>
@@ -172,7 +181,7 @@ export default function FedToday() {
                       {feedRecords.map((record) => (
                         <TableRow key={record.id}>
                           <TableCell className="font-mono font-semibold text-xs sm:text-sm">{record.employeeUid}</TableCell>
-                          <TableCell className="font-medium text-xs sm:text-sm">{record.employeeName}</TableCell>
+                          <TableCell className="font-medium text-xs sm:text-sm">{capitalizeName(record.employeeName)}</TableCell>
                           <TableCell className="text-xs sm:text-sm">{record.time}</TableCell>
                           <TableCell className="text-xs sm:text-sm">{record.scannerName}</TableCell>
                           <TableCell>

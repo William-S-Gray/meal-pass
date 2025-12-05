@@ -4,7 +4,7 @@ Backend API for the Meal Distribution QR Tracking System.
 
 ## Features
 
-- Beneficiary Registration with Unique ID Generation
+- Employee Registration with Unique ID Generation
 - QR Code Generation and Management
 - Meal Distribution Tracking
 - Admin Authentication (Optional)

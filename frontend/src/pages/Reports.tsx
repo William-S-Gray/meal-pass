@@ -2,17 +2,29 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getFeedRecordsByDateRange, FeedRecord, exportFeedRecordsToCSV } from '@/lib/api';
+import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
+import { useToast } from '@/hooks/use-toast'; // Use useToast hook instead
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Download, Search } from 'lucide-react';
+import { 
+  FileText, 
+  Calendar, 
+  Download, 
+  ChevronLeft, 
+  Loader2, 
+  AlertTriangle,
+  CheckCircle,
+  Search,
+  ArrowLeft
+} from 'lucide-react';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 export default function Reports() {
+  const { toast } = useToast(); // Use the toast function from the hook
   const { socket, isConnected } = useWebSocket();
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -223,7 +235,7 @@ export default function Reports() {
                     {feedRecords.map((record) => (
                       <TableRow key={record.id}>
                         <TableCell className="font-mono font-semibold text-xs sm:text-sm">{record.employeeUid}</TableCell>
-                        <TableCell className="text-xs sm:text-sm">{record.employeeName}</TableCell>
+                        <TableCell className="text-xs sm:text-sm">{capitalizeName(record.employeeName)}</TableCell>
                         <TableCell className="text-xs sm:text-sm">{new Date(record.date).toLocaleDateString()}</TableCell>
                         <TableCell className="text-xs sm:text-sm">{record.time}</TableCell>
                         <TableCell className="text-xs sm:text-sm">{record.scannerName}</TableCell>

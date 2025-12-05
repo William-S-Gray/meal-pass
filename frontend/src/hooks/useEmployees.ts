@@ -1,18 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getBeneficiaries, deleteBeneficiary } from '../lib/api';
+import { getEmployees, deleteEmployee, Employee, PaginatedEmployees } from '../lib/api';
 import { toast } from './use-toast';
-
-interface Beneficiary {
-  _id: string;
-  uid: string;
-  fullName: string;
-  gender: string;
-  household?: string;
-  qrCode: string;
-  createdAt: string;
-  fedToday?: boolean;
-  active?: boolean;
-}
 
 interface Pagination {
   page: number;
@@ -22,11 +10,11 @@ interface Pagination {
 }
 
 // Simple in-memory cache
-const beneficiaryCache = new Map<string, { data: any; timestamp: number }>();
+const employeeCache = new Map<string, { data: PaginatedEmployees; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-export const useBeneficiaries = (initialSearch = '', initialPage = 1, initialLimit = 10) => {
-  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+export const useEmployees = (initialSearch = '', initialPage = 1, initialLimit = 10) => {
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [pagination, setPagination] = useState<Pagination>({
@@ -49,7 +37,7 @@ export const useBeneficiaries = (initialSearch = '', initialPage = 1, initialLim
     };
   }, [searchTerm]);
 
-  const loadBeneficiaries = useCallback(async () => {
+  const loadEmployees = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -57,25 +45,25 @@ export const useBeneficiaries = (initialSearch = '', initialPage = 1, initialLim
       const cacheKey = `${debouncedSearchTerm}-${pagination.page}-${pagination.limit}`;
       
       // Check cache first
-      const cached = beneficiaryCache.get(cacheKey);
+      const cached = employeeCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        setBeneficiaries(cached.data.data);
+        setEmployees(cached.data.data);
         setPagination(cached.data.pagination);
         setLoading(false);
         return;
       }
       
-      const result = await getBeneficiaries(debouncedSearchTerm, pagination.page, pagination.limit);
+      const result = await getEmployees(debouncedSearchTerm, pagination.page, pagination.limit);
       
       // Cache the result
-      beneficiaryCache.set(cacheKey, { data: result, timestamp: Date.now() });
+      employeeCache.set(cacheKey, { data: result, timestamp: Date.now() });
       
-      setBeneficiaries(result.data);
+      setEmployees(result.data);
       setPagination(result.pagination);
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to load beneficiaries',
+        description: 'Failed to load employees',
         variant: 'destructive'
       });
     } finally {
@@ -83,24 +71,24 @@ export const useBeneficiaries = (initialSearch = '', initialPage = 1, initialLim
     }
   }, [debouncedSearchTerm, pagination.page, pagination.limit]);
 
-  const deleteBeneficiaryById = async (id: string, name: string) => {
+  const deleteEmployeeById = async (id: string, name: string) => {
     if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
       return false;
     }
 
     try {
-      await deleteBeneficiary(id);
+      await deleteEmployee(id);
       toast({
         title: 'Success',
-        description: 'Beneficiary deleted successfully'
+        description: 'Employee deleted successfully'
       });
       // Refresh the list after deletion
-      loadBeneficiaries();
+      loadEmployees();
       return true;
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to delete beneficiary',
+        description: 'Failed to delete employee',
         variant: 'destructive'
       });
       return false;
@@ -108,8 +96,8 @@ export const useBeneficiaries = (initialSearch = '', initialPage = 1, initialLim
   };
 
   useEffect(() => {
-    loadBeneficiaries();
-  }, [loadBeneficiaries]);
+    loadEmployees();
+  }, [loadEmployees]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.pages) {
@@ -127,12 +115,12 @@ export const useBeneficiaries = (initialSearch = '', initialPage = 1, initialLim
   };
 
   return {
-    beneficiaries,
+    employees,
     loading,
     pagination,
     searchTerm,
-    loadBeneficiaries,
-    deleteBeneficiaryById,
+    loadEmployees,
+    deleteEmployeeById,
     handlePageChange,
     handleItemsPerPageChange,
     handleSearch
