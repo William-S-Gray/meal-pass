@@ -34,7 +34,10 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: process.env.ORIGIN_URL || 'http://localhost:8080',
+    origin: [
+      process.env.ORIGIN_URL,
+      process.env.ORIGIN_URL?.replace("https://", "http://")
+    ],
     credentials: true,
     optionsSuccessStatus: 200
   }
@@ -52,7 +55,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS with specific options for better security
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "*",
+  origin: [
+    process.env.FRONTEND_URL,
+    process.env.FRONTEND_URL?.replace("https://", "http://")
+  ],
   methods: "GET,POST,PUT,DELETE",
   allowedHeaders: "Content-Type, Authorization",
   exposedHeaders: ["Content-Disposition"],
@@ -84,7 +90,10 @@ app.use('/api/', limiter); // Apply rate limiting to all API routes
 
 // Static folder with CORS headers for QR codes
 app.use('/qrcodes', cors({
-  origin: process.env.FRONTEND_URL || "*",
+  origin: [
+    process.env.FRONTEND_URL,
+    process.env.FRONTEND_URL?.replace("https://", "http://")
+  ],
   methods: "GET,HEAD,OPTIONS",
   allowedHeaders: "Content-Type, Authorization",
   credentials: true
