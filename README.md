@@ -1,11 +1,7 @@
 # 🍽️ Meal-Pass Employee Feeding System (AAP)
 
-<<<<<<< HEAD
 A comprehensive meal distribution system with QR code tracking for employees, built with the MERN stack (MongoDB, Express, React, Node.js).
-=======
 A smart feeding access and tracking system for employees powered by Africa Accommodation Providers (AAP). Built using the MERN stack (MongoDB, Express, React, Node.js) with secure QR/Barcode access, real-time tracking, and ID card printouts.
-
----
 
 ## 🏢 Business Context
 
@@ -17,9 +13,6 @@ This system ensures:
 ✔ Access denied if feeding period is expired  
 ✔ Digital record to prevent double feeding  
 ✔ Real-time reporting for admins
-
----
->>>>>>> 25b2993b7bc691625ef018f2a1ef11a8207140c1
 
 ## 🏗️ System Architecture
 
@@ -36,9 +29,6 @@ backend/
 ├── public/ # Static (QR/Barcodes, ID templates)
 └── server.js # Entry point
 
-shell
-Copy code
-
 ### Frontend Structure
 frontend/
 ├── src/
@@ -54,11 +44,6 @@ frontend/
 ├── public/ # Static assets
 └── index.html # App root
 
-markdown
-Copy code
-
----
-
 ## 🔧 Key Features
 
 ### 🛂 Employee Management
@@ -73,14 +58,12 @@ Copy code
   - **QR code + Barcode**
   - Unique tracking ID
 
-<<<<<<< HEAD
 ### Employee Management
 - Create, read, update, delete employees
 - Automatic QR code generation
 - Unique ID assignment
 - Photo upload support
 - Bulk operations
-=======
 ### 🍽️ Feeding Access & Tracking
 - Scan at checkpoint using phone/camera/device
 - Verify:
@@ -89,7 +72,6 @@ Copy code
   - **Already fed or not**
 - Real-time prevention of duplicate feeding
 - Manual feeding option
->>>>>>> 25b2993b7bc691625ef018f2a1ef11a8207140c1
 
 ### 💳 ID Card Printing
 - **Horizontal ATM card style (Standard size)**
@@ -108,14 +90,10 @@ Copy code
 - Usage statistics
 - Export to CSV/PDF
 
-<<<<<<< HEAD
 ### Printing & Export
 - Individual employee card printing
 - Bulk card printing (up to 40 cards per sheet)
 - QR code download
-=======
----
->>>>>>> 25b2993b7bc691625ef018f2a1ef11a8207140c1
 
 ## 🚀 Getting Started
 
