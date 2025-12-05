@@ -17,16 +17,27 @@ This system ensures:
 ## 🏗️ System Architecture
 
 ### Backend Structure
+
 backend/
+
 ├── config/ # Database & environment config
+
 ├── controllers/ # Route business handlers
+
 ├── services/ # Core business logic
+
 ├── models/ # MongoDB schemas
+
 ├── routes/ # API routes
+
 ├── middleware/ # Auth, validations, security
+
 ├── validators/ # Joi/Yup validation schemas
+
 ├── utils/ # QR, barcode, ID generation, helpers
+
 ├── public/ # Static (QR/Barcodes, ID templates)
+
 └── server.js # Entry point
 
 ### Frontend Structure
