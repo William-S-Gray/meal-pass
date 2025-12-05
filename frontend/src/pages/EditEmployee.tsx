@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { ChevronLeft, Loader2, Calendar } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';

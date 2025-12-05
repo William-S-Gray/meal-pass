@@ -8,12 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { QrCode, Camera, CameraOff, Loader2, User, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
 import QrScanner from 'qr-scanner';
 import { format, parseISO, isBefore } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
-import { useToast } from "@/hooks/use-toast";
 import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
 
 // Add the EmployeeIDCard component inline to avoid import issues
@@ -94,6 +93,7 @@ export default function QRScanner() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isConnected } = useWebSocket();
+  const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
   const [manualInput, setManualInput] = useState('');
   const [bulkInput, setBulkInput] = useState('');

@@ -17,11 +17,12 @@ import {
   AlertTriangle,
   CheckCircle
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { format, parseISO, isBefore } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 export default function EmployeesList() {
+  const { toast } = useToast();
   const { socket, isConnected } = useWebSocket();
   const navigate = useNavigate();
   const location = useLocation();
