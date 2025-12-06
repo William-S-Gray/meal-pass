@@ -18,6 +18,7 @@ import ReportsDashboard from "./pages/ReportsDashboard";
 import Statistics from "./pages/Statistics";
 import FedToday from "./pages/FedToday";
 import NotFound from "./pages/NotFound";
+import { OptimizedScannerDemo } from "./pages/OptimizedScannerDemo"; // Added import
 import { useState } from "react";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,11 @@ const App = () => (
               <Route path="/scan" element={
                 <ProtectedRoute>
                   <QRScanner />
+                </ProtectedRoute>
+              } />
+              <Route path="/optimized-scan" element={ // Added new route
+                <ProtectedRoute>
+                  <OptimizedScannerDemo />
                 </ProtectedRoute>
               } />
               <Route path="/employees/register" element={
