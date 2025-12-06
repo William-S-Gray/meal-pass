@@ -11,9 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from '@/hooks/use-toast';
 import { QrCode, Camera, CameraOff, Loader2, User, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
 import QrScanner from 'qr-scanner';
+import Quagga from 'quagga';
 import { format, parseISO, isBefore } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
-import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
+import { capitalizeName } from '@/lib/utils';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 // Add the EmployeeIDCard component inline to avoid import issues
 const EmployeeIDCard: React.FC<{ employee: Employee; businessName?: string }> = ({ 
@@ -95,11 +97,13 @@ export default function QRScanner() {
   const { isConnected } = useWebSocket();
   const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
+  const [scanMode, setScanMode] = useState<'qr' | 'barcode'>('qr'); // New state for scan mode
   const [manualInput, setManualInput] = useState('');
   const [bulkInput, setBulkInput] = useState('');
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [bulkResults, setBulkResults] = useState<Array<{id: string, status: string, message: string, employee?: Employee}>>([]);
   const [loading, setLoading] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false); // New state for camera initialization
   const [showResult, setShowResult] = useState(false);
   const [scanResult, setScanResult] = useState<{
     status: 'success' | 'already_fed' | 'not_found' | 'error' | 'expired';
@@ -109,6 +113,8 @@ export default function QRScanner() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const qrScannerRef = useRef<QrScanner | null>(null);
+  const streamRef = useRef<MediaStream | null>(null); // To hold the media stream
+  const quaggaInitialized = useRef(false);
 
   // Cleanup scanner on unmount
   useEffect(() => {
@@ -122,43 +128,146 @@ export default function QRScanner() {
         qrScannerRef.current.stop();
         qrScannerRef.current.destroy();
       }
+      // Stop any active media streams
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      // Stop Quagga if initialized
+      if (quaggaInitialized.current) {
+        Quagga.stop();
+        quaggaInitialized.current = false;
+      }
     };
   }, []);
+
+  const initQuagga = async () => {
+    if (!videoRef.current) return;
+
+    try {
+      // Configure Quagga for barcode detection
+      await Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: videoRef.current,
+          constraints: {
+            width: 640,
+            height: 480,
+            facingMode: "environment"
+          },
+        },
+        decoder: {
+          readers: [
+            "code_128_reader",
+            "ean_reader",
+            "ean_8_reader",
+            "code_39_reader",
+            "code_39_vin_reader",
+            "codabar_reader",
+            "upc_reader",
+            "upc_e_reader",
+            "i2of5_reader"
+          ]
+        },
+        locate: true
+      }, (err) => {
+        if (err) {
+          console.error("Quagga initialization error:", err);
+          toast({
+            title: 'Barcode Scanner Error',
+            description: 'Failed to initialize barcode scanner',
+            variant: 'destructive'
+          });
+          return;
+        }
+        
+        Quagga.start();
+        quaggaInitialized.current = true;
+      });
+
+      // Set up result processing
+      Quagga.onDetected((data) => {
+        if (data && data.codeResult && data.codeResult.code) {
+          handleScan(data.codeResult.code);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to initialize Quagga:', error);
+      toast({
+        title: 'Barcode Scanner Error',
+        description: error instanceof Error ? error.message : 'Failed to initialize barcode scanner',
+        variant: 'destructive'
+      });
+    }
+  };
 
   const startScanning = async () => {
     if (!videoRef.current) return;
 
     try {
+      setCameraLoading(true);
       setScanning(true);
       
-      // Check for camera permissions first
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach(track => track.stop()); // Stop the stream immediately
-      
-      // Ensure the video element is properly set up
-      if (videoRef.current) {
-        videoRef.current.style.display = 'block';
-      }
-      
-      // Destroy any existing scanner instance
+      // Stop any existing scanner
       if (qrScannerRef.current) {
+        qrScannerRef.current.stop();
         qrScannerRef.current.destroy();
       }
       
-      // Initialize QR scanner
-      qrScannerRef.current = new QrScanner(
-        videoRef.current!,
-        (result) => {
-          handleScan(result.data);
-        },
-        {
-          highlightScanRegion: true,
-          highlightCodeOutline: true,
-          maxScansPerSecond: 3,
-        }
-      );
+      // Stop any existing media streams
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      // Stop Quagga if running
+      if (quaggaInitialized.current) {
+        Quagga.stop();
+        quaggaInitialized.current = false;
+      }
+      
+      // Check for camera permissions first
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment', // Prefer rear camera for scanning
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      
+      // Store the stream reference for cleanup
+      streamRef.current = stream;
+      
+      // Attach stream to video element
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.style.display = 'block';
+      }
+      
+      // For QR scanning, initialize QR scanner
+      if (scanMode === 'qr') {
+        // Initialize QR scanner
+        qrScannerRef.current = new QrScanner(
+          videoRef.current!,
+          (result) => {
+            handleScan(result.data);
+          },
+          {
+            highlightScanRegion: true,
+            highlightCodeOutline: true,
+            maxScansPerSecond: 3,
+          }
+        );
 
-      await qrScannerRef.current.start();
+        await qrScannerRef.current.start();
+      } else {
+        // For barcode scanning, initialize Quagga
+        await initQuagga();
+        // Play the video stream
+        if (videoRef.current) {
+          await videoRef.current.play();
+        }
+      }
     } catch (error) {
       console.error('Failed to start camera:', error);
       toast({
@@ -167,6 +276,8 @@ export default function QRScanner() {
         variant: 'destructive'
       });
       setScanning(false);
+    } finally {
+      setCameraLoading(false);
     }
   };
 
@@ -176,11 +287,25 @@ export default function QRScanner() {
       qrScannerRef.current.destroy();
       qrScannerRef.current = null;
     }
+    
+    // Stop media streams
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    // Stop Quagga if initialized
+    if (quaggaInitialized.current) {
+      Quagga.stop();
+      quaggaInitialized.current = false;
+    }
+    
     setScanning(false);
     
     // Hide the video element when not scanning
     if (videoRef.current) {
       videoRef.current.style.display = 'none';
+      videoRef.current.srcObject = null;
     }
   };
 
@@ -233,7 +358,7 @@ export default function QRScanner() {
       console.error('Scan error:', error);
       setScanResult({
         status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to process QR code'
+        message: error instanceof Error ? error.message : 'Failed to process code'
       });
       setShowResult(true);
     } finally {
@@ -408,7 +533,7 @@ export default function QRScanner() {
       <header className="border-b-2 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-primary">QR Scanner</h1>
+            <h1 className="text-2xl font-bold text-primary">Scanner</h1>
             <div className="flex items-center gap-2">
               {isConnected && (
                 <span className="text-xs text-green-500 flex items-center">
@@ -426,17 +551,39 @@ export default function QRScanner() {
 
       <main className="container mx-auto px-4 py-8">
         <BreadcrumbNavigation 
-          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'QR Scanner' }]}
+          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Scanner' }]}
           backButtonHref="/dashboard"
           backButtonLabel="Back to Dashboard"
         />
         <div className="max-w-2xl mx-auto space-y-6">
           <Card className="border-2">
             <CardHeader>
-              <CardTitle>Scan Employee QR Code</CardTitle>
-              <CardDescription>Point your camera at an employee's QR code to mark them as fed</CardDescription>
+              <CardTitle>{scanMode === 'qr' ? 'QR Code Scanner' : 'Barcode Scanner'}</CardTitle>
+              <CardDescription>
+                Point your camera at an employee's {scanMode === 'qr' ? 'QR code' : 'barcode'} to mark them as fed
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Scan Mode Toggle */}
+              <div className="flex rounded-md overflow-hidden border">
+                <Button
+                  variant={scanMode === 'qr' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('qr')}
+                  className="flex-1 rounded-none"
+                  disabled={scanning || cameraLoading}
+                >
+                  QR Code
+                </Button>
+                <Button
+                  variant={scanMode === 'barcode' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('barcode')}
+                  className="flex-1 rounded-none"
+                  disabled={scanning || cameraLoading}
+                >
+                  Barcode
+                </Button>
+              </div>
+              
               {/* Camera Preview */}
               <div className="relative bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center">
                 {scanning ? (
@@ -444,6 +591,8 @@ export default function QRScanner() {
                     <video 
                       ref={videoRef} 
                       className="w-full h-full object-cover"
+                      playsInline
+                      muted
                     />
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-48 h-48 border-2 border-white rounded-lg"></div>
@@ -453,6 +602,13 @@ export default function QRScanner() {
                   <div className="text-center text-white">
                     <Camera className="mx-auto h-12 w-12 opacity-70" />
                     <p className="mt-2 opacity-70">Camera not active</p>
+                  </div>
+                )}
+                
+                {/* Camera Loading Overlay */}
+                {cameraLoading && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <LoadingSpinner size="lg" message="Initializing camera..." />
                   </div>
                 )}
               </div>
@@ -474,12 +630,28 @@ export default function QRScanner() {
                     onClick={startScanning} 
                     variant="default" 
                     className="gap-2"
-                    disabled={loading}
+                    disabled={loading || cameraLoading}
                   >
-                    <Camera className="h-4 w-4" />
-                    Start Camera
+                    {cameraLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Initializing...
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="h-4 w-4" />
+                        Start Camera
+                      </>
+                    )}
                   </Button>
                 )}
+              </div>
+              
+              {/* Scan Mode Info */}
+              <div className="text-center text-sm text-muted-foreground">
+                {scanMode === 'qr' 
+                  ? 'Scanning QR codes from employee ID cards' 
+                  : 'Scanning barcodes from employee ID cards (Code 128, EAN, UPC, etc.)'}
               </div>
             </CardContent>
           </Card>
