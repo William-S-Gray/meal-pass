@@ -184,33 +184,49 @@ export const useScanner = (
 
   // Start scanning
   const startScanning = useCallback(async () => {
+    console.log('=== START SCANNING FUNCTION CALLED ===');
+    console.log('Parameters:', { videoElement, mode });
+    
     if (!videoElement) {
+      console.error('Video element is required but was null');
       setScannerState({
         status: 'error',
         result: null,
         error: 'Video element is required'
       });
-      return;
+      console.log('=== START SCANNING FAILED - NO VIDEO ELEMENT ===');
+      return false;
     }
 
     try {
+      console.log('Setting scanner state to scanning...');
       setScannerState({
         status: 'scanning',
         result: null,
         error: null
       });
 
+      console.log('Setting isActiveRef to true...');
       isActiveRef.current = true;
 
       // Initialize scanners based on mode
+      console.log('Initializing scanners based on mode:', mode);
       if (mode === 'qr' || mode === 'both') {
+        console.log('Initializing QR scanner...');
         await initQrScanner();
+        console.log('QR scanner initialized');
       }
 
       if (mode === 'barcode' || mode === 'both') {
+        console.log('Initializing barcode scanner...');
         await initBarcodeScanner();
+        console.log('Barcode scanner initialized');
       }
+      
+      console.log('=== START SCANNING COMPLETED SUCCESSFULLY ===');
+      return true;
     } catch (error) {
+      console.error('=== START SCANNING FAILED ===');
       console.error('Failed to start scanning:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to start scanning';
@@ -220,6 +236,9 @@ export const useScanner = (
         result: null,
         error: errorMessage
       });
+      
+      console.log('=== START SCANNING FAILED WITH ERROR ===');
+      return false;
     }
   }, [videoElement, mode, initQrScanner, initBarcodeScanner]);
 
