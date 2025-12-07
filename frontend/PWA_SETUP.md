@@ -11,7 +11,7 @@ This document explains how to set up and use the Progressive Web App (PWA) featu
 
 ## Files Created
 
-### 1. Service Worker (`/src/service-worker.js`)
+### 1. Service Worker (`/public/service-worker.js`)
 - Caches essential application files
 - Handles fetch events for offline access
 - Implements background sync for cached scans

@@ -3,13 +3,7 @@ const CACHE_NAME = 'meal-pass-v1';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/src/pages/ScanPage.jsx',
-  '/src/components/ScannerView.jsx',
-  '/src/components/ScanOverlay.jsx',
-  '/src/hooks/useCameraAccess.ts',
-  '/src/hooks/useScanner.ts',
-  '/src/hooks/usePWAStorage.ts',
-  '/src/lib/api.ts'
+  // Removed specific component paths as they are bundled in the build
 ];
 
 // Install event - cache essential files
