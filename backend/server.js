@@ -35,8 +35,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: [
-      process.env.ORIGIN_URL,
-      process.env.ORIGIN_URL?.replace("https://", "http://")
+      process.env.FRONTEND_URL,
+      process.env.FRONTEND_URL?.replace("https://", "http://")
     ],
     credentials: true,
     optionsSuccessStatus: 200
@@ -59,8 +59,8 @@ app.use(cors({
     process.env.FRONTEND_URL,
     process.env.FRONTEND_URL?.replace("https://", "http://")
   ],
-  methods: "GET,POST,PUT,DELETE",
-  allowedHeaders: "Content-Type, Authorization",
+  methods: "GET,POST,PUT,DELETE,OPTIONS",
+  allowedHeaders: "Content-Type, Authorization, X-Requested-With, X-HTTP-Method-Override, Accept, Origin, X-Requested-With",
   exposedHeaders: ["Content-Disposition"],
   credentials: true
 }));
@@ -95,12 +95,21 @@ app.use('/qrcodes', cors({
     process.env.FRONTEND_URL?.replace("https://", "http://")
   ],
   methods: "GET,HEAD,OPTIONS",
-  allowedHeaders: "Content-Type, Authorization",
+  allowedHeaders: "Content-Type, Authorization, X-Requested-With, X-HTTP-Method-Override, Accept, Origin, X-Requested-With",
   credentials: true
 }), express.static(__dirname + '/public/qrcodes'));
 
 // Static folder for other assets
 app.use(express.static(__dirname + '/public'));
+
+// Handle CORS preflight requests
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
 
 // Mount routers
 app.use('/api/auth', authRoutes);
