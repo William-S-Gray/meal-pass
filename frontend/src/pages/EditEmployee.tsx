@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getEmployeeByUid, updateEmployee, Employee } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { ChevronLeft, Loader2, Calendar } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useWebSocket } from '@/contexts/WebSocketContext'; // Import WebSocket context
 
 // Define error type for better type safety
 interface ApiError extends Error {
@@ -25,6 +26,7 @@ export default function EditEmployee() {
   const { toast } = useToast();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { socket } = useWebSocket(); // Use WebSocket context
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -56,6 +58,34 @@ export default function EditEmployee() {
       });
     }
   }, [employee]);
+
+  // Listen for real-time employee updates
+  useEffect(() => {
+    if (!socket || !employee) return;
+
+    const handleEmployeeUpdate = (data: { employee: Employee }) => {
+      // If the updated employee is the one we're currently editing, update the form
+      if (data.employee._id === employee._id) {
+        setEmployee(data.employee);
+        setFormData({
+          name: data.employee.name,
+          gender: data.employee.gender,
+          phone: data.employee.phone || '',
+          department: data.employee.department || '',
+          position: data.employee.position || '',
+          validUntil: data.employee.validUntil ? format(parseISO(data.employee.validUntil), 'yyyy-MM-dd') : ''
+        });
+      }
+    };
+
+    // Register event listener
+    socket.on('employeeUpdated', handleEmployeeUpdate);
+
+    // Cleanup event listener
+    return () => {
+      socket.off('employeeUpdated', handleEmployeeUpdate);
+    };
+  }, [socket, employee]);
 
   const loadEmployee = async (id: string) => {
     try {

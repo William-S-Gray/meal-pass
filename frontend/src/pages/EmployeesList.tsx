@@ -57,18 +57,49 @@ export default function EmployeesList() {
   useEffect(() => {
     if (!socket) return;
 
+    // Handler for employee creation
+    const handleEmployeeCreate = (data: { employee: Employee }) => {
+      // Add the new employee to the list if it matches current filters
+      setEmployees(prev => {
+        // Check if employee already exists to prevent duplicates
+        if (prev.some(emp => emp._id === data.employee._id)) {
+          return prev;
+        }
+        // Add new employee to the beginning of the list
+        return [data.employee, ...prev];
+      });
+      // Update total count
+      setTotalCount(prev => prev + 1);
+    };
+
     // Handler for employee updates
-    const handleEmployeeUpdate = () => {
-      // Reload employees when an employee is updated
-      loadEmployees();
+    const handleEmployeeUpdate = (data: { employee: Employee }) => {
+      // Update the employee in the list
+      setEmployees(prev => 
+        prev.map(emp => emp._id === data.employee._id ? data.employee : emp)
+      );
+    };
+
+    // Handler for employee deletion
+    const handleEmployeeDelete = (data: { employeeId: string }) => {
+      // Remove the employee from the list
+      setEmployees(prev => 
+        prev.filter(emp => emp._id !== data.employeeId)
+      );
+      // Update total count
+      setTotalCount(prev => prev - 1);
     };
 
     // Register event listeners
+    socket.on('employeeCreated', handleEmployeeCreate);
     socket.on('employeeUpdated', handleEmployeeUpdate);
+    socket.on('employeeDeleted', handleEmployeeDelete);
 
     // Cleanup event listeners
     return () => {
+      socket.off('employeeCreated', handleEmployeeCreate);
       socket.off('employeeUpdated', handleEmployeeUpdate);
+      socket.off('employeeDeleted', handleEmployeeDelete);
     };
   }, [socket]);
 
@@ -102,7 +133,7 @@ export default function EmployeesList() {
         title: 'Success',
         description: `Employee ${name} deleted successfully`
       });
-      loadEmployees(); // Reload the list
+      // No need to manually reload - WebSocket event will update the list
     } catch (error) {
       toast({
         title: 'Error',

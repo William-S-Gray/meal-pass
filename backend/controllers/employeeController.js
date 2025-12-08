@@ -254,11 +254,18 @@ const downloadQRCode = async (req, res, next) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    // Serve the file directly instead of redirecting
+    // If QR code URL is a Cloudinary URL, redirect to it
+    if (employee.qrCodeUrl.startsWith('http') && employee.qrCodeUrl.includes('cloudinary')) {
+      logger.info('Redirecting to Cloudinary QR code', { id, qrCodeUrl: employee.qrCodeUrl });
+      res.redirect(employee.qrCodeUrl);
+      return;
+    }
+    
+    // For local files, serve the file directly
     const basePath = path.join(__dirname, '..', 'public');
     const filePath = path.join(basePath, employee.qrCodeUrl);
     
-    logger.info('Attempting to serve QR code', { id, qrCodeUrl: employee.qrCodeUrl, basePath, filePath });
+    logger.info('Attempting to serve local QR code', { id, qrCodeUrl: employee.qrCodeUrl, basePath, filePath });
     
     // Check if file exists
     if (!fs.existsSync(filePath)) {
@@ -304,11 +311,18 @@ const downloadQRCodeByUid = async (req, res, next) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    // Serve the file directly instead of redirecting
+    // If QR code URL is a Cloudinary URL, redirect to it
+    if (employee.qrCodeUrl.startsWith('http') && employee.qrCodeUrl.includes('cloudinary')) {
+      logger.info('Redirecting to Cloudinary QR code', { uid, qrCodeUrl: employee.qrCodeUrl });
+      res.redirect(employee.qrCodeUrl);
+      return;
+    }
+    
+    // For local files, serve the file directly
     const basePath = path.join(__dirname, '..', 'public');
     const filePath = path.join(basePath, employee.qrCodeUrl);
     
-    logger.info('Attempting to serve QR code by UID', { uid, qrCodeUrl: employee.qrCodeUrl, basePath, filePath });
+    logger.info('Attempting to serve local QR code by UID', { uid, qrCodeUrl: employee.qrCodeUrl, basePath, filePath });
     
     // Check if file exists
     if (!fs.existsSync(filePath)) {
@@ -356,6 +370,39 @@ const getQRCodeDataUrl = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Error in getQRCodeDataUrl:', error);
+    sendError(res, 500, error.message);
+  }
+};
+
+/**
+ * @desc    Generate QR code on-demand for employee by uniqueId
+ * @route   GET /api/employees/uid/:uid/qrcode/dynamic
+ * @access  Public
+ */
+const generateDynamicQRCode = async (req, res, next) => {
+  try {
+    const { uid } = req.params;
+    
+    const employee = await employeeService.getByUniqueId(uid);
+    if (!employee) {
+      return sendError(res, 404, 'Employee not found');
+    }
+    
+    if (!employee.uniqueId) {
+      return sendError(res, 404, 'Employee unique ID not found');
+    }
+    
+    // Generate QR code on-demand
+    const qrCodeBuffer = await qrService.generateQRCodeOnDemand(employee.uniqueId);
+    
+    // Set proper headers
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', `inline; filename="qr-${employee.uniqueId}.png"`);
+    
+    // Send the image buffer
+    res.send(qrCodeBuffer);
+  } catch (error) {
+    logger.error('Error in generateDynamicQRCode:', error);
     sendError(res, 500, error.message);
   }
 };

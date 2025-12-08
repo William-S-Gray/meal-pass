@@ -71,8 +71,10 @@ const create = async (employeeData) => {
     const app = require('../server'); // Get app instance to access io
     const io = app.get('io');
     if (io) {
-      // Emit event to all connected clients
-      io.emit('employeeUpdated');
+      // Emit specific event for employee creation
+      io.emit('employeeCreated', {
+        employee: formatEmployeeResponse(employee)
+      });
     }
     
     return formatEmployeeResponse(employee);
@@ -208,8 +210,10 @@ const update = async (id, updateData) => {
     const app = require('../server'); // Get app instance to access io
     const io = app.get('io');
     if (io) {
-      // Emit event to all connected clients
-      io.emit('employeeUpdated');
+      // Emit specific event for employee update
+      io.emit('employeeUpdated', {
+        employee: formatEmployeeResponse(employee)
+      });
     }
     
     return formatEmployeeResponse(employee);
@@ -245,8 +249,10 @@ const remove = async (id) => {
     const app = require('../server'); // Get app instance to access io
     const io = app.get('io');
     if (io) {
-      // Emit event to all connected clients
-      io.emit('employeeUpdated');
+      // Emit specific event for employee deletion
+      io.emit('employeeDeleted', {
+        employeeId: id
+      });
     }
     
     return true;

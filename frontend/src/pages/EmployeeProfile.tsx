@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWebSocket } from '@/contexts/WebSocketContext'; // Import WebSocket context
 import { 
   getEmployeeByUid, 
   getFeedingRecordsForEmployee, 
@@ -22,6 +23,7 @@ import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
 export default function EmployeeProfile() {
   const { isAdmin } = useAuth();
+  const { socket } = useWebSocket(); // Use WebSocket context
   const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -34,6 +36,39 @@ export default function EmployeeProfile() {
       loadData(uid);
     }
   }, [uid]);
+
+  // Listen for real-time employee updates
+  useEffect(() => {
+    if (!socket || !employee) return;
+
+    const handleEmployeeUpdate = (data: { employee: Employee }) => {
+      // If the updated employee is the one we're currently viewing, update the profile
+      if (data.employee._id === employee._id) {
+        setEmployee(data.employee);
+      }
+    };
+
+    const handleEmployeeDelete = (data: { employeeId: string }) => {
+      // If the deleted employee is the one we're currently viewing, navigate back to the list
+      if (data.employeeId === employee._id) {
+        toast({
+          title: 'Employee Deleted',
+          description: 'This employee has been deleted by another user.'
+        });
+        navigate('/employees');
+      }
+    };
+
+    // Register event listeners
+    socket.on('employeeUpdated', handleEmployeeUpdate);
+    socket.on('employeeDeleted', handleEmployeeDelete);
+
+    // Cleanup event listeners
+    return () => {
+      socket.off('employeeUpdated', handleEmployeeUpdate);
+      socket.off('employeeDeleted', handleEmployeeDelete);
+    };
+  }, [socket, employee, navigate]);
 
   const loadData = async (uid: string) => {
     try {

@@ -579,6 +579,22 @@ export async function downloadQRCode(employeeId: string, employeeUid: string): P
   }
 }
 
+// Generate QR code dynamically without storing it
+export async function generateDynamicQRCode(employeeUid: string): Promise<string> {
+  try {
+    const response = await apiClient.get(`/api/employees/uid/${employeeUid}/qrcode/dynamic`, {
+      responseType: 'blob'
+    });
+    
+    // Create object URL from blob
+    const url = window.URL.createObjectURL(response.data);
+    return url;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+}
+
 // ============ FEEDING FUNCTIONS ============
 
 export async function getTodayFeedingRecords(): Promise<FeedingRecord[]> {

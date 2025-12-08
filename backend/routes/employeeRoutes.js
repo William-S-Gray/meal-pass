@@ -10,6 +10,7 @@ const {
   downloadQRCode,
   downloadQRCodeByUid,
   getQRCodeDataUrl,
+  generateDynamicQRCode,
   printBulkCards,
   printSingleCard,
   upload
@@ -55,6 +56,10 @@ router.route('/uid/:uid/qrcode')
 // QR Code DataURL route
 router.route('/:id/qrcode/dataurl')
   .get(authMiddleware, getQRCodeDataUrl);
+
+// Dynamic QR Code generation route
+router.route('/uid/:uid/qrcode/dynamic')
+  .get(generateDynamicQRCode);
 
 // Print card routes
 router.route('/print-cards')

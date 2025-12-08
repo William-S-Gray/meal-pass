@@ -13,6 +13,7 @@ import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName funct
 import { ChevronLeft, Loader2, Download, Calendar } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
+import { useWebSocket } from '@/contexts/WebSocketContext'; // Import WebSocket context
 
 // Define error type for better type safety
 interface ApiError extends Error {
@@ -27,6 +28,7 @@ interface ApiError extends Error {
 export default function RegisterEmployee() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { socket } = useWebSocket(); // Use WebSocket context
   const [loading, setLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [createdEmployee, setCreatedEmployee] = useState<Employee | null>(null);
@@ -113,8 +115,8 @@ export default function RegisterEmployee() {
 
   const handleCloseModal = () => {
     setShowQRModal(false);
-    // Navigate to employees list with refresh parameter
-    navigate('/employees?refresh=true');
+    // Navigate to employees list without refresh parameter since real-time updates are now enabled
+    navigate('/employees');
   };
 
   return (
