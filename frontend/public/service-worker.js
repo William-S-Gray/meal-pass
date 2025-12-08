@@ -25,14 +25,21 @@ self.addEventListener('fetch', (event) => {
         // Return cached version or fetch from network
         return response || fetch(event.request);
       })
-      .catch(() => {
-        // If fetch fails, return a fallback response
+      .catch((error) => {
+        // If fetch fails, return appropriate fallback response
+        console.error('Service worker fetch error:', error);
         if (event.request.mode === 'navigate') {
           return caches.match('/');
         }
-        return new Response(JSON.stringify({ error: 'Network error and no cache available' }), {
-          headers: { 'Content-Type': 'application/json' }
-        });
+        // For module scripts, we should not return JSON
+        const acceptHeader = event.request.headers.get('Accept');
+        if (acceptHeader && acceptHeader.includes('text/html')) {
+          return new Response('<!DOCTYPE html><html><head></head><body>Network error</body></html>', {
+            headers: { 'Content-Type': 'text/html' }
+          });
+        }
+        // Don't return JSON for module scripts
+        return fetch(event.request);
       })
   );
 });

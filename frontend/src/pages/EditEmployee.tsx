@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getEmployeeByUid, updateEmployee, Employee } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -43,18 +43,32 @@ export default function EditEmployee() {
     }
   }, [id]);
 
-  useEffect(() => {
+  const initialFormData = useMemo(() => {
     if (employee) {
-      setFormData({
+      return {
         name: employee.name,
         gender: employee.gender,
         phone: employee.phone || '',
         department: employee.department || '',
         position: employee.position || '',
         validUntil: employee.validUntil
-      });
+      };
     }
+    return {
+      name: '',
+      gender: 'Male' as 'Male' | 'Female' | 'Other',
+      phone: '',
+      department: '',
+      position: '',
+      validUntil: ''
+    };
   }, [employee]);
+
+  useEffect(() => {
+    if (employee) {
+      setFormData(initialFormData);
+    }
+  }, [employee, initialFormData]);
 
   const loadEmployee = async (id: string) => {
     try {
@@ -127,7 +141,10 @@ export default function EditEmployee() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">Loading employee data...</p>
+        </div>
       </div>
     );
   }

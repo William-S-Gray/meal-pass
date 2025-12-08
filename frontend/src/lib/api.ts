@@ -37,8 +37,33 @@ apiClient.interceptors.request.use(
 );
 
 // Simple in-memory cache for GET requests
-const apiCache = new Map<string, { data: unknown; timestamp: number }>();
+const apiCache = new Map<string, { data: unknown; timestamp: number }> ();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const EMPLOYEE_CACHE_DURATION = 30 * 1000; // 30 seconds for employee data
+
+// Function to clear employee-related cache entries
+const clearEmployeeCache = () => {
+  // Remove all cache entries related to employees
+  const keysToRemove: string[] = [];
+  for (const key of apiCache.keys()) {
+    if (key.includes('/api/employees')) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => apiCache.delete(key));
+};
+
+// Function to clear cache for a specific employee
+const clearSpecificEmployeeCache = (employeeId: string) => {
+  // Remove cache entries for a specific employee
+  const keysToRemove: string[] = [];
+  for (const key of apiCache.keys()) {
+    if (key.includes(`/api/employees/uid/${employeeId}`) || key.includes(`/api/employees/${employeeId}`)) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => apiCache.delete(key));
+};
 
 export interface User {
   id: string;
@@ -173,10 +198,10 @@ const handleApiError = (error: unknown) => {
 };
 
 // Wrapper for GET requests with caching
-const cachedGet = async <T>(url: string): Promise<T> => {
+const cachedGet = async <T>(url: string, cacheDuration: number = CACHE_DURATION): Promise<T> => {
   // Check cache first
   const cached = apiCache.get(url);
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+  if (cached && Date.now() - cached.timestamp < cacheDuration) {
     return cached.data as T;
   }
 
@@ -192,12 +217,17 @@ const cachedGet = async <T>(url: string): Promise<T> => {
   }
 };
 
+// Specialized caching function for employee data
+const cachedEmployeeGet = async <T>(url: string): Promise<T> => {
+  return cachedGet<T>(url, EMPLOYEE_CACHE_DURATION);
+};
+
 // Wrapper for POST requests that clears relevant cache
 const postWithCacheClear = async <T>(url: string, data?: unknown): Promise<T> => {
   try {
     const response = await apiClient.post<T>(url, data);
     // Clear cache for related GET requests
-    apiCache.clear();
+    clearEmployeeCache();
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -210,7 +240,7 @@ const putWithCacheClear = async <T>(url: string, data?: unknown): Promise<T> => 
   try {
     const response = await apiClient.put<T>(url, data);
     // Clear cache for related GET requests
-    apiCache.clear();
+    clearEmployeeCache();
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -223,7 +253,7 @@ const deleteWithCacheClear = async <T>(url: string): Promise<T> => {
   try {
     const response = await apiClient.delete<T>(url);
     // Clear cache for related GET requests
-    apiCache.clear();
+    clearEmployeeCache();
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -307,6 +337,9 @@ export async function createEmployee(data: Omit<Employee, '_id' | 'qrCode' | 'cr
     
     const result = response.data;
     
+    // Clear cache for employee lists since we've added a new employee
+    clearEmployeeCache();
+    
     // Map backend response to frontend interface
     return {
       _id: result._id,
@@ -346,7 +379,7 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
       url += `&search=${encodeURIComponent(search)}`;
     }
     
-    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean }[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
+    const response = await cachedEmployeeGet<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean }[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
     const result = response;
     
     // Map backend response to frontend interface
@@ -377,7 +410,7 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
 
 export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
   try {
-    const response = await cachedGet<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/employees/uid/${uid}`);
+    const response = await cachedEmployeeGet<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/employees/uid/${uid}`);
     
     // If employee not found, return null
     if ((response as unknown as { status: number }).status === 404) {
@@ -424,6 +457,11 @@ export async function updateEmployee(id: string, data: Partial<Employee>): Promi
     const response = await putWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, formData);
     const result = response.data;
     
+    // Clear cache for this specific employee
+    if (result.uniqueId) {
+      clearSpecificEmployeeCache(result.uniqueId);
+    }
+    
     // Map backend response to frontend interface
     return {
       _id: result._id,
@@ -448,6 +486,8 @@ export async function updateEmployee(id: string, data: Partial<Employee>): Promi
 export async function deleteEmployee(id: string): Promise<void> {
   try {
     await deleteWithCacheClear(`/api/employees/${id}`);
+    // Also clear cache for this specific employee if we have the ID
+    clearSpecificEmployeeCache(id);
   } catch (error) {
     handleApiError(error);
     throw error; // Re-throw to maintain existing error handling
