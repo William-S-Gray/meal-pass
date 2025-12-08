@@ -16,6 +16,14 @@ const generateQRCode = async (uniqueId) => {
     const qrDir = path.join(__dirname, '..', 'public', 'qrcodes');
     await fs.mkdir(qrDir, { recursive: true });
     
+    // Check if directory is writable
+    try {
+      await fs.access(qrDir, fs.constants.W_OK);
+    } catch (accessError) {
+      logger.error('QR codes directory is not writable', { qrDir, error: accessError.message });
+      throw new Error(`QR codes directory is not writable: ${qrDir}`);
+    }
+    
     // Generate QR code
     const fileName = `qr-${uniqueId.replace(/[^a-zA-Z0-9]/g, '-')}.png`;
     const filePath = path.join(qrDir, fileName);
@@ -31,7 +39,15 @@ const generateQRCode = async (uniqueId) => {
       }
     });
     
-    logger.info('QR code generated successfully', { uniqueId, filePath });
+    // Verify file was created
+    try {
+      await fs.access(filePath, fs.constants.F_OK);
+      logger.info('QR code generated successfully', { uniqueId, filePath });
+    } catch (fileError) {
+      logger.error('QR code file was not created', { uniqueId, filePath, error: fileError.message });
+      throw new Error(`QR code file was not created: ${filePath}`);
+    }
+    
     return fileUrl;
   } catch (error) {
     logger.error('Error generating QR code', { uniqueId, error: error.message });

@@ -81,12 +81,7 @@ const createEmployee = async (req, res, next) => {
     const employee = await employeeService.create(capitalizedData);
     
     // Generate QR code
-    const qrCodeDataUrl = await qrService.generateQRCode(employee.uniqueId);
-    employee.qrCodeUrl = `/public/qrcodes/${employee.uniqueId}.png`;
-    
-    // Save QR code to file
-    const qrCodePath = path.join(__dirname, '..', 'public', 'qrcodes', `${employee.uniqueId}.png`);
-    await qrService.saveQRCode(qrCodeDataUrl, qrCodePath);
+    employee.qrCodeUrl = await qrService.generateQRCode(employee.uniqueId);
     
     // Update employee with QR code URL
     await employeeService.update(employee._id, { qrCodeUrl: employee.qrCodeUrl });
@@ -245,10 +240,12 @@ const downloadQRCode = async (req, res, next) => {
     
     const employee = await employeeService.getById(id);
     if (!employee) {
+      logger.warn('Employee not found for QR code download', { id });
       return sendError(res, 404, 'Employee not found');
     }
     
     if (!employee.qrCodeUrl) {
+      logger.warn('QR code URL not found for employee', { id, employee });
       return sendError(res, 404, 'QR code not found');
     }
     
@@ -258,10 +255,14 @@ const downloadQRCode = async (req, res, next) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
     // Serve the file directly instead of redirecting
-    const filePath = path.join(__dirname, '..', 'public', employee.qrCodeUrl);
+    const basePath = path.join(__dirname, '..', 'public');
+    const filePath = path.join(basePath, employee.qrCodeUrl);
+    
+    logger.info('Attempting to serve QR code', { id, qrCodeUrl: employee.qrCodeUrl, basePath, filePath });
     
     // Check if file exists
     if (!fs.existsSync(filePath)) {
+      logger.warn('QR code file not found', { id, filePath, qrCodeUrl: employee.qrCodeUrl });
       return sendError(res, 404, 'QR code file not found');
     }
     
@@ -289,10 +290,12 @@ const downloadQRCodeByUid = async (req, res, next) => {
     
     const employee = await employeeService.getByUniqueId(uid);
     if (!employee) {
+      logger.warn('Employee not found for QR code download by UID', { uid });
       return sendError(res, 404, 'Employee not found');
     }
     
     if (!employee.qrCodeUrl) {
+      logger.warn('QR code URL not found for employee by UID', { uid, employee });
       return sendError(res, 404, 'QR code not found');
     }
     
@@ -302,10 +305,14 @@ const downloadQRCodeByUid = async (req, res, next) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
     // Serve the file directly instead of redirecting
-    const filePath = path.join(__dirname, '..', 'public', employee.qrCodeUrl);
+    const basePath = path.join(__dirname, '..', 'public');
+    const filePath = path.join(basePath, employee.qrCodeUrl);
+    
+    logger.info('Attempting to serve QR code by UID', { uid, qrCodeUrl: employee.qrCodeUrl, basePath, filePath });
     
     // Check if file exists
     if (!fs.existsSync(filePath)) {
+      logger.warn('QR code file not found by UID', { uid, filePath, qrCodeUrl: employee.qrCodeUrl });
       return sendError(res, 404, 'QR code file not found');
     }
     
