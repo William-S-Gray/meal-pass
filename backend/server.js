@@ -16,6 +16,9 @@ dotenv.config();
 // Database connection
 const connectDB = require('./config/db');
 
+// GridFS utilities
+const { initGridFS } = require('./utils/gridfs');
+
 // Route files
 const authRoutes = require('./routes/authRoutes');
 const feedingRoutes = require('./routes/feedingRoutes');
@@ -47,7 +50,15 @@ const io = new Server(server, {
 app.set('io', io);
 
 // Connect to database
-connectDB();
+connectDB().then(async () => {
+  try {
+    // Initialize GridFS after database connection
+    await initGridFS();
+    console.log('GridFS initialized successfully'.green);
+  } catch (error) {
+    console.error('Failed to initialize GridFS:', error.message.red);
+  }
+});
 
 // Body parser middleware
 app.use(express.json());

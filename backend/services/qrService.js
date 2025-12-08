@@ -1,32 +1,19 @@
 const QRCode = require('qrcode');
-const path = require('path');
-const fs = require('fs').promises;
+const mongoose = require('mongoose');
 const logger = require('../utils/logger');
-const cloudinary = require('cloudinary').v2;
-
-// Initialize Cloudinary if credentials are available
-if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  });
-  logger.info('Cloudinary initialized');
-} else {
-  logger.warn('Cloudinary credentials not provided, using local storage');
-}
+const { getGridFsBucket } = require('../utils/gridfs');
 
 /**
- * Generate QR code for a unique ID and store it persistently
+ * Generate QR code for a unique ID and store it in GridFS
  * @param {string} uniqueId - Unique identifier to encode in QR code
- * @returns {string} URL to the generated QR code image
+ * @returns {string} Filename of the generated QR code in GridFS
  */
 const generateQRCode = async (uniqueId) => {
   try {
-    logger.info('Generating QR code', { uniqueId });
+    logger.info('Generating QR code and storing in GridFS', { uniqueId });
     
-    // Generate QR code as Data URI (base64)
-    const dataUri = await QRCode.toDataURL(uniqueId, {
+    // Generate QR code as buffer
+    const buffer = await QRCode.toBuffer(uniqueId, {
       width: 300,
       margin: 2,
       color: {
@@ -35,50 +22,35 @@ const generateQRCode = async (uniqueId) => {
       }
     });
     
-    // If Cloudinary is configured, upload to Cloudinary
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-      logger.info('Uploading QR code to Cloudinary', { uniqueId });
-      
-      const result = await cloudinary.uploader.upload(dataUri, {
-        folder: 'mealpass_qr_codes',
-        public_id: `qr-${uniqueId.replace(/[^a-zA-Z0-9]/g, '-')}`,
-        overwrite: true,
-        resource_type: 'image'
-      });
-      
-      logger.info('QR code uploaded to Cloudinary successfully', { uniqueId, url: result.secure_url });
-      return result.secure_url;
-    } else {
-      // Fallback to local storage for development
-      logger.info('Using local storage for QR code', { uniqueId });
-      
-      // Ensure qrcodes directory exists
-      const qrDir = path.join(__dirname, '..', 'public', 'qrcodes');
-      await fs.mkdir(qrDir, { recursive: true });
-      
-      // Check if directory is writable
-      try {
-        await fs.access(qrDir, fs.constants.W_OK);
-      } catch (accessError) {
-        logger.error('QR codes directory is not writable', { qrDir, error: accessError.message });
-        throw new Error(`QR codes directory is not writable: ${qrDir}`);
+    // Get GridFS bucket
+    const gridFsBucket = getGridFsBucket();
+    
+    // Generate filename
+    const fileName = `qr-${uniqueId.replace(/[^a-zA-Z0-9]/g, '-')}.png`;
+    
+    // Create upload stream
+    const uploadStream = gridFsBucket.openUploadStream(fileName, {
+      metadata: {
+        uniqueId: uniqueId,
+        createdAt: new Date()
       }
-      
-      // Generate QR code as file
-      const fileName = `qr-${uniqueId.replace(/[^a-zA-Z0-9]/g, '-')}.png`;
-      const filePath = path.join(qrDir, fileName);
-      const fileUrl = `/qrcodes/${fileName}`;
-      
-      // Convert data URI to buffer and save file
-      const base64Data = dataUri.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      await fs.writeFile(filePath, buffer);
-      
-      logger.info('QR code generated and saved locally', { uniqueId, filePath });
-      return fileUrl;
-    }
+    });
+    
+    // Write buffer to GridFS
+    await new Promise((resolve, reject) => {
+      uploadStream.end(buffer, (error) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
+    
+    logger.info('QR code generated and saved to GridFS successfully', { uniqueId, fileName });
+    return fileName;
   } catch (error) {
-    logger.error('Error generating QR code', { uniqueId, error: error.message });
+    logger.error('Error generating QR code in GridFS', { uniqueId, error: error.message });
     throw error;
   }
 };
@@ -137,8 +109,48 @@ const generateQRCodeOnDemand = async (uniqueId) => {
   }
 };
 
+/**
+ * Get QR code from GridFS by filename
+ * @param {string} fileName - Name of the QR code file in GridFS
+ * @returns {Promise<Buffer>} Buffer containing the QR code image
+ */
+const getQRCodeFromGridFS = async (fileName) => {
+  try {
+    logger.info('Retrieving QR code from GridFS', { fileName });
+    
+    // Get GridFS bucket
+    const gridFsBucket = getGridFsBucket();
+    
+    // Create download stream
+    const downloadStream = gridFsBucket.openDownloadStreamByName(fileName);
+    
+    // Collect data chunks
+    const chunks = [];
+    return new Promise((resolve, reject) => {
+      downloadStream.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+      
+      downloadStream.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        logger.info('QR code retrieved from GridFS successfully', { fileName });
+        resolve(buffer);
+      });
+      
+      downloadStream.on('error', (error) => {
+        logger.error('Error retrieving QR code from GridFS', { fileName, error: error.message });
+        reject(error);
+      });
+    });
+  } catch (error) {
+    logger.error('Error retrieving QR code from GridFS', { fileName, error: error.message });
+    throw error;
+  }
+};
+
 module.exports = {
   generateQRCode,
   generateQRCodeDataUri,
-  generateQRCodeOnDemand
+  generateQRCodeOnDemand,
+  getQRCodeFromGridFS
 };

@@ -20,23 +20,26 @@ function capitalizeName(name) {
 
 /**
  * Format employee response data
- * @param {Object} employee - Employee document
+ * @param {Object} employee - Employee data from database
  * @returns {Object} Formatted employee data
  */
 const formatEmployeeResponse = (employee) => {
+  // Format the response to match frontend expectations
   return {
-    _id: employee._id,
+    _id: employee._id.toString(),
     uniqueId: employee.uniqueId,
-    name: capitalizeName(employee.name), // Capitalize name when formatting response
+    name: employee.name,
+    gender: employee.gender,
     phone: employee.phone,
     department: employee.department,
     position: employee.position,
-    validUntil: employee.validUntil,
-    qrCodeUrl: employee.qrCodeUrl,
-    photo: employee.photo,
-    active: employee.active,
-    createdAt: employee.createdAt,
-    updatedAt: employee.updatedAt
+    validUntil: employee.validUntil.toISOString(),
+    qrCodeUrl: employee.qrCodeUrl || '', // Legacy field, kept for backward compatibility
+    qrFileName: employee.qrFileName || '', // New field for GridFS filename
+    photo: employee.photo || '',
+    createdAt: employee.createdAt?.toISOString(),
+    updatedAt: employee.updatedAt?.toISOString(),
+    active: employee.active !== undefined ? employee.active : true
   };
 };
 

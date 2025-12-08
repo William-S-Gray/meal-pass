@@ -6,17 +6,17 @@ import {
   getEmployeeByUid, 
   getFeedingRecordsForEmployee, 
   updateEmployee, 
-  downloadQRCode, 
   setManualFeedingStatus, 
   Employee, 
   FeedingRecord 
 } from '@/lib/api';
+import DownloadQRButton from '@/components/DownloadQRButton';
 import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Download, Edit, Check, X, Loader2, Calendar, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Edit, Check, X, Loader2, Calendar, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format, parseISO, isBefore } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
@@ -92,34 +92,6 @@ export default function EmployeeProfile() {
 
   const handleEditClick = () => {
     navigate(`/employees/edit/${employee?.uniqueId}`);
-  };
-
-  const handleDownloadQR = async () => {
-    if (!employee) return;
-    
-    // Add validation for employee ID
-    if (!employee._id) {
-      console.error("Attempted QR download with no ID", employee);
-      alert("No ID found for employee.");
-      return;
-    }
-    
-    try {
-      setActionLoading(true);
-      await downloadQRCode(employee._id, employee.uniqueId);
-      toast({
-        title: 'Success',
-        description: 'QR code downloaded successfully'
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to download QR code',
-        variant: 'destructive'
-      });
-    } finally {
-      setActionLoading(false);
-    }
   };
 
   const handleSetFeedingStatus = async (fed: boolean) => {
@@ -248,6 +220,12 @@ export default function EmployeeProfile() {
                     </Button>
                   </>
                 )}
+                <DownloadQRButton 
+                  employeeId={employee._id} 
+                  employeeUid={employee.uniqueId} 
+                  variant="outline" 
+                  size="sm" 
+                />
                 <Button variant="outline" onClick={handleEditClick}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
@@ -330,14 +308,13 @@ export default function EmployeeProfile() {
                   alt="QR Code" 
                   className="max-w-[80vw] max-h-[80vh] md:max-w-[300px] md:max-h-[300px] border-4 border-white shadow-lg w-full h-auto object-contain"
                 />
-                <Button variant="outline" className="w-full" onClick={handleDownloadQR} disabled={actionLoading}>
-                  {actionLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                  )}
-                  Download QR Code
-                </Button>
+                <DownloadQRButton 
+                  employeeId={employee._id} 
+                  employeeUid={employee.uniqueId} 
+                  variant="outline" 
+                  className="w-full"
+                  disabled={actionLoading}
+                />
                 <Button variant="outline" className="w-full" onClick={() => window.print()}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />

@@ -67,8 +67,8 @@ const createEmployee = async (req, res, next) => {
     // Validate request
     const { error, value } = create.validate(req.body);
     if (error) {
-      logger.warn('Employee validation failed', { error: error.details });
-      return sendError(res, 400, error.details[0].message);
+      logger.warn('Employee creation validation failed', { error: error.details });
+      return sendValidationError(res, error);
     }
     
     // Capitalize the employee name
@@ -80,11 +80,11 @@ const createEmployee = async (req, res, next) => {
     // Create employee
     const employee = await employeeService.create(capitalizedData);
     
-    // Generate QR code
-    employee.qrCodeUrl = await qrService.generateQRCode(employee.uniqueId);
+    // Generate QR code and store filename in database
+    const qrFileName = await qrService.generateQRCode(employee.uniqueId);
     
-    // Update employee with QR code URL
-    await employeeService.update(employee._id, { qrCodeUrl: employee.qrCodeUrl });
+    // Update employee with QR code filename
+    await employeeService.update(employee._id, { qrFileName: qrFileName });
     
     logger.info('Employee created successfully', { id: employee._id, uniqueId: employee.uniqueId });
     
@@ -97,7 +97,7 @@ const createEmployee = async (req, res, next) => {
       department: employee.department,
       position: employee.position,
       validUntil: employee.validUntil,
-      qrCodeUrl: employee.qrCodeUrl,
+      qrFileName: qrFileName,
       createdAt: employee.createdAt
     });
   } catch (error) {
@@ -244,8 +244,8 @@ const downloadQRCode = async (req, res, next) => {
       return sendError(res, 404, 'Employee not found');
     }
     
-    if (!employee.qrCodeUrl) {
-      logger.warn('QR code URL not found for employee', { id, employee });
+    if (!employee.qrFileName) {
+      logger.warn('QR code filename not found for employee', { id, employee });
       return sendError(res, 404, 'QR code not found');
     }
     
@@ -254,32 +254,15 @@ const downloadQRCode = async (req, res, next) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    // If QR code URL is a Cloudinary URL, redirect to it
-    if (employee.qrCodeUrl.startsWith('http') && employee.qrCodeUrl.includes('cloudinary')) {
-      logger.info('Redirecting to Cloudinary QR code', { id, qrCodeUrl: employee.qrCodeUrl });
-      res.redirect(employee.qrCodeUrl);
-      return;
-    }
-    
-    // For local files, serve the file directly
-    const basePath = path.join(__dirname, '..', 'public');
-    const filePath = path.join(basePath, employee.qrCodeUrl);
-    
-    logger.info('Attempting to serve local QR code', { id, qrCodeUrl: employee.qrCodeUrl, basePath, filePath });
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      logger.warn('QR code file not found', { id, filePath, qrCodeUrl: employee.qrCodeUrl });
-      return sendError(res, 404, 'QR code file not found');
-    }
+    // Get QR code from GridFS
+    const qrBuffer = await qrService.getQRCodeFromGridFS(employee.qrFileName);
     
     // Set content type and serve file
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Content-Disposition', `attachment; filename="${path.basename(employee.qrCodeUrl)}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${employee.qrFileName}"`);
     
-    // Stream the file
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    // Send the image buffer
+    res.send(qrBuffer);
   } catch (error) {
     logger.error('Error in downloadQRCode:', error);
     sendError(res, 500, error.message);
@@ -301,8 +284,8 @@ const downloadQRCodeByUid = async (req, res, next) => {
       return sendError(res, 404, 'Employee not found');
     }
     
-    if (!employee.qrCodeUrl) {
-      logger.warn('QR code URL not found for employee by UID', { uid, employee });
+    if (!employee.qrFileName) {
+      logger.warn('QR code filename not found for employee by UID', { uid, employee });
       return sendError(res, 404, 'QR code not found');
     }
     
@@ -311,32 +294,15 @@ const downloadQRCodeByUid = async (req, res, next) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    // If QR code URL is a Cloudinary URL, redirect to it
-    if (employee.qrCodeUrl.startsWith('http') && employee.qrCodeUrl.includes('cloudinary')) {
-      logger.info('Redirecting to Cloudinary QR code', { uid, qrCodeUrl: employee.qrCodeUrl });
-      res.redirect(employee.qrCodeUrl);
-      return;
-    }
-    
-    // For local files, serve the file directly
-    const basePath = path.join(__dirname, '..', 'public');
-    const filePath = path.join(basePath, employee.qrCodeUrl);
-    
-    logger.info('Attempting to serve local QR code by UID', { uid, qrCodeUrl: employee.qrCodeUrl, basePath, filePath });
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      logger.warn('QR code file not found by UID', { uid, filePath, qrCodeUrl: employee.qrCodeUrl });
-      return sendError(res, 404, 'QR code file not found');
-    }
+    // Get QR code from GridFS
+    const qrBuffer = await qrService.getQRCodeFromGridFS(employee.qrFileName);
     
     // Set content type and serve file
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Content-Disposition', `attachment; filename="${path.basename(employee.qrCodeUrl)}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${employee.qrFileName}"`);
     
-    // Stream the file
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    // Send the image buffer
+    res.send(qrBuffer);
   } catch (error) {
     logger.error('Error in downloadQRCodeByUid:', error);
     sendError(res, 500, error.message);

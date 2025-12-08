@@ -42,6 +42,9 @@ const employeeSchema = new mongoose.Schema({
   qrCodeUrl: {
     type: String
   },
+  qrFileName: {
+    type: String // New field to store QR code filename in GridFS
+  },
   photo: {
     type: String
   },

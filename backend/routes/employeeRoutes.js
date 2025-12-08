@@ -49,7 +49,7 @@ router.route('/uid/:uid')
 router.route('/:id/qrcode')
   .get(authMiddleware, downloadQRCode);
 
-// QR Code download route by UID (NEW)
+// QR Code download route by UID
 router.route('/uid/:uid/qrcode')
   .get(authMiddleware, downloadQRCodeByUid);
 
