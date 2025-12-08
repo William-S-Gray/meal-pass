@@ -63,9 +63,9 @@ const create = async (employeeData) => {
     
     await employee.save();
     
-    // Generate QR code
-    const qrCodePath = await qrService.generateQRCode(uniqueId);
-    employee.qrCodeUrl = qrCodePath;
+    // Generate QR code and store filename in qrFileName field
+    const qrFileName = await qrService.generateQRCode(uniqueId);
+    employee.qrFileName = qrFileName; // Store filename in correct field
     await employee.save();
     
     logger.info('Employee created successfully', { id: employee._id, uniqueId });

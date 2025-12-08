@@ -99,17 +99,6 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter); // Apply rate limiting to all API routes
 
-// Static folder with CORS headers for QR codes
-app.use('/qrcodes', cors({
-  origin: [
-    process.env.FRONTEND_URL,
-    process.env.FRONTEND_URL?.replace("https://", "http://")
-  ],
-  methods: "GET,HEAD,OPTIONS",
-  allowedHeaders: "Content-Type, Authorization, X-Requested-With, X-HTTP-Method-Override, Accept, Origin, X-Requested-With",
-  credentials: true
-}), express.static(__dirname + '/public/qrcodes'));
-
 // Static folder for other assets
 app.use(express.static(__dirname + '/public'));
 

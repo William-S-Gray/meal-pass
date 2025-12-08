@@ -1,4 +1,4 @@
-// Create database and user for Meal Pass application
+// Switch to the mealpass database
 db = db.getSiblingDB('mealpass');
 
 // Create a user for the application
