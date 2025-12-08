@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies with legacy peer deps to resolve multer conflict
+RUN npm ci --only=production --legacy-peer-deps
 
 # Install Chromium for Puppeteer (needed for PDF generation) and curl for health checks
 RUN apk add --no-cache \
