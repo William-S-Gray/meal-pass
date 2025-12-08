@@ -643,6 +643,7 @@ module.exports = {
   downloadQRCode,
   downloadQRCodeByUid,
   getQRCodeDataUrl,
+  generateDynamicQRCode,
   printBulkCards,
   printSingleCard
 };

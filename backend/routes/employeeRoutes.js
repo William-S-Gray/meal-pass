@@ -57,7 +57,7 @@ router.route('/uid/:uid/qrcode')
 router.route('/:id/qrcode/dataurl')
   .get(authMiddleware, getQRCodeDataUrl);
 
-// Dynamic QR Code generation route
+// Dynamic QR Code generation route (public - no auth required)
 router.route('/uid/:uid/qrcode/dynamic')
   .get(generateDynamicQRCode);
 
