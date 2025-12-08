@@ -284,9 +284,21 @@ const downloadQRCodeByUid = async (req, res, next) => {
       return sendError(res, 404, 'Employee not found');
     }
     
+    // Check if QR code exists
     if (!employee.qrFileName) {
-      logger.warn('QR code filename not found for employee by UID', { uid, employee });
-      return sendError(res, 404, 'QR code not found');
+      logger.warn('QR code filename not found for employee by UID - regenerating', { uid, employee });
+      
+      // Generate new QR code
+      const qrFileName = await qrService.generateQRCode(uid);
+      
+      // Update employee with new QR filename
+      await Employee.updateOne(
+        { uniqueId: uid },
+        { qrFileName: qrFileName }
+      );
+      
+      employee.qrFileName = qrFileName;
+      logger.info('QR code regenerated and saved to GridFS', { uid, qrFileName });
     }
     
     // Set proper headers for file download

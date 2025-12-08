@@ -68,7 +68,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL,
-    process.env.FRONTEND_URL?.replace("https://", "http://")
+    process.env.FRONTEND_URL?.replace("https://", "http://"),
+    "https://meal-pass-frontend.onrender.com" // Explicitly allow production frontend
   ],
   methods: "GET,POST,PUT,DELETE,OPTIONS",
   allowedHeaders: "Content-Type, Authorization, X-Requested-With, X-HTTP-Method-Override, Accept, Origin, X-Requested-With",
@@ -104,7 +105,7 @@ app.use(express.static(__dirname + '/public'));
 
 // Handle CORS preflight requests
 app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
+  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://meal-pass-frontend.onrender.com');
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
