@@ -8,14 +8,17 @@ const logger = require('../utils/logger');
  * @returns {Object} Formatted feeding record data
  */
 const formatFeedingRecordResponse = (record) => {
+  // Extract employee information, prioritizing populated data
+  const employeeInfo = record.employee || {};
+  
   return {
     id: record._id,
     employeeUid: record.uniqueId,
-    employeeName: capitalizeName(record.employee.name), // Capitalize name in response
+    employeeName: employeeInfo.name ? capitalizeName(employeeInfo.name) : 'Unknown', // Capitalize name in response
     date: record.date,
-    time: record.time,
-    scannerName: record.scanner?.name || 'Unknown',
-    status: record.status,
+    time: record.fedAt ? new Date(record.fedAt).toTimeString().split(' ')[0] : '', // Format time from fedAt
+    scannerName: record.deviceId || 'Unknown',
+    status: 'ok', // Default status
     createdAt: record.createdAt,
     updatedAt: record.updatedAt
   };
@@ -130,7 +133,9 @@ const getTodaysRecords = async (page = 1, limit = 10) => {
     
     const today = new Date().toISOString().split('T')[0];
     
+    // Fetch records with populated employee data
     const records = await FeedingRecord.find({ date: today })
+      .populate('employee', 'name department position uniqueId') // Populate employee data
       .sort({ fedAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -167,6 +172,14 @@ const getRecordsByEmployee = async (uniqueId, page = 1, limit = 10) => {
   try {
     logger.info('Fetching feeding records for employee', { uniqueId, page, limit });
     
+    // First, find the employee to get their details
+    const employee = await Employee.findOne({ uniqueId }).lean();
+    
+    if (!employee) {
+      throw new Error('Employee not found');
+    }
+    
+    // Fetch records with populated employee data
     const records = await FeedingRecord.find({ uniqueId })
       .sort({ date: -1, fedAt: -1 })
       .skip((page - 1) * limit)
@@ -176,7 +189,15 @@ const getRecordsByEmployee = async (uniqueId, page = 1, limit = 10) => {
     const total = await FeedingRecord.countDocuments({ uniqueId });
     
     const result = {
-      data: records.map(formatFeedingRecordResponse),
+      data: records.map(record => ({
+        ...formatFeedingRecordResponse(record),
+        employee: {
+          name: employee.name,
+          department: employee.department,
+          position: employee.position,
+          uniqueId: employee.uniqueId
+        }
+      })),
       pagination: {
         page,
         limit,

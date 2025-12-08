@@ -24,6 +24,13 @@ function capitalizeName(name) {
  * @returns {Object} Formatted employee data
  */
 const formatEmployeeResponse = (employee) => {
+  // Generate the correct QR code URL for GridFS streaming
+  let qrCodeUrl = '';
+  if (employee.qrFileName) {
+    // Use the new GridFS streaming endpoint
+    qrCodeUrl = `/api/employees/uid/${employee.uniqueId}/qrcode`;
+  }
+  
   // Format the response to match frontend expectations
   return {
     _id: employee._id.toString(),
@@ -34,7 +41,7 @@ const formatEmployeeResponse = (employee) => {
     department: employee.department,
     position: employee.position,
     validUntil: employee.validUntil.toISOString(),
-    qrCodeUrl: employee.qrCodeUrl || '', // Legacy field, kept for backward compatibility
+    qrCodeUrl: qrCodeUrl, // Use the correct GridFS streaming URL
     qrFileName: employee.qrFileName || '', // New field for GridFS filename
     photo: employee.photo || '',
     createdAt: employee.createdAt?.toISOString(),
