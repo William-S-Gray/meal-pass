@@ -43,32 +43,19 @@ export default function EditEmployee() {
     }
   }, [id]);
 
-  const initialFormData = useMemo(() => {
+  // Initialize form data when employee data is loaded
+  useEffect(() => {
     if (employee) {
-      return {
+      setFormData({
         name: employee.name,
         gender: employee.gender,
         phone: employee.phone || '',
         department: employee.department || '',
         position: employee.position || '',
-        validUntil: employee.validUntil
-      };
+        validUntil: employee.validUntil ? format(parseISO(employee.validUntil), 'yyyy-MM-dd') : ''
+      });
     }
-    return {
-      name: '',
-      gender: 'Male' as 'Male' | 'Female' | 'Other',
-      phone: '',
-      department: '',
-      position: '',
-      validUntil: ''
-    };
   }, [employee]);
-
-  useEffect(() => {
-    if (employee) {
-      setFormData(initialFormData);
-    }
-  }, [employee, initialFormData]);
 
   const loadEmployee = async (id: string) => {
     try {

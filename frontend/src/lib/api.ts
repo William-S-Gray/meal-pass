@@ -39,7 +39,7 @@ apiClient.interceptors.request.use(
 // Simple in-memory cache for GET requests
 const apiCache = new Map<string, { data: unknown; timestamp: number }> ();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const EMPLOYEE_CACHE_DURATION = 30 * 1000; // 30 seconds for employee data
+const EMPLOYEE_CACHE_DURATION = 60 * 1000; // 60 seconds for employee data
 
 // Function to clear employee-related cache entries
 const clearEmployeeCache = () => {
@@ -392,7 +392,11 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
       department: item.department,
       position: item.position,
       validUntil: item.validUntil,
-      qrCode: item.qrCodeUrl.startsWith('http') ? item.qrCodeUrl : `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
+      qrCode: item.qrCodeUrl.startsWith('http') ? 
+        // If it's already a full URL, make sure it uses the correct domain
+        item.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
+        // If it's a relative URL, prepend the baseURL
+        `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
       createdAt: item.createdAt,
       fedToday: item.fedToday || false,
       active: item.active !== undefined ? item.active : true
@@ -429,7 +433,11 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
       department: result.department,
       position: result.position,
       validUntil: result.validUntil,
-      qrCode: result.qrCodeUrl.startsWith('http') ? result.qrCodeUrl : `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
+      qrCode: result.qrCodeUrl.startsWith('http') ? 
+        // If it's already a full URL, make sure it uses the correct domain
+        result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
+        // If it's a relative URL, prepend the baseURL
+        `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
       createdAt: result.createdAt,
       fedToday: result.fedToday || false,
       active: result.active !== undefined ? result.active : true
@@ -472,7 +480,11 @@ export async function updateEmployee(id: string, data: Partial<Employee>): Promi
       department: result.department,
       position: result.position,
       validUntil: result.validUntil,
-      qrCode: result.qrCodeUrl.startsWith('http') ? result.qrCodeUrl : `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
+      qrCode: result.qrCodeUrl.startsWith('http') ? 
+        // If it's already a full URL, make sure it uses the correct domain
+        result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
+        // If it's a relative URL, prepend the baseURL
+        `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
       createdAt: result.createdAt,
       fedToday: false, // fedToday is not returned from update
       active: result.active !== undefined ? result.active : true
