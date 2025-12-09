@@ -22,7 +22,7 @@ import { useState } from "react";
 import { lazy, Suspense } from "react";
 
 // Lazy load heavy components
-const EditEmployee = lazy(() => import("./pages/EditEmployee"));
+const EditEmployee = lazy(() => import("./pages/EditEmployeeEnhanced"));
 
 const queryClient = new QueryClient();
 
@@ -98,7 +98,7 @@ const App = () => (
               } />
               <Route path="/employees/edit/:uid" element={
                 <ProtectedRoute allowedRoles={['admin', 'volunteer']}>
-                  <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
+                  <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="flex flex-col items-center gap-4"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div><p className="text-muted-foreground">Loading employee editor...</p></div></div>}>
                     <EditEmployee />
                   </Suspense>
                 </ProtectedRoute>
