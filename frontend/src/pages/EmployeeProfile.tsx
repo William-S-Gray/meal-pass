@@ -7,6 +7,7 @@ import {
   getFeedingRecordsForEmployee, 
   updateEmployee, 
   setManualFeedingStatus, 
+  preloadEmployeeData,
   Employee, 
   FeedingRecord 
 } from '@/lib/api';
@@ -33,6 +34,8 @@ export default function EmployeeProfile() {
 
   useEffect(() => {
     if (uid) {
+      // Preload employee data for better performance
+      preloadEmployeeData(uid);
       loadData(uid);
     }
   }, [uid]);
@@ -304,7 +307,7 @@ export default function EmployeeProfile() {
 
               <div className="flex flex-col items-center gap-4 p-6 bg-muted rounded-lg">
                 <img 
-                  src={employee.qrCode} 
+                  src={employee.qrCodeUrl} 
                   alt="QR Code" 
                   className="max-w-[80vw] max-h-[80vh] md:max-w-[300px] md:max-h-[300px] border-4 border-white shadow-lg w-full h-auto object-contain"
                 />

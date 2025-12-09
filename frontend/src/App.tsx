@@ -11,7 +11,6 @@ import Dashboard from "./pages/Dashboard";
 import RegisterEmployee from "./pages/RegisterEmployee";
 import EmployeesList from "./pages/EmployeesList";
 import EmployeeProfile from "./pages/EmployeeProfile";
-import EditEmployee from "./pages/EditEmployee";
 import QRScanner from "./pages/QRScanner";
 import Reports from "./pages/Reports";
 import ReportsDashboard from "./pages/ReportsDashboard";
@@ -20,6 +19,10 @@ import FedToday from "./pages/FedToday";
 import NotFound from "./pages/NotFound";
 import { OptimizedScannerDemo } from "./pages/OptimizedScannerDemo"; // Added import
 import { useState } from "react";
+import { lazy, Suspense } from "react";
+
+// Lazy load heavy components
+const EditEmployee = lazy(() => import("./pages/EditEmployee"));
 
 const queryClient = new QueryClient();
 
@@ -95,7 +98,9 @@ const App = () => (
               } />
               <Route path="/employees/edit/:uid" element={
                 <ProtectedRoute allowedRoles={['admin', 'volunteer']}>
-                  <EditEmployee />
+                  <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
+                    <EditEmployee />
+                  </Suspense>
                 </ProtectedRoute>
               } />
               <Route path="/reports" element={

@@ -37,8 +37,23 @@ const Scanner = ({ onScanResult }) => {
         })
         .catch((err) => {
           console.error('Failed to start QR scanner:', err);
-          setScanStatus({ type: 'error', message: 'Failed to access camera' });
-          setTimeout(clearStatus, 1400);
+                
+          // More descriptive error messages based on error type
+          let errorMessage = 'Failed to access camera';
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
+          } else if (err.name === 'NotFoundError') {
+            errorMessage = 'No camera found on this device.';
+          } else if (err.name === 'NotSupportedError') {
+            errorMessage = 'Camera is not supported on this device.';
+          } else if (err.name === 'OverconstrainedError') {
+            errorMessage = 'Camera constraints cannot be satisfied.';
+          } else if (err.message) {
+            errorMessage = err.message;
+          }
+                
+          setScanStatus({ type: 'error', message: errorMessage });
+          setTimeout(clearStatus, 3000); // Longer display for error messages
         });
     }
   };
@@ -68,11 +83,26 @@ const Scanner = ({ onScanResult }) => {
         onScanResult(response);
       }
       
-      // Auto-clear status after 1.4 seconds
-      setTimeout(clearStatus, 1400);
+      // Auto-clear status after 3 seconds for better visibility
+      setTimeout(clearStatus, 3000);
     } catch (error) {
-      setScanStatus({ type: 'error', message: error.message || 'Scan failed' });
-      setTimeout(clearStatus, 1400);
+      console.error('Scan processing error:', error);
+      
+      // More descriptive error handling
+      let errorMessage = 'Scan failed';
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.status === 404) {
+        errorMessage = 'Employee not found';
+      } else if (error.status === 409) {
+        errorMessage = 'Meal already recorded for today';
+      } else if (!navigator.onLine) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+      
+      setScanStatus({ type: 'error', message: errorMessage });
+      // Longer display for error messages
+      setTimeout(clearStatus, 5000);
     }
   };
 
@@ -84,7 +114,7 @@ const Scanner = ({ onScanResult }) => {
     e.preventDefault();
     if (!manualId.trim()) {
       setScanStatus({ type: 'error', message: 'Please enter a valid ID' });
-      setTimeout(clearStatus, 1400);
+      setTimeout(clearStatus, 3000);
       return;
     }
 
@@ -100,11 +130,26 @@ const Scanner = ({ onScanResult }) => {
         onScanResult(response);
       }
       
-      // Auto-clear status after 1.4 seconds
-      setTimeout(clearStatus, 1400);
+      // Auto-clear status after 3 seconds for better visibility
+      setTimeout(clearStatus, 3000);
     } catch (error) {
-      setScanStatus({ type: 'error', message: error.message || 'Manual entry failed' });
-      setTimeout(clearStatus, 1400);
+      console.error('Manual entry processing error:', error);
+      
+      // More descriptive error handling
+      let errorMessage = 'Manual entry failed';
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.status === 404) {
+        errorMessage = 'Employee not found';
+      } else if (error.status === 409) {
+        errorMessage = 'Meal already recorded for today';
+      } else if (!navigator.onLine) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+      
+      setScanStatus({ type: 'error', message: errorMessage });
+      // Longer display for error messages
+      setTimeout(clearStatus, 5000);
     }
   };
 

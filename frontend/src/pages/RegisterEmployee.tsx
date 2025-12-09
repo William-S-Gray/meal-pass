@@ -286,7 +286,7 @@ export default function RegisterEmployee() {
           <div className="space-y-4">
             <div className="flex flex-col items-center gap-4 p-6 bg-muted rounded-lg">
               <img 
-                src={createdEmployee?.qrCode} 
+                src={createdEmployee?.qrCodeUrl} 
                 alt="QR Code" 
                 className="max-w-[80vw] max-h-[80vh] md:max-w-[300px] md:max-h-[300px] border-4 border-white shadow-lg w-full h-auto object-contain"
               />

@@ -39,7 +39,7 @@ apiClient.interceptors.request.use(
 // Simple in-memory cache for GET requests
 const apiCache = new Map<string, { data: unknown; timestamp: number }> ();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const EMPLOYEE_CACHE_DURATION = 60 * 1000; // 60 seconds for employee data
+const EMPLOYEE_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes for employee data (increased from 60 seconds)
 
 // Function to clear employee-related cache entries
 const clearEmployeeCache = () => {
@@ -51,6 +51,28 @@ const clearEmployeeCache = () => {
     }
   }
   keysToRemove.forEach(key => apiCache.delete(key));
+};
+
+// Function to get cache key for employee data
+const getEmployeeCacheKey = (uid: string) => {
+  return `/api/employees/uid/${uid}`;
+};
+
+// Function to check if employee data is in cache
+const isEmployeeInCache = (uid: string) => {
+  const cacheKey = getEmployeeCacheKey(uid);
+  const cached = apiCache.get(cacheKey);
+  return cached && Date.now() - cached.timestamp < EMPLOYEE_CACHE_DURATION;
+};
+
+// Function to get employee data from cache
+const getEmployeeFromCache = (uid: string) => {
+  const cacheKey = getEmployeeCacheKey(uid);
+  const cached = apiCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < EMPLOYEE_CACHE_DURATION) {
+    return cached.data as { data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } };
+  }
+  return null;
 };
 
 // Function to clear cache for a specific employee
@@ -220,6 +242,22 @@ const cachedGet = async <T>(url: string, cacheDuration: number = CACHE_DURATION)
 // Specialized caching function for employee data
 const cachedEmployeeGet = async <T>(url: string): Promise<T> => {
   return cachedGet<T>(url, EMPLOYEE_CACHE_DURATION);
+};
+
+// Preload employee data into cache
+export const preloadEmployeeData = async (uid: string) => {
+  try {
+    // Only preload if not already in cache
+    if (!isEmployeeInCache(uid)) {
+      const url = getEmployeeCacheKey(uid);
+      const response = await apiClient.get(url);
+      // Cache the result
+      apiCache.set(url, { data: response.data, timestamp: Date.now() });
+    }
+  } catch (error) {
+    // Silently fail preloading - it's not critical
+    console.debug('Failed to preload employee data:', error);
+  }
 };
 
 // Wrapper for POST requests that clears relevant cache
@@ -418,6 +456,32 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
 
 export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
   try {
+    // Check cache first for better performance
+    const cachedData = getEmployeeFromCache(uid);
+    if (cachedData) {
+      const result = cachedData.data;
+      
+      // Map backend response to frontend interface
+      return {
+        _id: result._id,
+        uniqueId: result.uniqueId,
+        name: result.name,
+        gender: result.gender,
+        phone: result.phone,
+        department: result.department,
+        position: result.position,
+        validUntil: result.validUntil,
+        qrCodeUrl: result.qrCodeUrl.startsWith('http') ? 
+          // If it's already a full URL, make sure it uses the correct domain
+          result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
+          // If it's a relative URL, prepend the baseURL
+          `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
+        createdAt: result.createdAt,
+        fedToday: result.fedToday || false,
+        active: result.active !== undefined ? result.active : true
+      };
+    }
+    
     const response = await cachedEmployeeGet<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/employees/uid/${uid}`);
     
     // If employee not found, return null

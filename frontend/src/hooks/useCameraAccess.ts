@@ -17,6 +17,17 @@ export interface CameraState {
   errorMessage: string | null;
 }
 
+// More descriptive error messages
+const ERROR_MESSAGES = {
+  PermissionDenied: 'Camera permission denied. Please allow camera access in your browser settings.',
+  NotFoundError: 'No camera found on this device.',
+  NotSupportedError: 'Camera is not supported on this device.',
+  NotAllowedError: 'Camera access was denied. Please check your browser permissions.',
+  OverconstrainedError: 'Camera constraints cannot be satisfied.',
+  StreamApiNotSupportedError: 'Camera API is not supported in your browser.',
+  UnknownError: 'An unknown error occurred while accessing the camera.'
+};
+
 // Hook for Camera Access Management
 export const useCameraAccess = () => {
   const streamRef = useRef<MediaStream | null>(null);
@@ -25,6 +36,8 @@ export const useCameraAccess = () => {
     error: null,
     errorMessage: null
   });
+  
+  const cameraOperationLockRef = useRef(false); // Prevent concurrent camera operations
 
   // Check if camera is supported
   const isCameraSupported = useCallback((): boolean => {
@@ -35,18 +48,27 @@ export const useCameraAccess = () => {
   const requestCameraAccess = useCallback(async (): Promise<boolean> => {
     console.log('=== REQUEST CAMERA ACCESS STARTED ===');
     
+    // Prevent concurrent operations
+    if (cameraOperationLockRef.current) {
+      console.log('Camera operation already in progress, skipping...');
+      return false;
+    }
+    
     if (!isCameraSupported()) {
       console.error('Camera is not supported in this browser');
       setCameraState({
         status: 'unsupported',
         error: 'StreamApiNotSupportedError',
-        errorMessage: 'Camera API is not supported in your browser'
+        errorMessage: ERROR_MESSAGES.StreamApiNotSupportedError
       });
       console.log('=== REQUEST CAMERA ACCESS FAILED - UNSUPPORTED ===');
       return false;
     }
 
     try {
+      // Set operation lock
+      cameraOperationLockRef.current = true;
+      
       setCameraState({
         status: 'requesting',
         error: null,
@@ -66,9 +88,11 @@ export const useCameraAccess = () => {
         setCameraState({
           status: 'denied',
           error: 'NotFoundError',
-          errorMessage: 'No camera found on this device'
+          errorMessage: ERROR_MESSAGES.NotFoundError
         });
         console.log('=== REQUEST CAMERA ACCESS FAILED - NO DEVICES ===');
+        // Release operation lock
+        cameraOperationLockRef.current = false;
         return false;
       }
 
@@ -92,13 +116,19 @@ export const useCameraAccess = () => {
       console.log('Camera state set to granted');
       console.log('=== REQUEST CAMERA ACCESS COMPLETED SUCCESSFULLY ===');
       
+      // Release operation lock
+      cameraOperationLockRef.current = false;
+      
       return true;
     } catch (err) {
       console.error('=== REQUEST CAMERA ACCESS FAILED ===');
       console.error('Camera access error:', err);
       
+      // Release operation lock on error
+      cameraOperationLockRef.current = false;
+      
       let errorType: CameraError = 'UnknownError';
-      let errorMessage = 'Failed to access camera';
+      let errorMessage = ERROR_MESSAGES.UnknownError;
       
       if (err instanceof Error) {
         console.log('Error details:', {
@@ -107,20 +137,27 @@ export const useCameraAccess = () => {
           stack: err.stack
         });
         
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          errorType = 'PermissionDenied';
-          errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
-        } else if (err.name === 'NotFoundError') {
-          errorType = 'NotFoundError';
-          errorMessage = 'No camera found on this device';
-        } else if (err.name === 'NotSupportedError') {
-          errorType = 'NotSupportedError';
-          errorMessage = 'Camera is not supported on this device';
-        } else if (err.name === 'OverconstrainedError') {
-          errorType = 'OverconstrainedError';
-          errorMessage = 'Camera constraints cannot be satisfied';
-        } else {
-          errorMessage = err.message || 'Unknown camera error';
+        // Map error names to our error types
+        switch (err.name) {
+          case 'NotAllowedError':
+          case 'PermissionDeniedError':
+            errorType = 'PermissionDenied';
+            errorMessage = ERROR_MESSAGES.PermissionDenied;
+            break;
+          case 'NotFoundError':
+            errorType = 'NotFoundError';
+            errorMessage = ERROR_MESSAGES.NotFoundError;
+            break;
+          case 'NotSupportedError':
+            errorType = 'NotSupportedError';
+            errorMessage = ERROR_MESSAGES.NotSupportedError;
+            break;
+          case 'OverconstrainedError':
+            errorType = 'OverconstrainedError';
+            errorMessage = ERROR_MESSAGES.OverconstrainedError;
+            break;
+          default:
+            errorMessage = err.message || ERROR_MESSAGES.UnknownError;
         }
       }
       
@@ -149,6 +186,12 @@ export const useCameraAccess = () => {
     console.log('=== START CAMERA FUNCTION CALLED ===');
     console.log('Parameters:', { videoElement, constraints });
     
+    // Prevent concurrent operations
+    if (cameraOperationLockRef.current) {
+      console.log('Camera operation already in progress, skipping...');
+      return false;
+    }
+    
     if (!videoElement) {
       console.error('Video element is required but was null');
       setCameraState({
@@ -165,7 +208,7 @@ export const useCameraAccess = () => {
       setCameraState({
         status: 'unsupported',
         error: 'StreamApiNotSupportedError',
-        errorMessage: 'Camera API is not supported in your browser'
+        errorMessage: ERROR_MESSAGES.StreamApiNotSupportedError
       });
       console.log('=== START CAMERA FAILED - UNSUPPORTED ===');
       return false;
@@ -173,6 +216,9 @@ export const useCameraAccess = () => {
 
     try {
       console.log('Setting camera state to requesting...');
+      // Set operation lock
+      cameraOperationLockRef.current = true;
+      
       setCameraState(prev => ({
         ...prev,
         status: 'requesting',
@@ -289,13 +335,20 @@ export const useCameraAccess = () => {
       });
 
       console.log('=== START CAMERA COMPLETED SUCCESSFULLY ===');
+      
+      // Release operation lock
+      cameraOperationLockRef.current = false;
+      
       return true;
     } catch (err) {
       console.error('=== START CAMERA FAILED ===');
       console.error('Failed to start camera:', err);
       
+      // Release operation lock on error
+      cameraOperationLockRef.current = false;
+      
       let errorType: CameraError = 'UnknownError';
-      let errorMessage = 'Failed to start camera';
+      let errorMessage = ERROR_MESSAGES.UnknownError;
       
       if (err instanceof Error) {
         console.log('Error details:', {
@@ -304,20 +357,27 @@ export const useCameraAccess = () => {
           stack: err.stack
         });
         
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          errorType = 'PermissionDenied';
-          errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
-        } else if (err.name === 'NotFoundError') {
-          errorType = 'NotFoundError';
-          errorMessage = 'No camera found on this device';
-        } else if (err.name === 'NotSupportedError') {
-          errorType = 'NotSupportedError';
-          errorMessage = 'Camera is not supported on this device';
-        } else if (err.name === 'OverconstrainedError') {
-          errorType = 'OverconstrainedError';
-          errorMessage = 'Camera constraints cannot be satisfied';
-        } else {
-          errorMessage = err.message || 'Unknown camera error';
+        // Map error names to our error types
+        switch (err.name) {
+          case 'NotAllowedError':
+          case 'PermissionDeniedError':
+            errorType = 'PermissionDenied';
+            errorMessage = ERROR_MESSAGES.PermissionDenied;
+            break;
+          case 'NotFoundError':
+            errorType = 'NotFoundError';
+            errorMessage = ERROR_MESSAGES.NotFoundError;
+            break;
+          case 'NotSupportedError':
+            errorType = 'NotSupportedError';
+            errorMessage = ERROR_MESSAGES.NotSupportedError;
+            break;
+          case 'OverconstrainedError':
+            errorType = 'OverconstrainedError';
+            errorMessage = ERROR_MESSAGES.OverconstrainedError;
+            break;
+          default:
+            errorMessage = err.message || ERROR_MESSAGES.UnknownError;
         }
       }
       
@@ -335,6 +395,9 @@ export const useCameraAccess = () => {
   // Stop camera
   const stopCamera = useCallback(() => {
     try {
+      // Release operation lock when stopping
+      cameraOperationLockRef.current = false;
+      
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => {
           try {

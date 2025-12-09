@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getEmployeeByUid, updateEmployee, Employee } from '@/lib/api';
+import { getEmployeeByUid, updateEmployee, preloadEmployeeData, Employee } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,23 +41,11 @@ export default function EditEmployee() {
 
   useEffect(() => {
     if (id) {
+      // Preload employee data for better performance
+      preloadEmployeeData(id);
       loadEmployee(id);
     }
   }, [id]);
-
-  // Initialize form data when employee data is loaded
-  useEffect(() => {
-    if (employee) {
-      setFormData({
-        name: employee.name,
-        gender: employee.gender,
-        phone: employee.phone || '',
-        department: employee.department || '',
-        position: employee.position || '',
-        validUntil: employee.validUntil ? format(parseISO(employee.validUntil), 'yyyy-MM-dd') : ''
-      });
-    }
-  }, [employee]);
 
   // Listen for real-time employee updates
   useEffect(() => {
@@ -67,13 +55,23 @@ export default function EditEmployee() {
       // If the updated employee is the one we're currently editing, update the form
       if (data.employee._id === employee._id) {
         setEmployee(data.employee);
-        setFormData({
-          name: data.employee.name,
-          gender: data.employee.gender,
-          phone: data.employee.phone || '',
-          department: data.employee.department || '',
-          position: data.employee.position || '',
-          validUntil: data.employee.validUntil ? format(parseISO(data.employee.validUntil), 'yyyy-MM-dd') : ''
+        // Only update form data if it's different to prevent unnecessary re-renders
+        setFormData(prevFormData => {
+          const newFormData = {
+            name: data.employee.name,
+            gender: data.employee.gender,
+            phone: data.employee.phone || '',
+            department: data.employee.department || '',
+            position: data.employee.position || '',
+            validUntil: data.employee.validUntil ? format(parseISO(data.employee.validUntil), 'yyyy-MM-dd') : ''
+          };
+          
+          // Check if form data actually changed
+          const isSame = Object.keys(newFormData).every(
+            key => prevFormData[key as keyof typeof prevFormData] === newFormData[key as keyof typeof newFormData]
+          );
+          
+          return isSame ? prevFormData : newFormData;
         });
       }
     };
@@ -89,6 +87,7 @@ export default function EditEmployee() {
 
   const loadEmployee = async (id: string) => {
     try {
+      setLoading(true);
       const employeeData = await getEmployeeByUid(id);
       if (employeeData) {
         setEmployee(employeeData);

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useCameraAccess } from '@/hooks/useCameraAccess';
 import { useScanner } from '@/hooks/useScanner';
 import { usePWAStorage } from '@/hooks/usePWAStorage';
@@ -18,6 +18,9 @@ export const ScannerView = ({ onScanComplete }) => {
   const [showRetry, setShowRetry] = useState(false);
   const [manualEntryId, setManualEntryId] = useState(''); // State for manual entry
   const [isManualProcessing, setIsManualProcessing] = useState(false); // State for manual entry processing
+  const operationLockRef = useRef(false); // Prevent concurrent scanning operations
+  const recentlyProcessedCodesRef = useRef(new Set()); // Track recently processed codes for deduplication
+  const cleanupTimeoutsRef = useRef(new Map()); // Track all cleanup timeouts to prevent memory leaks
   
   // Expose a test function to window for manual testing
   useEffect(() => {
@@ -31,202 +34,10 @@ export const ScannerView = ({ onScanComplete }) => {
     return () => {
       console.log('=== SCANNER VIEW COMPONENT UNMOUNTING ===');
       delete window.testCameraInit;
+      // Clear the set to prevent memory leaks
+      recentlyProcessedCodesRef.current.clear();
     };
   }, []);
-
-  // Initialize scanner when video element is available
-  useEffect(() => {
-    console.log('Video ref changed:', videoRef.current);
-    
-    if (videoRef.current) {
-      console.log('Video element is now available, initializing scanner...');
-      
-      // Create a local scanner instance
-      let localQrScanner = null;
-      let isQrInitialized = false;
-      let isBarcodeInitialized = false;
-      let isActive = false;
-      
-      // Local state for scanner
-      let localScannerState = {
-        status: 'idle',
-        result: null,
-        error: null
-      };
-      
-      // Update local scanner state
-      const updateScannerState = (newState) => {
-        localScannerState = { ...localScannerState, ...newState };
-        setScannerState(localScannerState);
-        console.log('Scanner state updated:', localScannerState);
-      };
-      
-      // Initialize QR Scanner
-      const initQrScanner = async () => {
-        console.log('Initializing QR scanner with video element:', videoRef.current);
-        if (!videoRef.current || isQrInitialized || !isActive) {
-          console.log('QR scanner conditions not met:', {
-            hasVideoElement: !!videoRef.current,
-            isQrInitialized,
-            isActive
-          });
-          return;
-        }
-
-        try {
-          // Import QrScanner dynamically
-          const QrScanner = (await import('qr-scanner')).default;
-          
-          // Stop any existing QR scanner
-          if (localQrScanner) {
-            localQrScanner.stop();
-            localQrScanner.destroy();
-            localQrScanner = null;
-          }
-
-          // Create new QR scanner instance
-          localQrScanner = new QrScanner(
-            videoRef.current,
-            (result) => {
-              if (!isActive) return;
-              
-              const scanResult = {
-                data: result.data.trim(),
-                type: 'qr',
-                timestamp: Date.now()
-              };
-              
-              updateScannerState({
-                status: 'success',
-                result: scanResult,
-                error: null
-              });
-              
-              handleScanResult(scanResult);
-            },
-            {
-              highlightScanRegion: true,
-              highlightCodeOutline: true,
-              maxScansPerSecond: 2,
-              preferredCamera: 'environment'
-            }
-          );
-
-          await localQrScanner.start();
-          isQrInitialized = true;
-          console.log('QR scanner started successfully');
-        } catch (error) {
-          console.error('Failed to initialize QR scanner:', error);
-          
-          const errorMessage = error instanceof Error ? error.message : 'Failed to initialize QR scanner';
-          
-          updateScannerState({
-            status: 'error',
-            result: null,
-            error: errorMessage
-          });
-        }
-      };
-      
-      // Start scanning function
-      const startScanning = async () => {
-        console.log('=== LOCAL START SCANNING CALLED ===');
-        console.log('Video element:', videoRef.current);
-        
-        if (!videoRef.current) {
-          console.error('Video element is required but was null');
-          updateScannerState({
-            status: 'error',
-            result: null,
-            error: 'Video element is required'
-          });
-          console.log('=== LOCAL START SCANNING FAILED - NO VIDEO ELEMENT ===');
-          return false;
-        }
-
-        try {
-          console.log('Setting scanner state to scanning...');
-          updateScannerState({
-            status: 'scanning',
-            result: null,
-            error: null
-          });
-
-          console.log('Setting isActive to true...');
-          isActive = true;
-
-          // Initialize scanners based on mode
-          console.log('Initializing scanners based on mode:', scanMode);
-          if (scanMode === 'qr' || scanMode === 'both') {
-            console.log('Initializing QR scanner...');
-            await initQrScanner();
-            console.log('QR scanner initialized');
-          }
-
-          // TODO: Add barcode scanner initialization if needed
-          
-          console.log('=== LOCAL START SCANNING COMPLETED SUCCESSFULLY ===');
-          return true;
-        } catch (error) {
-          console.error('=== LOCAL START SCANNING FAILED ===');
-          console.error('Failed to start scanning:', error);
-          
-          const errorMessage = error instanceof Error ? error.message : 'Failed to start scanning';
-          
-          updateScannerState({
-            status: 'error',
-            result: null,
-            error: errorMessage
-          });
-          
-          console.log('=== LOCAL START SCANNING FAILED WITH ERROR ===');
-          return false;
-        }
-      };
-      
-      // Stop scanning function
-      const stopScanning = () => {
-        console.log('=== LOCAL STOP SCANNING CALLED ===');
-        try {
-          isActive = false;
-
-          // Stop QR scanner
-          if (localQrScanner) {
-            localQrScanner.stop();
-            localQrScanner.destroy();
-            localQrScanner = null;
-            isQrInitialized = false;
-          }
-
-          // Stop barcode scanner (TODO: implement if needed)
-          
-          updateScannerState({
-            status: 'idle',
-            result: null,
-            error: null
-          });
-          
-          console.log('=== LOCAL STOP SCANNING COMPLETED ===');
-        } catch (error) {
-          console.warn('Error stopping scanners:', error);
-        }
-      };
-      
-      // Set the scanner controls
-      setScannerControls({
-        startScanning,
-        stopScanning
-      });
-      
-      console.log('Scanner controls initialized');
-      
-      // Cleanup function
-      return () => {
-        console.log('Cleaning up scanner...');
-        stopScanning();
-      };
-    }
-  }, [videoRef.current, scanMode]); // Removed handleScanResult from dependencies to avoid infinite loop
 
   // Use our custom hooks
   const { 
@@ -238,28 +49,29 @@ export const ScannerView = ({ onScanComplete }) => {
     clearVideoSource 
   } = useCameraAccess();
   
-  // Scanner state - we'll initialize this properly after video element is mounted
-  const [scannerState, setScannerState] = useState({
-    status: 'idle',
-    result: null,
-    error: null
-  });
-  
-  // Scanner control functions - will be set after video element is available
-  const [scannerControls, setScannerControls] = useState({
-    startScanning: async () => { console.warn('Scanner not initialized yet'); return false; },
-    stopScanning: () => { console.warn('Scanner not initialized yet'); }
-  });
-
-  const { 
-    storageState, 
-    cacheScan, 
-    syncPendingScans 
-  } = usePWAStorage();
-
   // Handle scan result from scanner hook
-  async function handleScanResult(result) {
-    if (isProcessing) return;
+  const handleScanResult = useCallback(async (result) => {
+    // Prevent processing if already processing or if operation is locked
+    if (isProcessing || operationLockRef.current) {
+      console.log('Already processing a scan, ignoring duplicate');
+      return;
+    }
+    
+    // Check if we've recently processed this exact code
+    if (recentlyProcessedCodesRef.current.has(result.data)) {
+      console.log('Recently processed this code, ignoring duplicate');
+      return;
+    }
+    
+    // Set operation lock immediately
+    operationLockRef.current = true;
+    
+    // Add to recently processed codes set
+    recentlyProcessedCodesRef.current.add(result.data);
+    // Track cleanup timeout ID for proper cleanup
+    const cleanupTimeoutId = setTimeout(() => {
+      recentlyProcessedCodesRef.current.delete(result.data);
+    }, 10000);
     
     setIsProcessing(true);
     setScanResult(result);
@@ -341,13 +153,39 @@ export const ScannerView = ({ onScanComplete }) => {
       }
     } finally {
       setIsProcessing(false);
+      // Release operation lock
+      operationLockRef.current = false;
       
       // Auto-hide result after delay
-      setTimeout(() => {
+      const resultTimeoutId = setTimeout(() => {
         setScanResult(null);
       }, 3000);
+      
+      // Store timeout IDs for cleanup
+      if (!cleanupTimeoutsRef.current) {
+        cleanupTimeoutsRef.current = new Map();
+      }
+      cleanupTimeoutsRef.current.set('result', resultTimeoutId);
+      cleanupTimeoutsRef.current.set(`code-${result.data}`, cleanupTimeoutId);
     }
-  }
+  }, [isProcessing, onScanComplete, storageState.isOnline]);
+  
+  // Use scanner hook with proper dependencies
+  const { 
+    scannerState, 
+    startScanning, 
+    stopScanning 
+  } = useScanner(
+    videoRef.current,
+    handleScanResult,
+    scanMode
+  );
+
+  const { 
+    storageState, 
+    cacheScan, 
+    syncPendingScans 
+  } = usePWAStorage();
 
   // Start scanning process
   const initiateScanning = async () => {
@@ -359,11 +197,19 @@ export const ScannerView = ({ onScanComplete }) => {
       scannerState
     });
     
+    // Prevent concurrent scanning operations
+    if (operationLockRef.current) {
+      console.log('Scanning operation already in progress, skipping...');
+      return;
+    }
+    
     if (isScanning) {
       console.log('Already scanning, returning early');
       return;
     }
     
+    // Set operation lock
+    operationLockRef.current = true;
     setIsScanning(true);
     setShowRetry(false);
     console.log('Set isScanning to true');
@@ -398,7 +244,7 @@ export const ScannerView = ({ onScanComplete }) => {
       
       console.log('Step 3: Starting scanning process...');
       // Start scanning
-      const scanningStarted = await scannerControls.startScanning();
+      const scanningStarted = await startScanning();
       console.log('Step 3 Result - Scanning started:', scanningStarted);
       
       console.log('=== INITIATE SCANNING PROCESS COMPLETED SUCCESSFULLY ===');
@@ -407,13 +253,27 @@ export const ScannerView = ({ onScanComplete }) => {
       console.error('Error details:', error);
       console.error('Error stack:', error.stack);
       setShowRetry(true);
+    } finally {
+      // Release operation lock
+      operationLockRef.current = false;
     }
   };
 
   // Stop scanning process
   const stopScanningProcess = () => {
     console.log('=== STOP SCANNING PROCESS STARTED ===');
-    scannerControls.stopScanning();
+    // Release operation lock when stopping
+    operationLockRef.current = false;
+    // Clear recently processed codes
+    recentlyProcessedCodesRef.current.clear();
+    // Clear all stored timeouts
+    if (cleanupTimeoutsRef.current) {
+      cleanupTimeoutsRef.current.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+      cleanupTimeoutsRef.current.clear();
+    }
+    stopScanning();
     stopCamera();
     clearVideoSource(videoRef.current);
     setIsScanning(false);
@@ -427,10 +287,16 @@ export const ScannerView = ({ onScanComplete }) => {
     stopScanningProcess();
     
     // Wait a bit for cleanup
-    setTimeout(() => {
+    const retryTimeoutId = setTimeout(() => {
       console.log('Initiating retry after cleanup...');
       initiateScanning();
     }, 500);
+    
+    // Store timeout ID for cleanup
+    if (!cleanupTimeoutsRef.current) {
+      cleanupTimeoutsRef.current = new Map();
+    }
+    cleanupTimeoutsRef.current.set('retry', retryTimeoutId);
   };
 
   // Handle manual entry submission
@@ -439,6 +305,30 @@ export const ScannerView = ({ onScanComplete }) => {
     if (!manualEntryId.trim()) return;
     
     console.log('=== MANUAL ENTRY SUBMITTING ===', manualEntryId);
+    
+    // Prevent concurrent manual entry operations
+    if (isManualProcessing || operationLockRef.current) {
+      console.log('Manual entry already in progress, ignoring');
+      return;
+    }
+    
+    // Set operation lock immediately
+    operationLockRef.current = true;
+    
+    // Check if we've recently processed this exact code manually
+    if (recentlyProcessedCodesRef.current.has(manualEntryId.trim())) {
+      console.log('Recently processed this code manually, ignoring duplicate');
+      operationLockRef.current = false; // Release lock
+      return;
+    }
+    
+    // Add to recently processed codes set
+    recentlyProcessedCodesRef.current.add(manualEntryId.trim());
+    // Track cleanup timeout ID for proper cleanup
+    const cleanupTimeoutId = setTimeout(() => {
+      recentlyProcessedCodesRef.current.delete(manualEntryId.trim());
+    }, 10000);
+    
     setIsManualProcessing(true);
     
     try {
@@ -455,7 +345,6 @@ export const ScannerView = ({ onScanComplete }) => {
             uniqueId: manualEntryId.trim()
           });
         }
-        setIsManualProcessing(false);
         return;
       }
       
@@ -513,8 +402,16 @@ export const ScannerView = ({ onScanComplete }) => {
       }
     } finally {
       setIsManualProcessing(false);
+      // Release operation lock
+      operationLockRef.current = false;
       // Clear the input field
       setManualEntryId('');
+      
+      // Store timeout ID for cleanup
+      if (!cleanupTimeoutsRef.current) {
+        cleanupTimeoutsRef.current = new Map();
+      }
+      cleanupTimeoutsRef.current.set(`manual-${manualEntryId.trim()}`, cleanupTimeoutId);
     }
   };
 
@@ -536,6 +433,13 @@ export const ScannerView = ({ onScanComplete }) => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Clear all stored timeouts
+      if (cleanupTimeoutsRef.current) {
+        cleanupTimeoutsRef.current.forEach((timeoutId) => {
+          clearTimeout(timeoutId);
+        });
+        cleanupTimeoutsRef.current.clear();
+      }
       stopScanningProcess();
     };
   }, []);
@@ -548,6 +452,12 @@ export const ScannerView = ({ onScanComplete }) => {
       const timer = setTimeout(() => {
         initiateScanning();
       }, 100);
+      
+      // Store timeout ID for cleanup
+      if (!cleanupTimeoutsRef.current) {
+        cleanupTimeoutsRef.current = new Map();
+      }
+      cleanupTimeoutsRef.current.set('initial', timer);
       
       // Return focus to document for better mobile experience
       document.focus();

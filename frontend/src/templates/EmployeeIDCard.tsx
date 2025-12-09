@@ -64,9 +64,9 @@ const EmployeeIDCard: React.FC<EmployeeIDCardProps> = ({
         
         {/* Right Side - QR Code */}
         <div className="w-24 h-24 flex items-center justify-center bg-gray-100 border border-gray-300 rounded">
-          {employee.qrCode ? (
+          {employee.qrCodeUrl ? (
             <img 
-              src={employee.qrCode} 
+              src={employee.qrCodeUrl} 
               alt="QR Code" 
               className="w-full h-full object-contain p-1"
             />
