@@ -17,7 +17,13 @@ const connectDB = async () => {
     console.log(`MongoDB Connected: ${conn.connection.host}`.cyan.underline.bold);
   } catch (error) {
     console.error(`Error: ${error.message}`.red.underline.bold);
-    process.exit(1);
+    
+    // In development mode, allow server to start without database
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Starting server in development mode without database connection...'.yellow);
+    } else {
+      process.exit(1);
+    }
   }
 };
 

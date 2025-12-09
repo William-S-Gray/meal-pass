@@ -38,7 +38,7 @@ export default function DownloadQRButton({
       console.error('Download failed:', error);
       toast({
         title: 'Error',
-        description: 'Failed to download QR code',
+        description: error instanceof Error ? error.message : 'Failed to download QR code',
         variant: 'destructive'
       });
     } finally {

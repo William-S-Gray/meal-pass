@@ -642,8 +642,32 @@ export async function downloadQRCode(employeeId: string, employeeUid: string): P
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
   } catch (error) {
-    handleApiError(error);
-    throw error; // Re-throw to maintain existing error handling
+    console.error('QR Code download error:', error);
+    
+    // Handle specific error cases for blob responses
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        // Server responded with error status
+        if (error.response.status === 401) {
+          throw new Error('Authentication required. Please log in again.');
+        } else if (error.response.status === 403) {
+          throw new Error('Access denied. You do not have permission to download this QR code.');
+        } else if (error.response.status === 404) {
+          throw new Error('Employee not found.');
+        } else {
+          throw new Error(`Server error: ${error.response.status}`);
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        throw new Error('Network error - no response received from server');
+      } else {
+        // Something else happened
+        throw new Error(error.message || 'Unknown error occurred');
+      }
+    } else {
+      // Non-Axios error
+      throw new Error('Unknown error occurred');
+    }
   }
 }
 

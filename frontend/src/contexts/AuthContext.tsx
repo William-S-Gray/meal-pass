@@ -28,9 +28,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        // Verify that we have a valid token
+        // Verify that we have a valid token that hasn't expired
         if (parsedUser && parsedUser.token) {
-          setUser(parsedUser);
+          // Check if token is expired
+          try {
+            const payload = JSON.parse(atob(parsedUser.token.split('.')[1]));
+            const currentTime = Math.floor(Date.now() / 1000);
+            
+            // Check if token is expired
+            if (payload.exp && payload.exp > currentTime) {
+              setUser(parsedUser);
+            } else {
+              // Token expired, clear it
+              localStorage.removeItem('user');
+            }
+          } catch (tokenError) {
+            // Invalid token format, clear it
+            localStorage.removeItem('user');
+          }
         } else {
           // Clear invalid user data
           localStorage.removeItem('user');
