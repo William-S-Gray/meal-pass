@@ -27,7 +27,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5001
-      MONGO_URI: mongodb://${MONGO_USERNAME:-root}:${MONGO_PASSWORD:-password}@mongodb:27017/mealpass?authSource=admin
+      MONGODB_URI: mongodb://${MONGO_USERNAME:-root}:${MONGO_PASSWORD:-password}@mongodb:27017/mealpass?authSource=admin
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-here}
       ENABLE_AUTH: ${ENABLE_AUTH:-true}
       CLIENT_URL: ${CLIENT_URL:-http://localhost}

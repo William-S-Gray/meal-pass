@@ -86,7 +86,7 @@ export interface Employee {
   department?: string;
   position?: string;
   validUntil: string;
-  qrCode: string;
+  qrCodeUrl: string;
   photo?: string;
   active?: boolean;
   createdAt: string;
@@ -293,7 +293,7 @@ export async function loginUser(email: string, password: string): Promise<User> 
 
 // ============ EMPLOYEE FUNCTIONS ============
 
-export async function createEmployee(data: Omit<Employee, '_id' | 'qrCode' | 'createdAt' | 'fedToday'>): Promise<Employee> {
+export async function createEmployee(data: Omit<Employee, '_id' | 'qrCodeUrl' | 'createdAt' | 'fedToday'>): Promise<Employee> {
   try {
     // Prepare form data
     const formData = new FormData();
@@ -350,7 +350,11 @@ export async function createEmployee(data: Omit<Employee, '_id' | 'qrCode' | 'cr
       department: result.department,
       position: result.position,
       validUntil: result.validUntil,
-      qrCode: result.qrCodeUrl.startsWith('http') ? result.qrCodeUrl : `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
+      qrCodeUrl: result.qrCodeUrl.startsWith('http') ? 
+        // If it's already a full URL, make sure it uses the correct domain
+        result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
+        // If it's a relative URL, prepend the baseURL
+        `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
       createdAt: result.createdAt,
       fedToday: result.fedToday || false,
       active: result.active !== undefined ? result.active : true
@@ -392,7 +396,7 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
       department: item.department,
       position: item.position,
       validUntil: item.validUntil,
-      qrCode: item.qrCodeUrl.startsWith('http') ? 
+      qrCodeUrl: item.qrCodeUrl.startsWith('http') ? 
         // If it's already a full URL, make sure it uses the correct domain
         item.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
         // If it's a relative URL, prepend the baseURL
@@ -433,7 +437,7 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
       department: result.department,
       position: result.position,
       validUntil: result.validUntil,
-      qrCode: result.qrCodeUrl.startsWith('http') ? 
+      qrCodeUrl: result.qrCodeUrl.startsWith('http') ? 
         // If it's already a full URL, make sure it uses the correct domain
         result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
         // If it's a relative URL, prepend the baseURL
@@ -480,7 +484,7 @@ export async function updateEmployee(id: string, data: Partial<Employee>): Promi
       department: result.department,
       position: result.position,
       validUntil: result.validUntil,
-      qrCode: result.qrCodeUrl.startsWith('http') ? 
+      qrCodeUrl: result.qrCodeUrl.startsWith('http') ? 
         // If it's already a full URL, make sure it uses the correct domain
         result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
         // If it's a relative URL, prepend the baseURL

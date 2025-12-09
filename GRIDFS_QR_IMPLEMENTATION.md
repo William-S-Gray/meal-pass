@@ -383,7 +383,7 @@ export default function DownloadQRButton({
 
 ### Backend (.env)
 ```
-MONGO_URI=<Atlas Connection String>
+MONGODB_URI=<Atlas Connection String>
 BASE_URL=https://meal-backend-9zm8.onrender.com
 FRONTEND_URL=https://meal-pass-frontend.onrender.com
 ```
@@ -396,7 +396,7 @@ VITE_BASE_URL=https://meal-backend-9zm8.onrender.com
 ## 🧪 Test Steps for Render Deployment
 
 1. **Verify MongoDB Atlas Connection**:
-   - Ensure `MONGO_URI` is correctly set in Render environment variables
+   - Ensure `MONGODB_URI` is correctly set in Render environment variables
    - Test connection with MongoDB Compass or similar tool
 
 2. **Deploy Backend to Render**:

@@ -68,7 +68,7 @@ cd meal-pass
    ```bash
    NODE_ENV=production
    PORT=5001
-   MONGO_URI=mongodb://root:your-password@localhost:27017/mealpass?authSource=admin
+   MONGODB_URI=mongodb://root:your-password@localhost:27017/mealpass?authSource=admin
    JWT_SECRET=your-super-secret-jwt-key-here
    JWT_EXPIRE=30d
    ENABLE_AUTH=true

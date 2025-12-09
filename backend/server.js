@@ -66,22 +66,60 @@ app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS with specific options for better security
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL,
-    process.env.FRONTEND_URL?.replace("https://", "http://"),
-    "https://meal-pass-frontend.onrender.com" // Explicitly allow production frontend
-  ],
-  methods: "GET,POST,PUT,DELETE,OPTIONS",
-  allowedHeaders: "Content-Type, Authorization, X-Requested-With, X-HTTP-Method-Override, Accept, Origin, X-Requested-With",
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Define allowed origins
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      process.env.FRONTEND_URL?.replace("https://", "http://"),
+      "https://meal-pass-frontend.onrender.com",
+      "http://localhost:8080",
+      "http://localhost:5173"
+    ].filter(Boolean); // Remove undefined values
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-HTTP-Method-Override", "Accept", "Origin"],
   exposedHeaders: ["Content-Disposition"],
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginEmbedderPolicy: { policy: "require-corp" },
-  crossOriginOpenerPolicy: { policy: "same-origin" }
+  crossOriginOpenerPolicy: { policy: "same-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      fontSrc: ["'self'", "https:", "data:"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  frameguard: { action: "deny" },
+  hidePoweredBy: true,
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
+  ieNoOpen: true,
+  noSniff: true,
+  referrerPolicy: { policy: "no-referrer" },
+  xssFilter: true
 }));
 
 // Compression middleware
@@ -105,7 +143,23 @@ app.use(express.static(__dirname + '/public'));
 
 // Handle CORS preflight requests
 app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://meal-pass-frontend.onrender.com');
+  // Get origin from request
+  const origin = req.get('Origin');
+  
+  // Define allowed origins
+  const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    process.env.FRONTEND_URL?.replace("https://", "http://"),
+    "https://meal-pass-frontend.onrender.com",
+    "http://localhost:8080",
+    "http://localhost:5173"
+  ].filter(Boolean); // Remove undefined values
+  
+  // Check if origin is in allowed list
+  if (origin && allowedOrigins.indexOf(origin) !== -1) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
