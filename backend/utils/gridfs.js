@@ -14,14 +14,27 @@ const initGridFS = async () => {
       await mongoose.connection.asPromise();
     }
 
+    const db = mongoose.connection.db;
+    if (!db) {
+      throw new Error('MongoDB connection not established');
+    }
+
     // Create GridFS stream
-    gfs = Grid(mongoose.connection.db, mongoose.mongo);
+    gfs = Grid(db, mongoose.mongo);
     gfs.collection('uploads'); // Collection name for GridFS files
 
-    // Create GridFS bucket for streaming
-    gridFsBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-      bucketName: 'uploads'
-    });
+    // Create GridFS bucket for streaming with proper error handling
+    try {
+      gridFsBucket = new mongoose.mongo.GridFSBucket(db, {
+        bucketName: 'uploads'
+      });
+      logger.info('GridFS bucket initialized successfully');
+    } catch (bucketError) {
+      logger.error('Failed to initialize GridFS bucket:', bucketError);
+      // Fallback to default bucket name
+      gridFsBucket = new mongoose.mongo.GridFSBucket(db);
+      logger.info('GridFS bucket initialized with default name');
+    }
 
     logger.info('GridFS initialized successfully');
   } catch (error) {

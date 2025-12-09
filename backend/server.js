@@ -52,11 +52,15 @@ app.set('io', io);
 // Connect to database
 connectDB().then(async () => {
   try {
+    // Add a small delay to ensure connection is fully established
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     // Initialize GridFS after database connection
     await initGridFS();
     console.log('GridFS initialized successfully'.green);
   } catch (error) {
     console.error('Failed to initialize GridFS:', error.message.red);
+    // Don't exit here, continue with the server startup
   }
 });
 
@@ -79,11 +83,19 @@ app.use(cors({
       "http://localhost:5173"
     ].filter(Boolean); // Remove undefined values
     
-    // Check if origin is in allowed list
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
+    // For production debugging, temporarily allow all origins
+    if (process.env.NODE_ENV === 'production') {
+      // Check if origin matches the expected production frontend
+      if (origin === "https://meal-pass-frontend.onrender.com") {
+        callback(null, true);
+      } else {
+        // Log the origin for debugging
+        console.log(`CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // In development, be more permissive
+      callback(null, true);
     }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -155,8 +167,16 @@ app.options('*', (req, res) => {
     "http://localhost:5173"
   ].filter(Boolean); // Remove undefined values
   
-  // Check if origin is in allowed list
-  if (origin && allowedOrigins.indexOf(origin) !== -1) {
+  // For production debugging, temporarily allow all origins
+  if (process.env.NODE_ENV === 'production') {
+    // Check if origin matches the expected production frontend
+    if (origin === "https://meal-pass-frontend.onrender.com") {
+      res.header('Access-Control-Allow-Origin', origin);
+    } else {
+      console.log(`CORS preflight blocked origin: ${origin}`);
+    }
+  } else {
+    // In development, be more permissive
     res.header('Access-Control-Allow-Origin', origin);
   }
   

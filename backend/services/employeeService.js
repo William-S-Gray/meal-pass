@@ -71,25 +71,41 @@ const create = async (employeeData) => {
     await employee.save();
     
     // Generate QR code and store filename in qrFileName field
-    const qrFileName = await qrService.generateQRCode(uniqueId);
-    employee.qrFileName = qrFileName; // Store filename in correct field
-    await employee.save();
+    try {
+      const qrFileName = await qrService.generateQRCode(uniqueId);
+      employee.qrFileName = qrFileName; // Store filename in correct field
+      await employee.save();
+    } catch (qrError) {
+      logger.error('Failed to generate QR code for employee', { 
+        id: employee._id, 
+        uniqueId,
+        error: qrError.message 
+      });
+      // Don't fail employee creation if QR generation fails
+    }
     
     logger.info('Employee created successfully', { id: employee._id, uniqueId });
     
     // Emit WebSocket event for real-time updates
-    const app = require('../server'); // Get app instance to access io
-    const io = app.get('io');
-    if (io) {
-      // Emit specific event for employee creation
-      io.emit('employeeCreated', {
-        employee: formatEmployeeResponse(employee)
+    try {
+      const app = require('../server'); // Get app instance to access io
+      const io = app.get('io');
+      if (io) {
+        // Emit specific event for employee creation
+        io.emit('employeeCreated', {
+          employee: formatEmployeeResponse(employee)
+        });
+      }
+    } catch (wsError) {
+      logger.warn('Failed to emit WebSocket event', { 
+        id: employee._id, 
+        error: wsError.message 
       });
     }
     
     return formatEmployeeResponse(employee);
   } catch (error) {
-    logger.error('Error creating employee', { error: error.message });
+    logger.error('Error creating employee', { error: error.message, stack: error.stack });
     throw error;
   }
 };

@@ -80,26 +80,10 @@ const createEmployee = async (req, res, next) => {
     // Create employee
     const employee = await employeeService.create(capitalizedData);
     
-    // Generate QR code and store filename in database
-    const qrFileName = await qrService.generateQRCode(employee.uniqueId);
-    
-    // Update employee with QR code filename
-    await employeeService.update(employee._id, { qrFileName: qrFileName });
-    
     logger.info('Employee created successfully', { id: employee._id, uniqueId: employee.uniqueId });
     
     // Send success response
-    sendSuccess(res, 201, 'Employee created successfully', {
-      _id: employee._id,
-      uniqueId: employee.uniqueId,
-      name: employee.name,
-      phone: employee.phone,
-      department: employee.department,
-      position: employee.position,
-      validUntil: employee.validUntil,
-      qrFileName: qrFileName,
-      createdAt: employee.createdAt
-    });
+    sendSuccess(res, 201, employee, 'Employee created successfully');
   } catch (error) {
     logger.error('Error in createEmployee:', error);
     next(error);
