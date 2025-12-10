@@ -2,17 +2,27 @@ import React, { useRef, useEffect, useState } from 'react';
 
 interface CameraScannerProps {
   onScanSuccess: (data: string) => void;
+  onScanError?: (error: string) => void;
+  onDuplicateScan?: (data: string) => void;
   scanInterval?: number;
   scanMode?: 'qr' | 'barcode' | 'both';
 }
 
-const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterval = 500, scanMode = 'both' }) => {
+const CameraScanner: React.FC<CameraScannerProps> = ({ 
+  onScanSuccess, 
+  onScanError,
+  onDuplicateScan,
+  scanInterval = 500, 
+  scanMode = 'both' 
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDuplicate, setIsDuplicate] = useState(false);
   const scanTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize camera access
@@ -38,8 +48,12 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterv
       }
     } catch (err) {
       console.error('Camera access error:', err);
-      setError(`Camera access denied: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const errorMessage = `Camera access denied: ${err instanceof Error ? err.message : 'Unknown error'}`;
+      setError(errorMessage);
       setPermissionGranted(false);
+      if (onScanError) {
+        onScanError(errorMessage);
+      }
     }
   };
 
@@ -54,31 +68,47 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterv
       scanTimerRef.current = null;
     }
     setIsScanning(false);
+    setIsProcessing(false);
   };
 
   // Capture frame for processing
   const captureFrame = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
+    if (isProcessing || !videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
 
-      if (!context) return;
+    if (!context) return;
 
-      // Set canvas dimensions to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+    // Set processing flag to prevent multiple concurrent scans
+    setIsProcessing(true);
+    setIsDuplicate(false); // Reset duplicate state
 
-      // Draw current video frame to canvas
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-      // Convert to blob for processing
-      canvas.toBlob((blob) => {
-        if (blob) {
-          processFrame(blob);
+    // Draw current video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert to blob for processing
+    canvas.toBlob(async (blob) => {
+      if (blob) {
+        try {
+          await processFrame(blob);
+        } catch (err) {
+          console.error('Frame processing error:', err);
+          if (onScanError) {
+            onScanError(err instanceof Error ? err.message : 'Failed to process frame');
+          }
+        } finally {
+          setIsProcessing(false);
         }
-      }, 'image/jpeg', 0.8);
-    }
+      } else {
+        setIsProcessing(false);
+      }
+    }, 'image/jpeg', 0.8);
   };
 
   // Process captured frame (send to backend)
@@ -101,10 +131,47 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterv
       const result = await response.json();
       
       if (result.success && result.data) {
-        onScanSuccess(result.data);
+        // Validate that we have meaningful data
+        if (result.data.trim().length > 0) {
+          // Check for duplicate scan before proceeding
+          try {
+            const checkResponse = await fetch(`${baseUrl}/api/feeding/employee/${encodeURIComponent(result.data.trim())}`);
+            if (checkResponse.ok) {
+              const checkResult = await checkResponse.json();
+              // Check if employee has been fed today
+              if (checkResult.data && checkResult.data.length > 0) {
+                const today = new Date().toISOString().split('T')[0];
+                const alreadyFed = checkResult.data.some((record: { date: string }) => record.date === today);
+                if (alreadyFed) {
+                  setIsDuplicate(true);
+                  setTimeout(() => setIsDuplicate(false), 3000); // Reset after 3 seconds
+                  if (onDuplicateScan) {
+                    onDuplicateScan(result.data.trim());
+                  }
+                  return; // Exit early for duplicate
+                }
+              }
+            }
+          } catch (checkError) {
+            console.warn('Error checking for duplicate scan:', checkError);
+            // Continue with normal processing even if duplicate check fails
+          }
+          
+          onScanSuccess(result.data.trim());
+        } else {
+          throw new Error('Empty scan result');
+        }
+      } else if (!result.success) {
+        // Don't throw an error for "no code detected" - this is normal
+        if (result.message && !result.message.includes('detected')) {
+          throw new Error(result.message);
+        }
       }
     } catch (err) {
       console.error('Frame processing error:', err);
+      if (onScanError) {
+        onScanError(err instanceof Error ? err.message : 'Failed to process scan');
+      }
     }
   };
 
@@ -116,6 +183,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterv
     }
     
     setIsScanning(true);
+    setIsProcessing(false);
+    
     // Start scanning at intervals
     scanTimerRef.current = setInterval(() => {
       captureFrame();
@@ -133,24 +202,47 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterv
   }, []);
 
   return (
-    <div className="scanner-container">
-      <div className="relative bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center">
+    <div className="scanner-container w-full max-w-2xl mx-auto">
+      <div className="relative bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center w-full">
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            transform: 'scaleX(-1)' // Mirror effect for user-friendly experience
-          }}
+          className="w-full h-full object-cover scale-x-[-1]" // Mirror effect for user-friendly experience
         />
         
         {isScanning && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-48 h-48 border-2 border-white rounded-lg"></div>
+            <div className="w-3/4 h-3/4 max-w-xs max-h-xs border-4 border-green-500 rounded-xl animate-pulse flex items-center justify-center sm:w-64 sm:h-64">
+              <div className="absolute w-11/12 h-11/12 max-w-64 max-h-64 border-2 border-white rounded-lg sm:w-48 sm:h-48"></div>
+              <div className="absolute text-white font-bold text-sm bg-green-500 bg-opacity-80 px-2 py-1 rounded">
+                Scanning...
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {(isProcessing || isDuplicate) && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="text-white text-center max-w-xs">
+              {isDuplicate ? (
+                <>
+                  <div className="text-yellow-400 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <p className="mt-2 text-sm font-bold">Duplicate Scan Detected!</p>
+                  <p className="text-xs mt-1">Employee already fed today</p>
+                </>
+              ) : (
+                <>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+                  <p className="mt-2 text-sm">Processing...</p>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -179,7 +271,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterv
         {!isScanning ? (
           <button 
             onClick={startScanning}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 w-full"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 w-full disabled:opacity-50"
+            disabled={isProcessing}
           >
             Start Scanning
           </button>

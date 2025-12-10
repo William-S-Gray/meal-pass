@@ -149,6 +149,21 @@ export default function QRScanner() {
       // Process the scan
       const response = await scanQRCode(uniqueId, 'web-scanner', 'scan');
       
+      // Show appropriate notification based on response
+      if (response.status === 'success') {
+        toast({
+          title: 'Success!',
+          description: `Employee ${employee.name} marked as fed successfully`,
+          variant: 'default'
+        });
+      } else if (response.status === 'already_fed') {
+        toast({
+          title: 'Already Fed',
+          description: `Employee ${employee.name} has already been fed today`,
+          variant: 'destructive'
+        });
+      }
+      
       setScanResult({
         status: response.status as 'success' | 'already_fed' | 'not_found' | 'error',
         message: response.message,
@@ -158,6 +173,11 @@ export default function QRScanner() {
       setShowResult(true);
     } catch (error) {
       console.error('Scan processing error:', error);
+      toast({
+        title: 'Scan Failed',
+        description: error instanceof Error ? error.message : 'Failed to process scan',
+        variant: 'destructive'
+      });
       setScanResult({
         status: 'error',
         message: error instanceof Error ? error.message : 'Failed to process scan'
@@ -165,6 +185,42 @@ export default function QRScanner() {
       setShowResult(true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDuplicateScan = async (uniqueId: string) => {
+    if (!uniqueId) return;
+
+    try {
+      // Get employee details for display
+      const employee = await getEmployeeByUid(uniqueId);
+      
+      // Show warning toast notification
+      toast({
+        title: 'Duplicate Scan Detected',
+        description: `Employee ${employee?.name || uniqueId} has already been fed today`,
+        variant: 'destructive'
+      });
+      
+      setScanResult({
+        status: 'already_fed',
+        message: 'Employee has already been fed today',
+        employee: employee || undefined
+      });
+      
+      setShowResult(true);
+    } catch (error) {
+      console.error('Duplicate scan handling error:', error);
+      toast({
+        title: 'Duplicate Detection Error',
+        description: 'Duplicate scan detected but failed to retrieve employee details',
+        variant: 'destructive'
+      });
+      setScanResult({
+        status: 'error',
+        message: 'Duplicate scan detected but failed to retrieve employee details'
+      });
+      setShowResult(true);
     }
   };
 
@@ -323,6 +379,7 @@ export default function QRScanner() {
               <div className="space-y-4">
                 <CameraScanner 
                   onScanSuccess={handleScanSuccess} 
+                  onDuplicateScan={handleDuplicateScan}
                   scanMode={scanMode}
                 />
               </div>
@@ -469,7 +526,7 @@ export default function QRScanner() {
                 </div>
               )}
               
-              {scanResult.status === 'already_fed' && (
+              {scanResult?.status === 'already_fed' && (
                 <div className="flex items-center gap-2 p-2 bg-yellow-500/10 text-yellow-500 rounded-lg">
                   <AlertTriangle className="h-4 w-4" />
                   <span className="text-sm font-medium">Already Fed Today</span>

@@ -36,19 +36,59 @@ router.post('/scan', upload.single('image'), async (req, res) => {
 
     // Process image with Jimp
     const image = await Jimp.read(req.file.buffer);
-    const { data, width, height } = image.bitmap;
+    let { data, width, height } = image.bitmap;
 
     // Attempt QR code detection with jsQR if scan mode allows
     if (scanMode === 'qr' || scanMode === 'both') {
+      // Try multiple preprocessing approaches for better QR detection
       let qrResult = jsQR(data, width, height);
       
+      // If initial detection fails, try with contrast adjustment
+      if (!qrResult) {
+        try {
+          const contrastImage = image.clone();
+          contrastImage.contrast(0.3); // Increase contrast
+          const contrastBitmap = contrastImage.bitmap;
+          qrResult = jsQR(contrastBitmap.data, contrastBitmap.width, contrastBitmap.height);
+        } catch (contrastError) {
+          console.log('Contrast adjustment failed:', contrastError);
+        }
+      }
+      
+      // If still no result, try with brightness adjustment
+      if (!qrResult) {
+        try {
+          const brightImage = image.clone();
+          brightImage.brightness(0.2); // Increase brightness
+          const brightBitmap = brightImage.bitmap;
+          qrResult = jsQR(brightBitmap.data, brightBitmap.width, brightBitmap.height);
+        } catch (brightError) {
+          console.log('Brightness adjustment failed:', brightError);
+        }
+      }
+      
+      // Try grayscale conversion as last resort
+      if (!qrResult) {
+        try {
+          const grayImage = image.clone();
+          grayImage.grayscale();
+          const grayBitmap = grayImage.bitmap;
+          qrResult = jsQR(grayBitmap.data, grayBitmap.width, grayBitmap.height);
+        } catch (grayError) {
+          console.log('Grayscale conversion failed:', grayError);
+        }
+      }
+      
       if (qrResult) {
-        return res.json({
-          success: true,
-          data: qrResult.data,
-          type: 'QR_CODE',
-          bounds: qrResult.location
-        });
+        // Validate that we have a proper uniqueId
+        if (qrResult.data && qrResult.data.trim().length > 0) {
+          return res.json({
+            success: true,
+            data: qrResult.data.trim(),
+            type: 'QR_CODE',
+            bounds: qrResult.location
+          });
+        }
       }
     }
 
@@ -100,13 +140,46 @@ router.post('/scan', upload.single('image'), async (req, res) => {
           });
         });
 
+        // If primary detection fails, try with enhanced preprocessing
+        if ((!barcodeResult || !barcodeResult.codeResult) && (scanMode === 'barcode' || scanMode === 'both')) {
+          try {
+            // Try with contrast enhancement
+            const contrastImage = image.clone();
+            contrastImage.contrast(0.3);
+            const contrastBitmap = contrastImage.bitmap;
+            const contrastImageData = {
+              data: contrastBitmap.data,
+              width: contrastBitmap.width,
+              height: contrastBitmap.height
+            };
+            
+            const contrastBarcodeResult = await new Promise((resolve) => {
+              Quagga.decodeSingle({
+                ...config,
+                src: contrastImageData
+              }, (result) => {
+                resolve(result);
+              });
+            });
+            
+            if (contrastBarcodeResult && contrastBarcodeResult.codeResult) {
+              Object.assign(barcodeResult, contrastBarcodeResult);
+            }
+          } catch (contrastError) {
+            console.log('Contrast enhancement for barcode failed:', contrastError);
+          }
+        }
+
         if (barcodeResult && barcodeResult.codeResult) {
-          return res.json({
-            success: true,
-            data: barcodeResult.codeResult.code,
-            type: barcodeResult.codeResult.format,
-            bounds: barcodeResult.box
-          });
+          // Validate that we have a proper code
+          if (barcodeResult.codeResult.code && barcodeResult.codeResult.code.trim().length > 0) {
+            return res.json({
+              success: true,
+              data: barcodeResult.codeResult.code.trim(),
+              type: barcodeResult.codeResult.format,
+              bounds: barcodeResult.box
+            });
+          }
         }
       } catch (quaggaError) {
         // Quagga couldn't decode
