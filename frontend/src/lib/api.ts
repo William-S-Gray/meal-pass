@@ -442,10 +442,11 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
 
 export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
   try {
-    // Check cache first for better performance
-    const cachedData = getEmployeeFromCache(uid);
-    if (cachedData) {
-      const result = cachedData.data;
+    // Simplified caching approach - check cache first
+    const cacheKey = `/api/employees/uid/${uid}`;
+    const cached = apiCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < EMPLOYEE_CACHE_DURATION) {
+      const result = cached.data as { data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } };
       
       // Map backend response to frontend interface
       return {
@@ -468,18 +469,20 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
       };
     }
     
-    const response = await cachedEmployeeGet<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/employees/uid/${uid}`);
+    // Make API request with optimized timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     
-    // If employee not found, return null
-    if ((response as unknown as { status: number }).status === 404) {
-      return null;
-    }
+    const response = await apiClient.get<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/employees/uid/${uid}`, {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    // Cache the result
+    apiCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
     
     const result = response.data;
-    
-    // Cache the result for future requests
-    const cacheKey = getEmployeeCacheKey(uid);
-    apiCache.set(cacheKey, { data: response, timestamp: Date.now() });
     
     // Map backend response to frontend interface
     return {
@@ -501,8 +504,15 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
       active: result.active !== undefined ? result.active : true
     };
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
-      return null;
+    if (axios.isAxiosError(error)) {
+      if (error.code === 'ERR_CANCELED') {
+        console.warn('Request timeout for employee:', uid);
+        throw new Error('Request timeout - please try again');
+      }
+      
+      if (error.response && error.response.status === 404) {
+        return null;
+      }
     }
     console.error('Failed to fetch employee by UID:', error);
     return null;

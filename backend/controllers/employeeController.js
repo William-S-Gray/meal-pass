@@ -8,6 +8,7 @@ const qrService = require('../services/qrService');
 const { sendSuccess, sendError, sendValidationError } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
 const { create, update, query } = require('../validators/employeeValidator');
+const { performanceTracker } = require('../utils/performanceLogger');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -62,6 +63,9 @@ function capitalizeName(name) {
  */
 const createEmployee = async (req, res, next) => {
   try {
+    const operationId = `create-employee-api-${Date.now()}`;
+    performanceTracker.start(operationId);
+    
     logger.info('Creating new employee', { body: req.body });
     
     // Validate request
@@ -82,6 +86,9 @@ const createEmployee = async (req, res, next) => {
     
     logger.info('Employee created successfully', { id: employee._id, uniqueId: employee.uniqueId });
     
+    const duration = performanceTracker.end(operationId, 'createEmployeeAPI');
+    performanceTracker.logApiEndpoint('POST', '/api/employees', duration, 201);
+    
     // Send success response
     sendSuccess(res, 201, employee, 'Employee created successfully');
   } catch (error) {
@@ -97,6 +104,9 @@ const createEmployee = async (req, res, next) => {
  */
 const getEmployees = async (req, res, next) => {
   try {
+    const operationId = `get-employees-api-${Date.now()}`;
+    performanceTracker.start(operationId);
+    
     // Validate query parameters
     const { error, value } = query.validate(req.query);
     if (error) {
@@ -104,6 +114,10 @@ const getEmployees = async (req, res, next) => {
     }
 
     const result = await employeeService.getAll(value, value.page, value.limit);
+    
+    const duration = performanceTracker.end(operationId, 'getEmployeesAPI');
+    performanceTracker.logApiEndpoint('GET', '/api/employees', duration, 200);
+    
     sendSuccess(res, 200, result.data, null, result.pagination);
   } catch (error) {
     logger.error('Error in getEmployees:', error);
@@ -118,12 +132,18 @@ const getEmployees = async (req, res, next) => {
  */
 const getEmployee = async (req, res, next) => {
   try {
+    const operationId = `get-employee-api-${req.params.id}`;
+    performanceTracker.start(operationId);
+    
     const { id } = req.params;
     
     const employee = await employeeService.getById(id);
     if (!employee) {
       return sendError(res, 404, 'Employee not found');
     }
+    
+    const duration = performanceTracker.end(operationId, 'getEmployeeAPI');
+    performanceTracker.logApiEndpoint('GET', `/api/employees/${id}`, duration, 200);
     
     sendSuccess(res, 200, employee);
   } catch (error) {
@@ -139,12 +159,18 @@ const getEmployee = async (req, res, next) => {
  */
 const getEmployeeByUid = async (req, res, next) => {
   try {
+    const operationId = `get-employee-by-uid-api-${req.params.uid}`;
+    performanceTracker.start(operationId);
+    
     const { uid } = req.params;
     
     const employee = await employeeService.getByUniqueId(uid);
     if (!employee) {
       return sendError(res, 404, 'Employee not found');
     }
+    
+    const duration = performanceTracker.end(operationId, 'getEmployeeByUidAPI');
+    performanceTracker.logApiEndpoint('GET', `/api/employees/uid/${uid}`, duration, 200);
     
     sendSuccess(res, 200, employee);
   } catch (error) {
@@ -160,6 +186,9 @@ const getEmployeeByUid = async (req, res, next) => {
  */
 const updateEmployee = async (req, res, next) => {
   try {
+    const operationId = `update-employee-api-${req.params.id}`;
+    performanceTracker.start(operationId);
+    
     logger.info('Updating employee', { id: req.params.id, body: req.body });
     
     // Validate request
@@ -184,6 +213,9 @@ const updateEmployee = async (req, res, next) => {
     
     logger.info('Employee updated successfully', { id: employee._id });
     
+    const duration = performanceTracker.end(operationId, 'updateEmployeeAPI');
+    performanceTracker.logApiEndpoint('PUT', `/api/employees/${req.params.id}`, duration, 200);
+    
     // Send success response
     sendSuccess(res, 200, 'Employee updated successfully', employee);
   } catch (error) {
@@ -199,12 +231,18 @@ const updateEmployee = async (req, res, next) => {
  */
 const deleteEmployee = async (req, res, next) => {
   try {
+    const operationId = `delete-employee-api-${req.params.id}`;
+    performanceTracker.start(operationId);
+    
     const { id } = req.params;
     
     const deleted = await employeeService.remove(id);
     if (!deleted) {
       return sendError(res, 404, 'Employee not found');
     }
+    
+    const duration = performanceTracker.end(operationId, 'deleteEmployeeAPI');
+    performanceTracker.logApiEndpoint('DELETE', `/api/employees/${id}`, duration, 200);
     
     sendSuccess(res, 200, null, 'Employee deleted successfully');
   } catch (error) {
@@ -220,6 +258,9 @@ const deleteEmployee = async (req, res, next) => {
  */
 const downloadQRCode = async (req, res, next) => {
   try {
+    const operationId = `download-qrcode-api-${req.params.id}`;
+    performanceTracker.start(operationId);
+    
     const { id } = req.params;
     
     const employee = await employeeService.getById(id);
@@ -247,6 +288,9 @@ const downloadQRCode = async (req, res, next) => {
     
     // Send the image buffer
     res.send(qrBuffer);
+    
+    const duration = performanceTracker.end(operationId, 'downloadQRCodeAPI');
+    performanceTracker.logApiEndpoint('GET', `/api/employees/${id}/qrcode`, duration, 200);
   } catch (error) {
     logger.error('Error in downloadQRCode:', error);
     sendError(res, 500, error.message);
@@ -260,6 +304,9 @@ const downloadQRCode = async (req, res, next) => {
  */
 const downloadQRCodeByUid = async (req, res, next) => {
   try {
+    const operationId = `download-qrcode-by-uid-api-${req.params.uid}`;
+    performanceTracker.start(operationId);
+    
     const { uid } = req.params;
     
     const employee = await employeeService.getByUniqueId(uid);
@@ -299,6 +346,9 @@ const downloadQRCodeByUid = async (req, res, next) => {
     
     // Send the image buffer
     res.send(qrBuffer);
+    
+    const duration = performanceTracker.end(operationId, 'downloadQRCodeByUidAPI');
+    performanceTracker.logApiEndpoint('GET', `/api/employees/uid/${uid}/qrcode`, duration, 200);
   } catch (error) {
     logger.error('Error in downloadQRCodeByUid:', error);
     sendError(res, 500, error.message);
@@ -312,6 +362,9 @@ const downloadQRCodeByUid = async (req, res, next) => {
  */
 const getQRCodeDataUrl = async (req, res, next) => {
   try {
+    const operationId = `get-qrcode-dataurl-api-${req.params.id}`;
+    performanceTracker.start(operationId);
+    
     const { id } = req.params;
     
     const employee = await employeeService.getById(id);
@@ -330,6 +383,9 @@ const getQRCodeDataUrl = async (req, res, next) => {
       success: true,
       data: qrCodeDataUrl
     });
+    
+    const duration = performanceTracker.end(operationId, 'getQRCodeDataUrlAPI');
+    performanceTracker.logApiEndpoint('GET', `/api/employees/${id}/qrcode/dataurl`, duration, 200);
   } catch (error) {
     logger.error('Error in getQRCodeDataUrl:', error);
     sendError(res, 500, error.message);
@@ -343,6 +399,9 @@ const getQRCodeDataUrl = async (req, res, next) => {
  */
 const generateDynamicQRCode = async (req, res, next) => {
   try {
+    const operationId = `generate-dynamic-qrcode-api-${req.params.uid}`;
+    performanceTracker.start(operationId);
+    
     const { uid } = req.params;
     
     const employee = await employeeService.getByUniqueId(uid);
@@ -363,6 +422,9 @@ const generateDynamicQRCode = async (req, res, next) => {
     
     // Send the image buffer
     res.send(qrCodeBuffer);
+    
+    const duration = performanceTracker.end(operationId, 'generateDynamicQRCodeAPI');
+    performanceTracker.logApiEndpoint('GET', `/api/employees/uid/${uid}/qrcode/dynamic`, duration, 200);
   } catch (error) {
     logger.error('Error in generateDynamicQRCode:', error);
     sendError(res, 500, error.message);
@@ -376,6 +438,9 @@ const generateDynamicQRCode = async (req, res, next) => {
  */
 const printBulkCards = async (req, res, next) => {
   try {
+    const operationId = `print-bulk-cards-api-${Date.now()}`;
+    performanceTracker.start(operationId);
+    
     const { employeeIds } = req.body;
     
     // Validate input
@@ -488,6 +553,9 @@ const printBulkCards = async (req, res, next) => {
     // Send HTML response
     res.setHeader('Content-Type', 'text/html');
     res.status(200).send(htmlContent);
+    
+    const duration = performanceTracker.end(operationId, 'printBulkCardsAPI');
+    performanceTracker.logApiEndpoint('POST', '/api/employees/print-cards', duration, 200);
   } catch (error) {
     logger.error('Error in printBulkCards:', error);
     sendError(res, 500, error.message);
@@ -501,6 +569,9 @@ const printBulkCards = async (req, res, next) => {
  */
 const printSingleCard = async (req, res, next) => {
   try {
+    const operationId = `print-single-card-api-${req.params.id}`;
+    performanceTracker.start(operationId);
+    
     const { id } = req.params;
     
     // Get employee by ID
@@ -598,6 +669,9 @@ const printSingleCard = async (req, res, next) => {
     // Send HTML response
     res.setHeader('Content-Type', 'text/html');
     res.status(200).send(htmlContent);
+    
+    const duration = performanceTracker.end(operationId, 'printSingleCardAPI');
+    performanceTracker.logApiEndpoint('GET', `/api/employees/${id}/print-card`, duration, 200);
   } catch (error) {
     logger.error('Error in printSingleCard:', error);
     sendError(res, 500, error.message);

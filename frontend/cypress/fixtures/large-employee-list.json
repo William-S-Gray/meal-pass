@@ -1,0 +1,75 @@
+{
+  "data": [
+    {
+      "_id": "1",
+      "uniqueId": "EMP001",
+      "name": "John Doe",
+      "gender": "Male",
+      "phone": "+1234567890",
+      "department": "Engineering",
+      "position": "Software Engineer",
+      "validUntil": "2026-12-31T00:00:00.000Z",
+      "qrCodeUrl": "/api/employees/uid/EMP001/qrcode",
+      "createdAt": "2023-01-01T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "_id": "2",
+      "uniqueId": "EMP002",
+      "name": "Jane Smith",
+      "gender": "Female",
+      "phone": "+1234567891",
+      "department": "Marketing",
+      "position": "Marketing Manager",
+      "validUntil": "2026-12-31T00:00:00.000Z",
+      "qrCodeUrl": "/api/employees/uid/EMP002/qrcode",
+      "createdAt": "2023-01-02T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "_id": "3",
+      "uniqueId": "EMP003",
+      "name": "Robert Johnson",
+      "gender": "Male",
+      "phone": "+1234567892",
+      "department": "Sales",
+      "position": "Sales Representative",
+      "validUntil": "2026-12-31T00:00:00.000Z",
+      "qrCodeUrl": "/api/employees/uid/EMP003/qrcode",
+      "createdAt": "2023-01-03T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "_id": "4",
+      "uniqueId": "EMP004",
+      "name": "Emily Davis",
+      "gender": "Female",
+      "phone": "+1234567893",
+      "department": "HR",
+      "position": "HR Specialist",
+      "validUntil": "2026-12-31T00:00:00.000Z",
+      "qrCodeUrl": "/api/employees/uid/EMP004/qrcode",
+      "createdAt": "2023-01-04T00:00:00.000Z",
+      "active": true
+    },
+    {
+      "_id": "5",
+      "uniqueId": "EMP005",
+      "name": "Michael Wilson",
+      "gender": "Male",
+      "phone": "+1234567894",
+      "department": "Finance",
+      "position": "Financial Analyst",
+      "validUntil": "2026-12-31T00:00:00.000Z",
+      "qrCodeUrl": "/api/employees/uid/EMP005/qrcode",
+      "createdAt": "2023-01-05T00:00:00.000Z",
+      "active": true
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 5,
+    "pages": 1
+  }
+}

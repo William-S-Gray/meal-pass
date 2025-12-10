@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getEmployeeByUid, updateEmployee, Employee } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { format, parseISO } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { performanceMonitor, tracePerformance } from '@/utils/performance-monitor';
 
 // Define error type for better type safety
 interface ApiError extends Error {
@@ -39,21 +40,128 @@ export default function EditEmployee() {
     validUntil: ''
   });
 
+  // Refs for tracking component lifecycle
+  const componentMountTime = useRef<number>(performance.now());
+  const dataFetchStartTime = useRef<number | null>(null);
+
+  // Trace the entire component mount process
+  useEffect(() => {
+    const mountDuration = performance.now() - componentMountTime.current;
+    performanceMonitor.trackComponentLifecycle('EditEmployee', 'mount', componentMountTime.current, performance.now());
+    
+    console.log(`🔧 EditEmployee component mounted in ${mountDuration.toFixed(2)}ms`);
+    
+    return () => {
+      console.log('🧹 EditEmployee component unmounted');
+    };
+  }, []);
+
+  // Memoized employee loading function with enhanced performance monitoring
+  const loadEmployee = useCallback(
+    tracePerformance('Load Employee Data', async (id: string) => {
+      try {
+        setLoading(true);
+        performanceMonitor.startPageLoad();
+        dataFetchStartTime.current = performance.now();
+        
+        console.group('🔄 Employee Data Loading Process');
+        console.log(`🚀 Starting to load employee data for ID: ${id}`);
+        
+        // Track different phases of the loading process
+        performanceMonitor.startPageLoadPhase('API_Request_Startup');
+        
+        const { result: employeeData, duration } = await performanceMonitor.measureApiCall(getEmployeeByUid, id);
+        
+        performanceMonitor.endPageLoadPhase('API_Request_Startup');
+        performanceMonitor.startPageLoadPhase('Data_Processing');
+        
+        if (employeeData) {
+          console.log(`📥 Received employee data:`, {
+            name: employeeData.name,
+            uniqueId: employeeData.uniqueId,
+            department: employeeData.department,
+            position: employeeData.position
+          });
+          
+          // Track data processing time
+          const processingStart = performance.now();
+          
+          setEmployee(employeeData);
+          setFormData({
+            name: employeeData.name,
+            gender: employeeData.gender,
+            phone: employeeData.phone || '',
+            department: employeeData.department || '',
+            position: employeeData.position || '',
+            validUntil: employeeData.validUntil ? format(parseISO(employeeData.validUntil), 'yyyy-MM-dd') : ''
+          });
+          
+          const processingDuration = performance.now() - processingStart;
+          console.log(`⚙️  Data processing completed in ${processingDuration.toFixed(2)}ms`);
+        }
+        
+        performanceMonitor.endPageLoadPhase('Data_Processing');
+        performanceMonitor.startPageLoadPhase('UI_Render_Preparation');
+        
+        performanceMonitor.endPageLoad();
+        
+        // Track network performance
+        if (dataFetchStartTime.current) {
+          performanceMonitor.trackNetwork(
+            'FETCH_EMPLOYEE_DATA', 
+            `/api/employees/uid/${id}`, 
+            dataFetchStartTime.current, 
+            performance.now(),
+            JSON.stringify(employeeData).length
+          );
+        }
+        
+        performanceMonitor.endPageLoadPhase('UI_Render_Preparation');
+        
+        console.log(`✅ Employee data loaded successfully in ${duration.toFixed(2)}ms`);
+        console.groupEnd();
+        
+      } catch (error) {
+        console.error('💥 Failed to load employee:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load employee data',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
+      }
+    }),
+    [toast]
+  );
+
   useEffect(() => {
     if (id) {
+      console.log(`📍 useEffect triggered with employee ID: ${id}`);
       loadEmployee(id);
     }
-  }, [id]);
+  }, [id, loadEmployee]);
 
-  // Listen for real-time employee updates
+  // Listen for real-time employee updates with proper cleanup
   useEffect(() => {
     if (!socket || !employee) return;
 
+    console.log(`📡 Setting up WebSocket listener for employee updates: ${employee._id}`);
+    
+    const handleEmployeeUpdateStart = performance.now();
+    
     const handleEmployeeUpdate = (data: { employee: Employee }) => {
+      const handleDuration = performance.now() - handleEmployeeUpdateStart;
+      console.log(`📨 Received employee update event in ${handleDuration.toFixed(2)}ms`);
+      
       // If the updated employee is the one we're currently editing, update the form
       if (data.employee._id === employee._id) {
+        console.log('🔄 Updating form with real-time employee data');
+        
+        const updateStart = performance.now();
         setEmployee(data.employee);
-        // Only update form data if it's different to prevent unnecessary re-renders
+        
+        // Batch state updates to prevent unnecessary re-renders
         setFormData(prevFormData => {
           const newFormData = {
             name: data.employee.name,
@@ -69,6 +177,9 @@ export default function EditEmployee() {
             key => prevFormData[key as keyof typeof prevFormData] === newFormData[key as keyof typeof newFormData]
           );
           
+          const updateDuration = performance.now() - updateStart;
+          console.log(`🔄 Form update ${isSame ? 'skipped' : 'applied'} in ${updateDuration.toFixed(2)}ms`);
+          
           return isSame ? prevFormData : newFormData;
         });
       }
@@ -77,40 +188,16 @@ export default function EditEmployee() {
     // Register event listener
     socket.on('employeeUpdated', handleEmployeeUpdate);
 
+    console.log('✅ WebSocket listener registered successfully');
+
     // Cleanup event listener
     return () => {
+      console.log('🧹 Cleaning up WebSocket listener');
       socket.off('employeeUpdated', handleEmployeeUpdate);
     };
   }, [socket, employee]);
 
-  const loadEmployee = async (id: string) => {
-    try {
-      setLoading(true);
-      const employeeData = await getEmployeeByUid(id);
-      if (employeeData) {
-        setEmployee(employeeData);
-        setFormData({
-          name: employeeData.name,
-          gender: employeeData.gender,
-          phone: employeeData.phone || '',
-          department: employeeData.department || '',
-          position: employeeData.position || '',
-          validUntil: employeeData.validUntil ? format(parseISO(employeeData.validUntil), 'yyyy-MM-dd') : ''
-        });
-      }
-    } catch (error) {
-      console.error('Failed to load employee:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load employee data',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = tracePerformance('Update Employee', async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!employee || !formData.name || !formData.validUntil) {
@@ -124,14 +211,25 @@ export default function EditEmployee() {
 
     setUpdating(true);
     try {
-      await updateEmployee(employee._id, formData);
+      console.group('💾 Employee Update Process');
+      console.log('📤 Sending employee update request');
+      
+      performanceMonitor.startPageLoadPhase('Update_Form_Submission');
+      
+      const { result, duration } = await performanceMonitor.measureApiCall(updateEmployee, employee._id, formData);
+      console.log(`📥 Received update response in ${duration.toFixed(2)}ms`);
+      
+      performanceMonitor.endPageLoadPhase('Update_Form_Submission');
+      
       toast({
         title: 'Success',
         description: 'Employee updated successfully'
       });
       navigate(`/employees/${employee.uniqueId}`);
+      
+      console.groupEnd();
     } catch (error) {
-      console.error('Employee update error:', error);
+      console.error('💥 Employee update error:', error);
       let errorMessage = 'Failed to update employee';
       
       // Try to extract more specific error information
@@ -150,7 +248,7 @@ export default function EditEmployee() {
     } finally {
       setUpdating(false);
     }
-  };
+  });
 
   if (loading) {
     return (
@@ -158,6 +256,7 @@ export default function EditEmployee() {
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Loading employee data...</p>
+          <p className="text-xs text-muted-foreground">This may take a moment</p>
         </div>
       </div>
     );
@@ -197,7 +296,11 @@ export default function EditEmployee() {
             <CardDescription>Update employee details</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form 
+              onSubmit={handleSubmit} 
+              className="space-y-6"
+              data-testid="edit-employee-form"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name *</Label>
@@ -296,7 +399,7 @@ export default function EditEmployee() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button type="submit" className="flex-1" disabled={updating}>
+                <Button type="submit" className="flex-1" disabled={updating} data-testid="save-button">
                   {updating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -319,6 +422,17 @@ export default function EditEmployee() {
             </form>
           </CardContent>
         </Card>
+        
+        {/* Performance Summary Button */}
+        <div className="mt-6 text-center">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => performanceMonitor.logComprehensiveDebug()}
+          >
+            Show Detailed Performance Report
+          </Button>
+        </div>
       </main>
     </div>
   );

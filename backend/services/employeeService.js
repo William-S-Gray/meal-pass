@@ -2,6 +2,7 @@ const Employee = require('../models/Employee');
 const qrService = require('./qrService');
 const { generateUniqueId } = require('../utils/helpers');
 const logger = require('../utils/logger');
+const { performanceTracker } = require('../utils/performanceLogger');
 
 /**
  * Capitalizes a name properly (First letter of each word uppercase, rest lowercase)
@@ -57,6 +58,9 @@ const formatEmployeeResponse = (employee) => {
  */
 const create = async (employeeData) => {
   try {
+    const operationId = `create-employee-${Date.now()}`;
+    performanceTracker.start(operationId);
+    
     logger.info('Creating new employee', { name: employeeData.name });
     
     // Generate unique ID if not provided
@@ -84,6 +88,8 @@ const create = async (employeeData) => {
       // Don't throw error here as we still want to create the employee
     }
     
+    const duration = performanceTracker.end(operationId, 'createEmployee');
+    
     return formatEmployeeResponse(employee);
   } catch (error) {
     logger.error('Error creating employee', { error: error.message });
@@ -100,6 +106,9 @@ const create = async (employeeData) => {
  */
 const getAll = async (filters = {}, page = 1, limit = 10) => {
   try {
+    const operationId = `get-all-employees-${Date.now()}`;
+    performanceTracker.start(operationId);
+    
     logger.info('Fetching employees', { page, limit, filters });
     
     const query = { active: true };
@@ -131,6 +140,14 @@ const getAll = async (filters = {}, page = 1, limit = 10) => {
         pages: Math.ceil(total / limit)
       }
     };
+    
+    const duration = performanceTracker.end(operationId, 'getAllEmployees', { 
+      resultCount: employees.length,
+      page,
+      limit
+    });
+    
+    performanceTracker.logDbQuery('employees', query, duration, employees.length);
 
     return result;
   } catch (error) {
@@ -140,20 +157,29 @@ const getAll = async (filters = {}, page = 1, limit = 10) => {
 };
 
 /**
- * Get employee by unique ID
+ * Get employee by unique ID with performance tracking
  * @param {string} uniqueId - Employee unique ID
  * @returns {Object} Employee data
  */
 const getByUniqueId = async (uniqueId) => {
   try {
+    const operationId = `get-employee-by-uid-${uniqueId}`;
+    performanceTracker.start(operationId);
+    
     logger.info('Fetching employee by unique ID', { uniqueId });
     
-    // Find employee by uniqueId
-    const employee = await Employee.findOne({ uniqueId, active: true }).lean();
+    // Find employee by uniqueId with optimized query
+    const employee = await Employee.findOne({ uniqueId, active: true })
+      .select('_id uniqueId name gender phone department position validUntil qrCodeUrl qrFileName photo createdAt updatedAt active')
+      .lean()
+      .exec();
     
     if (!employee) {
       throw new Error('Employee not found');
     }
+    
+    const duration = performanceTracker.end(operationId, 'getEmployeeByUniqueId');
+    performanceTracker.logDbQuery('employees', { uniqueId, active: true }, duration);
     
     return formatEmployeeResponse(employee);
   } catch (error) {
@@ -163,20 +189,29 @@ const getByUniqueId = async (uniqueId) => {
 };
 
 /**
- * Get employee by ID
+ * Get employee by ID with performance tracking
  * @param {string} id - Employee ID
  * @returns {Object} Employee data
  */
 const getById = async (id) => {
   try {
+    const operationId = `get-employee-by-id-${id}`;
+    performanceTracker.start(operationId);
+    
     logger.info('Fetching employee by ID', { id });
     
-    // Find employee by ID
-    const employee = await Employee.findById(id).lean();
+    // Find employee by ID with optimized query
+    const employee = await Employee.findById(id)
+      .select('_id uniqueId name gender phone department position validUntil qrCodeUrl qrFileName photo createdAt updatedAt active')
+      .lean()
+      .exec();
     
     if (!employee) {
       throw new Error('Employee not found');
     }
+    
+    const duration = performanceTracker.end(operationId, 'getEmployeeById');
+    performanceTracker.logDbQuery('employees', { _id: id }, duration);
     
     return formatEmployeeResponse(employee);
   } catch (error) {
@@ -192,6 +227,9 @@ const getById = async (id) => {
  */
 const remove = async (id) => {
   try {
+    const operationId = `remove-employee-${id}`;
+    performanceTracker.start(operationId);
+    
     logger.info('Removing employee', { id });
     
     // Soft delete by setting active to false
@@ -204,6 +242,8 @@ const remove = async (id) => {
     if (!employee) {
       throw new Error('Employee not found');
     }
+    
+    const duration = performanceTracker.end(operationId, 'removeEmployee');
     
     return true;
   } catch (error) {
@@ -220,6 +260,9 @@ const remove = async (id) => {
  */
 const update = async (id, updateData) => {
   try {
+    const operationId = `update-employee-${id}`;
+    performanceTracker.start(operationId);
+    
     logger.info('Updating employee', { id, updateData });
     
     // Find the existing employee
@@ -258,6 +301,8 @@ const update = async (id, updateData) => {
         // Don't throw error here as we still want to update the employee
       }
     }
+    
+    const duration = performanceTracker.end(operationId, 'updateEmployee');
     
     return formatEmployeeResponse(employee);
   } catch (error) {

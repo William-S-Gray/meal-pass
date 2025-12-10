@@ -27,12 +27,14 @@ const employeeSchema = new mongoose.Schema({
   department: {
     type: String,
     required: false,
-    trim: true
+    trim: true,
+    index: true // Add index for faster department queries
   },
   position: {
     type: String,
     required: false,
-    trim: true
+    trim: true,
+    index: true // Add index for faster position queries
   },
   validUntil: {
     type: Date,
@@ -57,12 +59,11 @@ const employeeSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Add indexes for common query fields
-employeeSchema.index({ name: 1 });
-employeeSchema.index({ department: 1 });
-employeeSchema.index({ createdAt: -1 }); // For sorting by creation date
+// Optimize indexes for common query patterns
 employeeSchema.index({ uniqueId: 1, active: 1 }); // Composite index for common queries
-employeeSchema.index({ validUntil: 1 }); // Index for validity checking
-employeeSchema.index({ gender: 1 }); // Index for gender queries
+employeeSchema.index({ name: 1, active: 1 }); // Composite index for name searches
+employeeSchema.index({ department: 1, active: 1 }); // Composite index for department queries
+employeeSchema.index({ createdAt: -1 }); // For sorting by creation date
+employeeSchema.index({ validUntil: 1, active: 1 }); // Index for validity checking
 
 module.exports = mongoose.model('Employee', employeeSchema);
