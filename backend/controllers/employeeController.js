@@ -688,6 +688,19 @@ const qrLandingPage = async (req, res, next) => {
   try {
     const { uid } = req.params;
     
+    // Check if request is coming from a browser (user agent contains browser identifiers)
+    const userAgent = req.get('User-Agent') || '';
+    const isBrowser = /mozilla|chrome|safari|firefox|edge/i.test(userAgent) && !/curl|postman/i.test(userAgent);
+    
+    // If accessed directly via browser, show secure message
+    if (isBrowser) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized QR usage. Please use the meal pass system scanner to process this QR code.',
+        code: 'UNAUTHORIZED_QR_ACCESS'
+      });
+    }
+    
     // Get employee details
     const employee = await employeeService.getByUniqueId(uid);
     if (!employee) {

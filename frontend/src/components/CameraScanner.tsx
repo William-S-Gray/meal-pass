@@ -25,6 +25,38 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   const [isDuplicate, setIsDuplicate] = useState(false);
   const scanTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Extract employee ID from QR code data
+  const extractEmployeeId = (qrData: string): string | null => {
+    try {
+      // Handle URL format first
+      // Check if it's a URL format pointing to our QR endpoint
+      const urlMatch = qrData.match(/\/api\/employees\/qr\/([A-Za-z0-9\-_]+)/);
+      if (urlMatch && urlMatch[1]) {
+        return urlMatch[1];
+      }
+      
+      // Try to parse as JSON (old format)
+      const parsedData = JSON.parse(qrData);
+      
+      // Check if it has the expected structure
+      if (parsedData && typeof parsedData === 'object' && parsedData.uniqueId) {
+        return parsedData.uniqueId;
+      }
+      
+      // If it's just a plain string, use it directly
+      if (qrData && typeof qrData === 'string' && qrData.trim().length > 0) {
+        return qrData.trim();
+      }
+    } catch (error) {
+      // If parsing fails, treat as legacy format (plain uniqueId)
+      if (qrData && typeof qrData === 'string' && qrData.trim().length > 0) {
+        return qrData.trim();
+      }
+    }
+    
+    return null;
+  };
+
   // Initialize camera access
   const initializeCamera = async () => {
     try {
@@ -133,9 +165,16 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
       if (result.success && result.data) {
         // Validate that we have meaningful data
         if (result.data.trim().length > 0) {
+          // Extract employee ID from QR code data
+          const employeeId = extractEmployeeId(result.data.trim());
+          
+          if (!employeeId) {
+            throw new Error('Could not extract employee ID from QR code');
+          }
+          
           // Check for duplicate scan before proceeding
           try {
-            const checkResponse = await fetch(`${baseUrl}/api/feeding/employee/${encodeURIComponent(result.data.trim())}`);
+            const checkResponse = await fetch(`${baseUrl}/api/feeding/employee/${encodeURIComponent(employeeId)}`);
             if (checkResponse.ok) {
               const checkResult = await checkResponse.json();
               // Check if employee has been fed today
@@ -146,7 +185,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
                   setIsDuplicate(true);
                   setTimeout(() => setIsDuplicate(false), 3000); // Reset after 3 seconds
                   if (onDuplicateScan) {
-                    onDuplicateScan(result.data.trim());
+                    onDuplicateScan(employeeId);
                   }
                   return; // Exit early for duplicate
                 }
@@ -157,7 +196,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
             // Continue with normal processing even if duplicate check fails
           }
           
-          onScanSuccess(result.data.trim());
+          onScanSuccess(employeeId);
         } else {
           throw new Error('Empty scan result');
         }

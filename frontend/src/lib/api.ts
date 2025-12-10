@@ -289,25 +289,24 @@ const deleteWithCacheClear = async <T>(url: string): Promise<T> => {
 export async function loginUser(email: string, password: string): Promise<User> {
   try {
     const response = await postWithCacheClear<{ data: { admin: { id: string; email: string; name: string; role?: string }; token: string } }>('/api/auth/login', { email, password });
-    const data = response;
     
     // Store user with token in localStorage
     const userWithToken: UserWithToken = {
-      id: data.data.admin.id,
-      email: data.data.admin.email,
-      fullName: data.data.admin.name,
-      role: (data.data.admin.role as 'admin' | 'volunteer' | 'reporter') || 'admin', // Default to admin if no role provided
-      token: data.data.token
+      id: response.data.admin.id,
+      email: response.data.admin.email,
+      fullName: response.data.admin.name,
+      role: (response.data.admin.role as 'admin' | 'volunteer' | 'reporter') || 'admin', // Default to admin if no role provided
+      token: response.data.token
     };
     
     localStorage.setItem('user', JSON.stringify(userWithToken));
     
     // Return user without token
     return {
-      id: data.data.admin.id,
-      email: data.data.admin.email,
-      fullName: data.data.admin.name,
-      role: (data.data.admin.role as 'admin' | 'volunteer' | 'reporter') || 'admin'
+      id: response.data.admin.id,
+      email: response.data.admin.email,
+      fullName: response.data.admin.name,
+      role: (response.data.admin.role as 'admin' | 'volunteer' | 'reporter') || 'admin'
     };
   } catch (error) {
     handleApiError(error);
@@ -342,7 +341,6 @@ export async function createEmployee(data: Omit<Employee, '_id' | 'qrCodeUrl' | 
     
     const response = await postWithCacheClear<{ 
       success: boolean; 
-      _id: string; 
       data: { 
         _id: string; 
         uniqueId: string; 
@@ -359,29 +357,27 @@ export async function createEmployee(data: Omit<Employee, '_id' | 'qrCodeUrl' | 
       } 
     }>('/api/employees', formData);
     
-    const result = response.data;
-    
     // Clear cache for employee lists since we've added a new employee
     clearEmployeeCache();
     
     // Map backend response to frontend interface
     return {
-      _id: result._id,
-      uniqueId: result.uniqueId,
-      name: result.name,
-      gender: result.gender,
-      phone: result.phone,
-      department: result.department,
-      position: result.position,
-      validUntil: result.validUntil,
-      qrCodeUrl: result.qrCodeUrl.startsWith('http') ? 
+      _id: response.data._id,
+      uniqueId: response.data.uniqueId,
+      name: response.data.name,
+      gender: response.data.gender,
+      phone: response.data.phone,
+      department: response.data.department,
+      position: response.data.position,
+      validUntil: response.data.validUntil,
+      qrCodeUrl: response.data.qrCodeUrl.startsWith('http') ? 
         // If it's already a full URL, make sure it uses the correct domain
-        result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
+        response.data.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
         // If it's a relative URL, prepend the baseURL
-        `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
-      createdAt: result.createdAt,
-      fedToday: result.fedToday || false,
-      active: result.active !== undefined ? result.active : true
+        `${apiClient.defaults.baseURL}${response.data.qrCodeUrl}`,
+      createdAt: response.data.createdAt,
+      fedToday: response.data.fedToday || false,
+      active: response.data.active !== undefined ? response.data.active : true
     };
   } catch (error) {
     handleApiError(error);
@@ -408,10 +404,9 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
     }
     
     const response = await cachedEmployeeGet<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; fedToday?: boolean; active?: boolean }[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
-    const result = response;
     
     // Map backend response to frontend interface
-    const employees = result.data.map((item) => ({
+    const employees = response.data.map((item) => ({
       _id: item._id,
       uniqueId: item.uniqueId,
       name: item.name,
@@ -432,7 +427,7 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
     
     return {
       data: employees,
-      pagination: result.pagination
+      pagination: response.pagination
     };
   } catch (error) {
     handleApiError(error);
@@ -448,24 +443,26 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
     if (cached && Date.now() - cached.timestamp < EMPLOYEE_CACHE_DURATION) {
       const result = cached.data as { data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } };
       
-      // Map backend response to frontend interface
+      // Ensure qrCodeUrl uses the correct domain
+      const qrCodeUrl = result.data.qrCodeUrl.startsWith('http') ? 
+        // If it's already a full URL, make sure it uses the correct domain
+        result.data.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
+        // If it's a relative URL, prepend the baseURL
+        `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`;
+
       return {
-        _id: result._id,
-        uniqueId: result.uniqueId,
-        name: result.name,
-        gender: result.gender,
-        phone: result.phone,
-        department: result.department,
-        position: result.position,
-        validUntil: result.validUntil,
-        qrCodeUrl: result.qrCodeUrl.startsWith('http') ? 
-          // If it's already a full URL, make sure it uses the correct domain
-          result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
-          // If it's a relative URL, prepend the baseURL
-          `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
-        createdAt: result.createdAt,
-        fedToday: result.fedToday || false,
-        active: result.active !== undefined ? result.active : true
+        _id: result.data._id,
+        uniqueId: result.data.uniqueId,
+        name: result.data.name,
+        gender: result.data.gender,
+        phone: result.data.phone,
+        department: result.data.department,
+        position: result.data.position,
+        validUntil: result.data.validUntil,
+        qrCodeUrl: qrCodeUrl,
+        createdAt: result.data.createdAt,
+        fedToday: result.data.fedToday || false,
+        active: result.data.active !== undefined ? result.data.active : true
       };
     }
     
@@ -473,7 +470,7 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     
-    const response = await apiClient.get<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } }>(`/api/employees/uid/${uid}`, {
+    const response = await apiClient.get<{ _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean }>(`/api/employees/uid/${uid}`, {
       signal: controller.signal
     });
     
@@ -482,26 +479,27 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
     // Cache the result
     apiCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
     
-    const result = response.data;
-    
+    // Ensure qrCodeUrl uses the correct domain
+    const qrCodeUrl = response.data.qrCodeUrl.startsWith('http') ? 
+      // If it's already a full URL, make sure it uses the correct domain
+      response.data.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
+      // If it's a relative URL, prepend the baseURL
+      `${apiClient.defaults.baseURL}${response.data.qrCodeUrl}`;
+
     // Map backend response to frontend interface
     return {
-      _id: result._id,
-      uniqueId: result.uniqueId,
-      name: result.name,
-      gender: result.gender,
-      phone: result.phone,
-      department: result.department,
-      position: result.position,
-      validUntil: result.validUntil,
-      qrCodeUrl: result.qrCodeUrl.startsWith('http') ? 
-        // If it's already a full URL, make sure it uses the correct domain
-        result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
-        // If it's a relative URL, prepend the baseURL
-        `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
-      createdAt: result.createdAt,
-      fedToday: result.fedToday || false,
-      active: result.active !== undefined ? result.active : true
+      _id: response.data._id,
+      uniqueId: response.data.uniqueId,
+      name: response.data.name,
+      gender: response.data.gender,
+      phone: response.data.phone,
+      department: response.data.department,
+      position: response.data.position,
+      validUntil: response.data.validUntil,
+      qrCodeUrl: qrCodeUrl,
+      createdAt: response.data.createdAt,
+      fedToday: response.data.fedToday || false,
+      active: response.data.active !== undefined ? response.data.active : true
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -530,32 +528,31 @@ export async function updateEmployee(id: string, data: Partial<Employee>): Promi
     if (data.position !== undefined) formData.append('position', data.position || '');
     if (data.validUntil !== undefined) formData.append('validUntil', data.validUntil);
     
-    const response = await putWithCacheClear<{ data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, formData);
-    const result = response.data;
+    const response = await putWithCacheClear<{ success: boolean; message: string; data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, formData);
     
     // Clear cache for this specific employee
-    if (result.uniqueId) {
-      clearSpecificEmployeeCache(result.uniqueId);
+    if (response.data.uniqueId) {
+      clearSpecificEmployeeCache(response.data.uniqueId);
     }
     
     // Map backend response to frontend interface
     return {
-      _id: result._id,
-      uniqueId: result.uniqueId,
-      name: result.name,
-      gender: result.gender,
-      phone: result.phone,
-      department: result.department,
-      position: result.position,
-      validUntil: result.validUntil,
-      qrCodeUrl: result.qrCodeUrl.startsWith('http') ? 
+      _id: response.data._id,
+      uniqueId: response.data.uniqueId,
+      name: response.data.name,
+      gender: response.data.gender,
+      phone: response.data.phone,
+      department: response.data.department,
+      position: response.data.position,
+      validUntil: response.data.validUntil,
+      qrCodeUrl: response.data.qrCodeUrl.startsWith('http') ? 
         // If it's already a full URL, make sure it uses the correct domain
-        result.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
+        response.data.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
         // If it's a relative URL, prepend the baseURL
-        `${apiClient.defaults.baseURL}${result.qrCodeUrl}`,
-      createdAt: result.createdAt,
+        `${apiClient.defaults.baseURL}${response.data.qrCodeUrl}`,
+      createdAt: response.data.createdAt,
       fedToday: false, // fedToday is not returned from update
-      active: result.active !== undefined ? result.active : true
+      active: response.data.active !== undefined ? response.data.active : true
     };
   } catch (error) {
     handleApiError(error);
@@ -671,9 +668,8 @@ export async function downloadQRCode(employeeId: string, employeeUid: string): P
 export async function getTodayFeedingRecords(): Promise<FeedingRecord[]> {
   try {
     const response = await cachedGet<{ data: BackendFeedingRecord[] }>(`/api/feeding/today`);
-    const result = response;
     
-    return result.data.map((item) => ({
+    return response.data.map((item) => ({
       id: item._id,
       uniqueId: item.uniqueId,
       employee: item.employee,
@@ -691,9 +687,8 @@ export async function getTodayFeedingRecords(): Promise<FeedingRecord[]> {
 export async function getFeedingRecordsForEmployee(uniqueId: string): Promise<FeedingRecord[]> {
   try {
     const response = await cachedGet<{ data: BackendFeedingRecord[] }>(`/api/feeding/employee/${uniqueId}`);
-    const result = response;
     
-    return result.data.map((item) => ({
+    return response.data.map((item) => ({
       id: item._id,
       uniqueId: item.uniqueId,
       employee: item.employee,
@@ -776,10 +771,9 @@ export async function removeFeedingStatus(uniqueId: string): Promise<QRScanRespo
 export async function getDailyReport(page: number = 1, limit: number = 50): Promise<PaginatedReport<FeedRecord>> {
   try {
     const response = await cachedGet<{ data: BackendFeedLog[]; pagination: { page: number; limit: number; total: number; pages: number } }>(`/api/reports/today?page=${page}&limit=${limit}`);
-    const result = response;
     
     // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = result.data.map((item) => ({
+    const feedRecords = response.data.map((item) => ({
       id: item._id,
       employeeUid: item.employeeId?.uniqueId || item.uniqueId,
       employeeName: item.employeeId?.name || 'Unknown',
@@ -791,7 +785,7 @@ export async function getDailyReport(page: number = 1, limit: number = 50): Prom
     
     return {
       data: feedRecords,
-      pagination: result.pagination
+      pagination: response.pagination
     };
   } catch (error) {
     handleApiError(error);
@@ -802,10 +796,9 @@ export async function getDailyReport(page: number = 1, limit: number = 50): Prom
 export async function getDateRangeReport(from: string, to: string, page: number = 1, limit: number = 50): Promise<PaginatedReport<FeedRecord>> {
   try {
     const response = await cachedGet<{ data: BackendFeedLog[]; pagination: { page: number; limit: number; total: number; pages: number } }>(`/api/reports/date-range?from=${from}&to=${to}&page=${page}&limit=${limit}`);
-    const result = response;
     
     // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = result.data.map((item) => ({
+    const feedRecords = response.data.map((item) => ({
       id: item._id,
       employeeUid: item.employeeId?.uniqueId || item.uniqueId,
       employeeName: item.employeeId?.name || 'Unknown',
@@ -817,7 +810,7 @@ export async function getDateRangeReport(from: string, to: string, page: number 
     
     return {
       data: feedRecords,
-      pagination: result.pagination
+      pagination: response.pagination
     };
   } catch (error) {
     handleApiError(error);
@@ -953,14 +946,13 @@ export async function getDetailedStats(startDate?: string, endDate?: string): Pr
     }
     
     const response = await cachedGet<{ data: DetailedStats }>(url);
-    const result = response;
     
     return {
-      totalEmployees: result.data.totalEmployees,
-      totalFedToday: result.data.totalFedToday,
-      totalFedInRange: result.data.totalFedInRange,
-      feedRate: result.data.feedRate,
-      dateRange: result.data.dateRange
+      totalEmployees: response.data.totalEmployees,
+      totalFedToday: response.data.totalFedToday,
+      totalFedInRange: response.data.totalFedInRange,
+      feedRate: response.data.feedRate,
+      dateRange: response.data.dateRange
     };
   } catch (error) {
     handleApiError(error);
@@ -992,10 +984,9 @@ export async function getFeedRecordsByDateRange(startDate: string, endDate: stri
     }
     
     const response = await cachedGet<{ data: { id: string; employeeUid: string; employeeName: string; date: string; time: string; scannerName: string; status?: string }[] }>(url);
-    const result = response;
     
     // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = result.data.map((item) => ({
+    const feedRecords = response.data.map((item) => ({
       id: item.id,
       employeeUid: item.employeeUid,
       employeeName: item.employeeName,
@@ -1017,10 +1008,9 @@ export async function getTodayFeedRecords(page: number = 1, limit: number = 10):
     const url = `/api/feeding/today?page=${page}&limit=${limit}`;
     
     const response = await cachedGet<{ data: BackendFeedingRecord[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
-    const result = response;
     
     // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = result.data.map((item) => ({
+    const feedRecords = response.data.map((item) => ({
       id: item._id,
       employeeUid: item.employee?.uniqueId || item.uniqueId,
       employeeName: item.employee?.name || 'Unknown',
@@ -1032,7 +1022,7 @@ export async function getTodayFeedRecords(page: number = 1, limit: number = 10):
     
     return {
       data: feedRecords,
-      pagination: result.pagination
+      pagination: response.pagination
     };
   } catch (error) {
     handleApiError(error);

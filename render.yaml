@@ -21,7 +21,7 @@ services:
       - key: FRONTEND_URL
         value: https://meal-pass-frontend.onrender.com
       - key: BASE_URL
-        value: https://mealpass-backend.onrender.com
+        value: https://meal-backend-9zm8.onrender.com
       - key: ACTIVE_ENV
         value: blue
       - key: CLOUDINARY_CLOUD_NAME
@@ -37,6 +37,6 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://mealpass-backend.onrender.com
+        value: https://meal-backend-9zm8.onrender.com
     domains:
-      - mealpass-frontend.onrender.com
+      - meal-pass-frontend.onrender.com

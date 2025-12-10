@@ -113,6 +113,7 @@ app.use(cors({
       process.env.FRONTEND_URL,
       process.env.FRONTEND_URL?.replace("https://", "http://"),
       "https://meal-pass-frontend.onrender.com",
+      "https://mealpass-frontend.onrender.com",
       "http://localhost:8080",
       "http://localhost:5173",
       "http://127.0.0.1:8080",
@@ -199,6 +200,7 @@ app.options('*', (req, res) => {
     process.env.FRONTEND_URL,
     process.env.FRONTEND_URL?.replace("https://", "http://"),
     "https://meal-pass-frontend.onrender.com",
+    "https://mealpass-frontend.onrender.com",
     "http://localhost:8080",
     "http://localhost:5173",
     "http://127.0.0.1:8080",
@@ -230,6 +232,13 @@ app.use('/api/feeding', feedingRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api', scanRoutes);
+
+// Handle direct access to /qr/:uid (for mobile camera scans)
+app.get('/qr/:uid', (req, res) => {
+  // Redirect to the proper API endpoint
+  const { uid } = req.params;
+  res.redirect(301, `/api/employees/qr/${uid}`);
+});
 
 // Health check endpoint for Render
 app.get('/health', async (req, res) => {

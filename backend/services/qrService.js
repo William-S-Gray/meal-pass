@@ -15,7 +15,11 @@ const generateQRCode = async (uniqueId, name = '') => {
     
     // Create a URL that points to our QR landing page
     // This prevents mobile cameras from treating it as a search query
-    const qrUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/qr/${uniqueId}`;
+    // Ensure we use the correct BASE_URL for production
+    const baseUrl = process.env.BASE_URL || process.env.NODE_ENV === 'production' 
+      ? 'https://meal-backend-9zm8.onrender.com' 
+      : 'http://localhost:5000';
+    const qrUrl = `${baseUrl}/api/employees/qr/${uniqueId}`;
     
     // Generate QR code as buffer with the URL
     const buffer = await QRCode.toBuffer(qrUrl, {
@@ -73,7 +77,11 @@ const generateQRCodeDataUri = async (uniqueId, name = '') => {
     
     // Create a URL that points to our QR landing page
     // This prevents mobile cameras from treating it as a search query
-    const qrUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/qr/${uniqueId}`;
+    // Ensure we use the correct BASE_URL for production
+    const baseUrl = process.env.BASE_URL || process.env.NODE_ENV === 'production' 
+      ? 'https://meal-backend-9zm8.onrender.com' 
+      : 'http://localhost:5000';
+    const qrUrl = `${baseUrl}/api/employees/qr/${uniqueId}`;
     
     // Use smaller size for better performance
     const dataUri = await QRCode.toDataURL(qrUrl, {
@@ -105,7 +113,11 @@ const generateQRCodeOnDemand = async (uniqueId, name = '') => {
     
     // Create a URL that points to our QR landing page
     // This prevents mobile cameras from treating it as a search query
-    const qrUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/qr/${uniqueId}`;
+    // Ensure we use the correct BASE_URL for production
+    const baseUrl = process.env.BASE_URL || process.env.NODE_ENV === 'production' 
+      ? 'https://meal-backend-9zm8.onrender.com' 
+      : 'http://localhost:5000';
+    const qrUrl = `${baseUrl}/api/employees/qr/${uniqueId}`;
     
     // Generate QR code as buffer with the URL
     const buffer = await QRCode.toBuffer(qrUrl, {
