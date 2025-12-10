@@ -4,6 +4,7 @@ const multer = require('multer');
 const Employee = require('../models/Employee');
 const FeedingRecord = require('../models/FeedingRecord');
 const employeeService = require('../services/employeeService');
+const employeeFeedingService = require('../services/employeeFeedingService');
 const qrService = require('../services/qrService');
 const { sendSuccess, sendError, sendValidationError } = require('../utils/responseHelper');
 const logger = require('../utils/logger');
@@ -678,6 +679,95 @@ const printSingleCard = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    QR Code landing page - handles mobile camera scans
+ * @route   GET /api/employees/qr/:uid
+ * @access  Public
+ */
+const qrLandingPage = async (req, res, next) => {
+  try {
+    const { uid } = req.params;
+    
+    // Get employee details
+    const employee = await employeeService.getByUniqueId(uid);
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+    
+    // Check if employee is active
+    if (!employee.active) {
+      return res.status(400).json({
+        success: false,
+        message: 'Employee account is inactive'
+      });
+    }
+    
+    // Check if employee is expired
+    const currentDate = new Date();
+    const validUntilDate = new Date(employee.validUntil);
+    
+    if (currentDate > validUntilDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Employee meal access expired'
+      });
+    }
+    
+    // Check if already fed today
+    const today = new Date().toISOString().split('T')[0];
+    const existingRecord = await FeedingRecord.findOne({
+      uniqueId: uid,
+      date: today
+    });
+    
+    if (existingRecord) {
+      return res.status(400).json({
+        success: false,
+        message: 'Employee already fed today',
+        employee: {
+          name: employee.name,
+          uniqueId: employee.uniqueId,
+          department: employee.department
+        }
+      });
+    }
+    
+    // If not fed today, proceed to mark as fed
+    const feedingData = {
+      uniqueId: uid,
+      deviceId: 'mobile_qr_scan',
+      employee: {
+        name: employee.name,
+        department: employee.department,
+        uniqueId: employee.uniqueId
+      }
+    };
+    
+    const feedingRecord = await employeeFeedingService.recordFeeding(feedingData);
+    
+    // Return success response
+    res.status(200).json({
+      success: true,
+      message: 'Employee successfully marked as fed',
+      employee: {
+        name: employee.name,
+        uniqueId: employee.uniqueId,
+        department: employee.department
+      },
+      feedingRecord
+    });
+  } catch (error) {
+    logger.error('Error in qrLandingPage:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error'
+    });
+  }
+};
+
 // Helper function to escape HTML
 function escapeHtml(text) {
   if (!text) return '';
@@ -703,5 +793,6 @@ module.exports = {
   getQRCodeDataUrl,
   generateDynamicQRCode,
   printBulkCards,
-  printSingleCard
+  printSingleCard,
+  qrLandingPage
 };

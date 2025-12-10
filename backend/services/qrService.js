@@ -13,14 +13,12 @@ const generateQRCode = async (uniqueId, name = '') => {
   try {
     logger.info('Generating QR code and storing in GridFS', { uniqueId, name });
     
-    // Create a JSON object with both uniqueId and name
-    const qrData = {
-      uniqueId: uniqueId,
-      name: name
-    };
+    // Create a URL that points to our QR landing page
+    // This prevents mobile cameras from treating it as a search query
+    const qrUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/qr/${uniqueId}`;
     
-    // Generate QR code as buffer
-    const buffer = await QRCode.toBuffer(JSON.stringify(qrData), {
+    // Generate QR code as buffer with the URL
+    const buffer = await QRCode.toBuffer(qrUrl, {
       width: 300,
       margin: 2,
       color: {
@@ -73,14 +71,12 @@ const generateQRCodeDataUri = async (uniqueId, name = '') => {
   try {
     logger.info('Generating QR code data URI', { uniqueId, name });
     
-    // Create a JSON object with both uniqueId and name
-    const qrData = {
-      uniqueId: uniqueId,
-      name: name
-    };
+    // Create a URL that points to our QR landing page
+    // This prevents mobile cameras from treating it as a search query
+    const qrUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/qr/${uniqueId}`;
     
     // Use smaller size for better performance
-    const dataUri = await QRCode.toDataURL(JSON.stringify(qrData), {
+    const dataUri = await QRCode.toDataURL(qrUrl, {
       width: 200, // Reduced size for better performance
       margin: 2,
       color: {
@@ -107,14 +103,12 @@ const generateQRCodeOnDemand = async (uniqueId, name = '') => {
   try {
     logger.info('Generating QR code on-demand', { uniqueId, name });
     
-    // Create a JSON object with both uniqueId and name
-    const qrData = {
-      uniqueId: uniqueId,
-      name: name
-    };
+    // Create a URL that points to our QR landing page
+    // This prevents mobile cameras from treating it as a search query
+    const qrUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/qr/${uniqueId}`;
     
-    // Generate QR code as buffer
-    const buffer = await QRCode.toBuffer(JSON.stringify(qrData), {
+    // Generate QR code as buffer with the URL
+    const buffer = await QRCode.toBuffer(qrUrl, {
       width: 300,
       margin: 2,
       color: {

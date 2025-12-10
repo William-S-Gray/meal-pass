@@ -1,22 +1,32 @@
 /**
  * Decodes QR code data and extracts the uniqueId
- * Handles both old format (plain uniqueId) and new format (JSON with uniqueId and name)
+ * Handles multiple formats:
+ * 1. New URL format: http://domain/qr/UNIQUE_ID
+ * 2. Old JSON format (with uniqueId and name)
+ * 3. Legacy plain uniqueId format
  * @param {string} qrData - Raw QR code data
  * @returns {string|null} The extracted uniqueId or null if invalid
  */
 const decodeQRData = (qrData) => {
   try {
-    // Try to parse as JSON first (new format)
-    const parsedData = JSON.parse(qrData);
-    
-    // Check if it has the expected structure
-    if (parsedData && typeof parsedData === 'object' && parsedData.uniqueId) {
-      return parsedData.uniqueId;
+    // Handle URL format first
+    if (qrData && typeof qrData === 'string') {
+      // Check if it's a URL format pointing to our QR endpoint
+      const urlMatch = qrData.match(/\/qr\/([A-Za-z0-9\-_]+)/);
+      if (urlMatch && urlMatch[1]) {
+        return urlMatch[1];
+      }
+      
+      // Try to parse as JSON (old format)
+      const parsedData = JSON.parse(qrData);
+      
+      // Check if it has the expected structure
+      if (parsedData && typeof parsedData === 'object' && parsedData.uniqueId) {
+        return parsedData.uniqueId;
+      }
     }
-    
-    // If parsing succeeded but structure is wrong, fall through to return null
   } catch (error) {
-    // If parsing fails, treat as old format (plain uniqueId)
+    // If parsing fails, treat as legacy format (plain uniqueId)
     // Validate that it looks like a valid uniqueId
     if (qrData && typeof qrData === 'string' && qrData.trim().length > 0) {
       return qrData.trim();

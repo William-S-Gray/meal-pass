@@ -74,7 +74,15 @@ export const useQrScanner = (
         videoElement,
         (result) => {
           try {
-            // Try to parse the QR code data as JSON
+            // Handle URL format first
+            // Check if it's a URL format pointing to our QR endpoint
+            const urlMatch = result.data.match(/\/qr\/([A-Za-z0-9\-_]+)/);
+            if (urlMatch && urlMatch[1]) {
+              onScan(urlMatch[1]);
+              return;
+            }
+            
+            // Try to parse the QR code data as JSON (old format)
             const qrData = JSON.parse(result.data);
             // If it's our enhanced QR code format, use the uniqueId
             if (qrData.uniqueId) {

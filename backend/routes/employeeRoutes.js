@@ -13,6 +13,7 @@ const {
   generateDynamicQRCode,
   printBulkCards,
   printSingleCard,
+  qrLandingPage,
   upload
 } = require('../controllers/employeeController');
 
@@ -67,5 +68,9 @@ router.route('/print-cards')
 
 router.route('/:id/print-card')
   .get(authMiddleware, printSingleCard);
+
+// QR landing page route (public - no auth required)
+router.route('/qr/:uid')
+  .get(qrLandingPage);
 
 module.exports = router;
