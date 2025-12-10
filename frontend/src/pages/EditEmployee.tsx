@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getEmployeeByUid, updateEmployee, preloadEmployeeData, Employee } from '@/lib/api';
+import { getEmployeeByUid, updateEmployee, Employee } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { ChevronLeft, Loader2, Calendar } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useWebSocket } from '@/contexts/WebSocketContext'; // Import WebSocket context
+import { useWebSocket } from '@/contexts/WebSocketContext';
 
 // Define error type for better type safety
 interface ApiError extends Error {
@@ -26,7 +26,7 @@ export default function EditEmployee() {
   const { toast } = useToast();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { socket } = useWebSocket(); // Use WebSocket context
+  const { socket } = useWebSocket();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -41,8 +41,6 @@ export default function EditEmployee() {
 
   useEffect(() => {
     if (id) {
-      // Preload employee data for better performance
-      preloadEmployeeData(id);
       loadEmployee(id);
     }
   }, [id]);

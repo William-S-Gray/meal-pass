@@ -19,9 +19,11 @@ services:
       - key: ENABLE_AUTH
         value: true
       - key: FRONTEND_URL
-        value: https://mealpass-frontend.onrender.com
+        value: https://meal-pass-frontend.onrender.com
       - key: BASE_URL
         value: https://mealpass-backend.onrender.com
+      - key: ACTIVE_ENV
+        value: blue
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

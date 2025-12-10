@@ -7,7 +7,6 @@ import {
   getFeedingRecordsForEmployee, 
   updateEmployee, 
   setManualFeedingStatus, 
-  preloadEmployeeData,
   Employee, 
   FeedingRecord 
 } from '@/lib/api';
@@ -34,8 +33,6 @@ export default function EmployeeProfile() {
 
   useEffect(() => {
     if (uid) {
-      // Preload employee data for better performance
-      preloadEmployeeData(uid);
       loadData(uid);
     }
   }, [uid]);
@@ -198,7 +195,7 @@ export default function EmployeeProfile() {
                       size="sm"
                       onClick={() => handleSetFeedingStatus(true)}
                       title="Mark as fed today"
-                      disabled={actionLoading || wasFedToday || isExpired}
+                      disabled={actionLoading || isExpired}
                     >
                       {actionLoading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -208,37 +205,42 @@ export default function EmployeeProfile() {
                       Mark Fed
                     </Button>
                     <Button 
-                      variant={!wasFedToday ? "default" : "outline"} 
+                      variant="outline" 
                       size="sm"
-                      onClick={() => handleSetFeedingStatus(false)}
-                      title="Mark as not fed today"
-                      disabled={actionLoading || !wasFedToday}
+                      onClick={handleEditClick}
                     >
-                      {actionLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <X className="mr-2 h-4 w-4" />
-                      )}
-                      Mark Not Fed
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
                     </Button>
                   </>
                 )}
-                <DownloadQRButton 
-                  employeeId={employee._id} 
-                  employeeUid={employee.uniqueId} 
-                  variant="outline" 
-                  size="sm" 
-                />
-                <Button variant="outline" onClick={handleEditClick}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {isExpired ? (
+                      <Badge variant="destructive">Expired</Badge>
+                    ) : (
+                      <Badge variant="default">Active</Badge>
+                    )}
+                    {wasFedToday ? (
+                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">Fed Today</Badge>
+                    ) : (
+                      <Badge variant="secondary">Not Fed Today</Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-muted-foreground">Unique ID</p>
+                  <p className="text-base font-medium font-mono">{employee.uniqueId}</p>
+                </div>
+                
                 {employee.phone && (
                   <div>
                     <p className="text-sm text-muted-foreground">Phone</p>
@@ -271,98 +273,67 @@ export default function EmployeeProfile() {
                   <p className="text-sm text-muted-foreground">Validity Period</p>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <p className={`text-base font-medium ${isExpired ? "text-destructive" : ""}`}>
-                      {format(parseISO(employee.validUntil), 'MMMM dd, yyyy')}
-                    </p>
+                    <span className="text-base font-medium">
+                      {format(parseISO(employee.validUntil), 'MMM dd, yyyy')}
+                    </span>
                     {isExpired && (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        Expired
-                      </Badge>
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
                     )}
                   </div>
                 </div>
-
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge variant={wasFedToday ? "default" : "secondary"}>
-                    {wasFedToday ? 'Fed Today' : 'Not Fed Today'}
-                  </Badge>
-                </div>
-                
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Meals</p>
-                  <p className="text-base font-medium">{feedHistory.length}</p>
-                </div>
-                
-                {feedHistory.length > 0 && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Last Fed</p>
-                    <p className="text-base font-medium">
-                      {new Date(feedHistory[0].date).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
               </div>
-
-              <div className="flex flex-col items-center gap-4 p-6 bg-muted rounded-lg">
-                <img 
-                  src={employee.qrCodeUrl} 
-                  alt="QR Code" 
-                  className="max-w-[80vw] max-h-[80vh] md:max-w-[300px] md:max-h-[300px] border-4 border-white shadow-lg w-full h-auto object-contain"
-                />
-                <DownloadQRButton 
-                  employeeId={employee._id} 
-                  employeeUid={employee.uniqueId} 
-                  variant="outline" 
-                  className="w-full"
-                  disabled={actionLoading}
-                />
-                <Button variant="outline" className="w-full" onClick={() => window.print()}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Print Card
-                </Button>
+              
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">QR Code</p>
+                  <div className="bg-white p-4 rounded-lg border flex flex-col items-center">
+                    <img 
+                      src={employee.qrCodeUrl} 
+                      alt={`QR Code for ${employee.name}`} 
+                      className="w-48 h-48 object-contain"
+                    />
+                    <DownloadQRButton employeeId={employee._id} employeeUid={employee.uniqueId} />
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Feed History */}
+        {/* Feeding History */}
         <Card className="border-2">
           <CardHeader>
-            <CardTitle>Feed History</CardTitle>
-            <CardDescription>Record of all meals distributed</CardDescription>
+            <CardTitle>Feeding History</CardTitle>
+            <CardDescription>Recent feeding records for this employee</CardDescription>
           </CardHeader>
           <CardContent>
             {feedHistory.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No feed records yet</p>
+              <p className="text-muted-foreground text-center py-4">No feeding records found</p>
             ) : (
-              // Make table responsive with horizontal scrolling on small screens
-              <div className="overflow-x-auto w-full rounded-lg border-2">
-                <Table className="min-w-[600px] md:min-w-full">
+              <div className="rounded-md border">
+                <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs sm:text-sm">Date</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Time</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Scanner</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Method</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {feedHistory.map((record) => (
-                      <TableRow key={`feed-record-${record.id}`}>
-                        <TableCell className="text-xs sm:text-sm">{new Date(record.date).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-xs sm:text-sm">{new Date(record.fedAt).toLocaleTimeString()}</TableCell>
-                        <TableCell className="text-xs sm:text-sm">{record.deviceId}</TableCell>
-                        <TableCell>
-                          <Badge variant="default" className="text-xs sm:text-sm">
-                            {record.method}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {feedHistory.map((record) => {
+                      const fedDate = new Date(record.fedAt);
+                      return (
+                        <TableRow key={record.id}>
+                          <TableCell>{format(fedDate, 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{format(fedDate, 'hh:mm a')}</TableCell>
+                          <TableCell>
+                            <Badge variant={record.method === 'manual' ? 'secondary' : 'default'}>
+                              {record.method === 'manual' ? 'Manual' : 'Scan'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

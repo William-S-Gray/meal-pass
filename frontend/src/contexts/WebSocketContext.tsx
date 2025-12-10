@@ -32,10 +32,12 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
     
     // Create socket connection
     const newSocket = io(apiUrl, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      timeout: 10000,
+      autoConnect: true
     });
 
     newSocket.on('connect', () => {

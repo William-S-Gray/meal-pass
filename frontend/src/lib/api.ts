@@ -8,11 +8,12 @@ console.log('Using baseURL:', import.meta.env.VITE_API_URL || 'http://localhost:
 
 // Create axios instance
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001',
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false // Disable credentials for CORS
+  withCredentials: false, // Disable credentials for CORS
+  timeout: 10000 // Set timeout to 10 seconds
 });
 
 // Add a request interceptor to add auth token to all requests
@@ -37,9 +38,9 @@ apiClient.interceptors.request.use(
 );
 
 // Simple in-memory cache for GET requests
-const apiCache = new Map<string, { data: unknown; timestamp: number }> ();
+const apiCache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const EMPLOYEE_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes for employee data (increased from 60 seconds)
+const EMPLOYEE_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes for employee data
 
 // Function to clear employee-related cache entries
 const clearEmployeeCache = () => {
@@ -205,10 +206,11 @@ const handleApiError = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (error.response) {
       // Server responded with error status
-      throw new Error(error.response.data.error || `HTTP error! status: ${error.response.status}`);
+      const errorMessage = error.response.data?.error || error.response.data?.message || `HTTP error! status: ${error.response.status}`;
+      throw new Error(errorMessage);
     } else if (error.request) {
       // Request was made but no response received
-      throw new Error('Network error - no response received');
+      throw new Error('Network error - no response received from server. Please check if the backend is running.');
     } else {
       // Something else happened
       throw new Error(error.message || 'Unknown error occurred');
@@ -242,22 +244,6 @@ const cachedGet = async <T>(url: string, cacheDuration: number = CACHE_DURATION)
 // Specialized caching function for employee data
 const cachedEmployeeGet = async <T>(url: string): Promise<T> => {
   return cachedGet<T>(url, EMPLOYEE_CACHE_DURATION);
-};
-
-// Preload employee data into cache
-export const preloadEmployeeData = async (uid: string) => {
-  try {
-    // Only preload if not already in cache
-    if (!isEmployeeInCache(uid)) {
-      const url = getEmployeeCacheKey(uid);
-      const response = await apiClient.get(url);
-      // Cache the result
-      apiCache.set(url, { data: response.data, timestamp: Date.now() });
-    }
-  } catch (error) {
-    // Silently fail preloading - it's not critical
-    console.debug('Failed to preload employee data:', error);
-  }
 };
 
 // Wrapper for POST requests that clears relevant cache
@@ -491,6 +477,10 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
     
     const result = response.data;
     
+    // Cache the result for future requests
+    const cacheKey = getEmployeeCacheKey(uid);
+    apiCache.set(cacheKey, { data: response, timestamp: Date.now() });
+    
     // Map backend response to frontend interface
     return {
       _id: result._id,
@@ -596,22 +586,17 @@ export async function printBulkCards(employeeIds: string[]): Promise<Blob> {
   }
 }
 
-export async function printSingleCard(employeeId: string): Promise<Blob> {
+// Generate QR code dynamically without storing it
+export async function generateDynamicQRCode(employeeUid: string): Promise<string> {
   try {
-    const response = await apiClient.get(`/api/employees/${employeeId}/print-card`, {
-      responseType: 'blob',
-      timeout: 60000 // Increase timeout for PDF generation
+    const response = await apiClient.get(`/api/employees/uid/${employeeUid}/qrcode/dynamic`, {
+      responseType: 'blob'
     });
     
-    // Validate response
-    const contentType = response.headers['content-type'];
-    if (!contentType || !contentType.includes('application/pdf')) {
-      throw new Error(`Expected PDF response but got ${contentType}`);
-    }
-    
-    return response.data;
+    // Create object URL from blob
+    const url = window.URL.createObjectURL(response.data);
+    return url;
   } catch (error) {
-    console.error('Error in printSingleCard:', error);
     handleApiError(error);
     throw error;
   }
@@ -668,22 +653,6 @@ export async function downloadQRCode(employeeId: string, employeeUid: string): P
       // Non-Axios error
       throw new Error('Unknown error occurred');
     }
-  }
-}
-
-// Generate QR code dynamically without storing it
-export async function generateDynamicQRCode(employeeUid: string): Promise<string> {
-  try {
-    const response = await apiClient.get(`/api/employees/uid/${employeeUid}/qrcode/dynamic`, {
-      responseType: 'blob'
-    });
-    
-    // Create object URL from blob
-    const url = window.URL.createObjectURL(response.data);
-    return url;
-  } catch (error) {
-    handleApiError(error);
-    throw error;
   }
 }
 

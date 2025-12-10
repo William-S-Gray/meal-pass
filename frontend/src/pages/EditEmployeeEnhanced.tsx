@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getEmployeeByUid, updateEmployee, preloadEmployeeData, Employee } from '@/lib/api';
+import { getEmployeeByUid, updateEmployee, Employee } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,8 +44,6 @@ export default function EditEmployeeEnhanced() {
 
   useEffect(() => {
     if (id) {
-      // Preload employee data for better performance
-      preloadEmployeeData(id);
       loadEmployee(id);
     }
   }, [id]);
@@ -94,7 +92,7 @@ export default function EditEmployeeEnhanced() {
     };
   }, [socket, employee]);
 
-  const loadEmployee = async (id: string) => {
+  const loadEmployee = useCallback(async (id: string) => {
     try {
       setLoading(true);
       const employeeData = await getEmployeeByUid(id);
@@ -119,9 +117,9 @@ export default function EditEmployeeEnhanced() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
     
     if (!formData.name.trim()) {
@@ -148,7 +146,7 @@ export default function EditEmployeeEnhanced() {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,7 +200,7 @@ export default function EditEmployeeEnhanced() {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear error for this field when user starts typing
@@ -213,7 +211,7 @@ export default function EditEmployeeEnhanced() {
         return newErrors;
       });
     }
-  };
+  }, [errors]);
 
   if (loading) {
     return (

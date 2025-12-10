@@ -24,6 +24,7 @@ const authRoutes = require('./routes/authRoutes');
 const feedingRoutes = require('./routes/feedingRoutes');
 const reportsRoutes = require('./routes/reportsRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
+const scanRoutes = require('./routes/scanRoutes');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -37,13 +38,40 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.FRONTEND_URL,
-      process.env.FRONTEND_URL?.replace("https://", "http://")
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Define allowed origins
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        process.env.FRONTEND_URL?.replace("https://", "http://"),
+        "https://meal-pass-frontend.onrender.com",
+        "http://localhost:8080",
+        "http://localhost:5173",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:5173"
+      ].filter(Boolean); // Remove undefined values
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        // For development, be more permissive but log the origin
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Socket.IO CORS allowing origin in development: ${origin}`);
+          callback(null, true);
+        } else {
+          // Log the origin for debugging in production
+          console.log(`Socket.IO CORS blocked origin: ${origin}`);
+          callback(new Error('Not allowed by Socket.IO CORS'));
+        }
+      }
+    },
     credentials: true,
     optionsSuccessStatus: 200
-  }
+  },
+  transports: ['websocket', 'polling']
 });
 
 // Store Socket.IO instance in app for use in controllers
@@ -80,22 +108,24 @@ app.use(cors({
       process.env.FRONTEND_URL?.replace("https://", "http://"),
       "https://meal-pass-frontend.onrender.com",
       "http://localhost:8080",
-      "http://localhost:5173"
+      "http://localhost:5173",
+      "http://127.0.0.1:8080",
+      "http://127.0.0.1:5173"
     ].filter(Boolean); // Remove undefined values
     
-    // For production debugging, temporarily allow all origins
-    if (process.env.NODE_ENV === 'production') {
-      // Check if origin matches the expected production frontend
-      if (origin === "https://meal-pass-frontend.onrender.com") {
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // For development, be more permissive but log the origin
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`CORS allowing origin in development: ${origin}`);
         callback(null, true);
       } else {
-        // Log the origin for debugging
+        // Log the origin for debugging in production
         console.log(`CORS blocked origin: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
-    } else {
-      // In development, be more permissive
-      callback(null, true);
     }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -164,20 +194,22 @@ app.options('*', (req, res) => {
     process.env.FRONTEND_URL?.replace("https://", "http://"),
     "https://meal-pass-frontend.onrender.com",
     "http://localhost:8080",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:5173"
   ].filter(Boolean); // Remove undefined values
   
-  // For production debugging, temporarily allow all origins
-  if (process.env.NODE_ENV === 'production') {
-    // Check if origin matches the expected production frontend
-    if (origin === "https://meal-pass-frontend.onrender.com") {
+  // Check if origin is in allowed list
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    // For development, be more permissive but log the origin
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`CORS preflight allowing origin in development: ${origin}`);
       res.header('Access-Control-Allow-Origin', origin);
     } else {
       console.log(`CORS preflight blocked origin: ${origin}`);
     }
-  } else {
-    // In development, be more permissive
-    res.header('Access-Control-Allow-Origin', origin);
   }
   
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
@@ -191,6 +223,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/feeding', feedingRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api', scanRoutes);
 
 // Health check endpoint for Render
 app.get('/health', async (req, res) => {

@@ -7,14 +7,43 @@ export type ScanStatus = 'success' | 'already_fed' | 'not_found' | 'error' | 'ex
 export interface ScanResult {
   status: ScanStatus;
   message: string;
-  employee?: any; // Using any to match existing code, but should be typed properly
+  employee?: unknown; // Using unknown for now to match existing code
 }
 
 export interface BulkResult {
   id: string;
   status: ScanStatus;
   message: string;
-  employee?: any;
+  employee?: unknown;
+}
+
+// Declare the QrScanner type
+declare class QrScanner {
+  static HAS_CAMERA: Promise<boolean>;
+  static listCameras: (backCameraPreferred?: boolean) => Promise<Array<{ id: string; label: string }>>;
+  
+  constructor(
+    video: HTMLVideoElement,
+    onDecode: (result: { data: string; cornerPoints: { x: number; y: number }[] }) => void,
+    options?: {
+      onDecodeError?: (error: Error | string) => void;
+      calculateScanRegion?: (video: HTMLVideoElement) => { x: number; y: number; width: number; height: number };
+      preferredCamera?: string;
+      maxScansPerSecond?: number;
+      highlightScanRegion?: boolean;
+      highlightCodeOutline?: boolean;
+      overlay?: HTMLElement;
+      restrictToCamera?: string;
+    }
+  );
+  
+  hasFlash(): Promise<boolean>;
+  turnFlashOn(): Promise<void>;
+  turnFlashOff(): Promise<void>;
+  toggleFlash(): Promise<void>;
+  destroy(): void;
+  start(): Promise<void>;
+  stop(): void;
 }
 
 // Hook for QR Scanner functionality
@@ -23,7 +52,7 @@ export const useQrScanner = (
   onScan: (data: string) => void,
   onError: (error: Error) => void
 ) => {
-  const qrScannerRef = useRef<any>(null); // Using any for QrScanner type
+  const qrScannerRef = useRef<QrScanner | null>(null);
   const isInitializedRef = useRef(false);
 
   const initialize = useCallback(async () => {
@@ -32,7 +61,7 @@ export const useQrScanner = (
     try {
       // Dynamically import QrScanner to avoid issues on server-side rendering
       const QrScannerModule = await import('qr-scanner');
-      const QrScanner = QrScannerModule.default;
+      const QrScannerClass = QrScannerModule.default;
 
       // Stop any existing scanner
       if (qrScannerRef.current) {
@@ -41,10 +70,23 @@ export const useQrScanner = (
       }
 
       // Create new scanner instance
-      qrScannerRef.current = new QrScanner(
+      qrScannerRef.current = new QrScannerClass(
         videoElement,
         (result) => {
-          onScan(result.data);
+          try {
+            // Try to parse the QR code data as JSON
+            const qrData = JSON.parse(result.data);
+            // If it's our enhanced QR code format, use the uniqueId
+            if (qrData.uniqueId) {
+              onScan(qrData.uniqueId);
+            } else {
+              // Otherwise, use the raw data (backward compatibility)
+              onScan(result.data);
+            }
+          } catch (parseError) {
+            // If parsing fails, use the raw data (backward compatibility)
+            onScan(result.data);
+          }
         },
         {
           highlightScanRegion: true,

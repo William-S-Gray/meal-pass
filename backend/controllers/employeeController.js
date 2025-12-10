@@ -272,8 +272,8 @@ const downloadQRCodeByUid = async (req, res, next) => {
     if (!employee.qrFileName) {
       logger.warn('QR code filename not found for employee by UID - regenerating', { uid, employee });
       
-      // Generate new QR code
-      const qrFileName = await qrService.generateQRCode(uid);
+      // Generate new QR code with both uniqueId and name
+      const qrFileName = await qrService.generateQRCode(uid, employee.name);
       
       // Update employee with new QR filename
       await Employee.updateOne(

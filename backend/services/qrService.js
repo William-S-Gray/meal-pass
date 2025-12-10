@@ -6,14 +6,21 @@ const { getGridFsBucket } = require('../utils/gridfs');
 /**
  * Generate QR code for a unique ID and store it in GridFS
  * @param {string} uniqueId - Unique identifier to encode in QR code
+ * @param {string} name - Employee name to encode in QR code
  * @returns {string} Filename of the generated QR code in GridFS
  */
-const generateQRCode = async (uniqueId) => {
+const generateQRCode = async (uniqueId, name = '') => {
   try {
-    logger.info('Generating QR code and storing in GridFS', { uniqueId });
+    logger.info('Generating QR code and storing in GridFS', { uniqueId, name });
+    
+    // Create a JSON object with both uniqueId and name
+    const qrData = {
+      uniqueId: uniqueId,
+      name: name
+    };
     
     // Generate QR code as buffer
-    const buffer = await QRCode.toBuffer(uniqueId, {
+    const buffer = await QRCode.toBuffer(JSON.stringify(qrData), {
       width: 300,
       margin: 2,
       color: {
@@ -32,6 +39,7 @@ const generateQRCode = async (uniqueId) => {
     const uploadStream = gridFsBucket.openUploadStream(fileName, {
       metadata: {
         uniqueId: uniqueId,
+        name: name,
         createdAt: new Date()
       }
     });
@@ -58,14 +66,21 @@ const generateQRCode = async (uniqueId) => {
 /**
  * Generate QR code data URI for immediate use
  * @param {string} uniqueId - Unique identifier to encode in QR code
+ * @param {string} name - Employee name to encode in QR code
  * @returns {string} Data URI of QR code
  */
-const generateQRCodeDataUri = async (uniqueId) => {
+const generateQRCodeDataUri = async (uniqueId, name = '') => {
   try {
-    logger.info('Generating QR code data URI', { uniqueId });
+    logger.info('Generating QR code data URI', { uniqueId, name });
+    
+    // Create a JSON object with both uniqueId and name
+    const qrData = {
+      uniqueId: uniqueId,
+      name: name
+    };
     
     // Use smaller size for better performance
-    const dataUri = await QRCode.toDataURL(uniqueId, {
+    const dataUri = await QRCode.toDataURL(JSON.stringify(qrData), {
       width: 200, // Reduced size for better performance
       margin: 2,
       color: {
@@ -85,14 +100,21 @@ const generateQRCodeDataUri = async (uniqueId) => {
 /**
  * Generate QR code on-demand without storing it
  * @param {string} uniqueId - Unique identifier to encode in QR code
+ * @param {string} name - Employee name to encode in QR code
  * @returns {Buffer} Buffer of QR code image
  */
-const generateQRCodeOnDemand = async (uniqueId) => {
+const generateQRCodeOnDemand = async (uniqueId, name = '') => {
   try {
-    logger.info('Generating QR code on-demand', { uniqueId });
+    logger.info('Generating QR code on-demand', { uniqueId, name });
+    
+    // Create a JSON object with both uniqueId and name
+    const qrData = {
+      uniqueId: uniqueId,
+      name: name
+    };
     
     // Generate QR code as buffer
-    const buffer = await QRCode.toBuffer(uniqueId, {
+    const buffer = await QRCode.toBuffer(JSON.stringify(qrData), {
       width: 300,
       margin: 2,
       color: {

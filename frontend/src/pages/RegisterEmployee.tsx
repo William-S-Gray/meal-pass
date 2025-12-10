@@ -292,7 +292,7 @@ export default function RegisterEmployee() {
               />
               <div className="text-center">
                 <p className="text-xl font-bold sm:text-2xl">{createdEmployee?.uniqueId}</p>
-                <p className="text-sm text-muted-foreground">{capitalizeName(createdEmployee?.name)}</p>
+                <p className="text-lg sm:text-xl">{capitalizeName(createdEmployee?.name)}</p>
                 {createdEmployee?.validUntil && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Valid Until: {format(parseISO(createdEmployee.validUntil), 'MMM dd, yyyy')}

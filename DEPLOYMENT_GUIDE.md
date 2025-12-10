@@ -67,12 +67,13 @@ cd meal-pass
 1. Update `.env.backend` with your production values:
    ```bash
    NODE_ENV=production
-   PORT=5001
+   PORT=10000
    MONGODB_URI=mongodb://root:your-password@localhost:27017/mealpass?authSource=admin
    JWT_SECRET=your-super-secret-jwt-key-here
    JWT_EXPIRE=30d
    ENABLE_AUTH=true
-   CLIENT_URL=https://your-domain.com
+   FRONTEND_URL=https://your-domain.com
+   ACTIVE_ENV=blue
    ```
 
 2. Update `.env.frontend`:

@@ -19,27 +19,78 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - serve cached content when offline
 self.addEventListener('fetch', (event) => {
+  // Skip requests that are not GET requests or not same-origin
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
+  // Skip requests to external domains (like CDN, analytics, etc.)
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) {
+    // Skip Crowdin and other third-party CDNs
+    if (requestUrl.hostname.includes('crowdin') || requestUrl.hostname.includes('cdn')) {
+      return;
+    }
+    // For other external requests, let them pass through normally
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
         // Return cached version or fetch from network
-        return response || fetch(event.request);
+        if (response) {
+          return response;
+        }
+        
+        // Clone the request because it's a stream and can only be consumed once
+        const fetchRequest = event.request.clone();
+        
+        return fetch(fetchRequest).then((response) => {
+          // Check if we received a valid response
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          
+          // Clone the response because it's a stream and can only be consumed once
+          const responseToCache = response.clone();
+          
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            })
+            .catch((cacheError) => {
+              // Log cache errors but don't break the response
+              console.warn('Service worker cache error:', cacheError);
+            });
+            
+          return response;
+        }).catch((error) => {
+          // If fetch fails, return appropriate fallback response only for navigation requests
+          console.error('Service worker fetch error:', error);
+          if (event.request.mode === 'navigate') {
+            return caches.match('/');
+          }
+          // For API requests, try to return cached response if available
+          if (event.request.url.includes('/api/')) {
+            return caches.match(event.request).then(cachedResponse => {
+              return cachedResponse || Response.error();
+            }).catch(() => {
+              return Response.error();
+            });
+          }
+          // For other requests, return a network error response
+          return Response.error();
+        });
       })
       .catch((error) => {
-        // If fetch fails, return appropriate fallback response
-        console.error('Service worker fetch error:', error);
+        // If cache match fails and we're offline, return fallback for navigation requests
+        console.error('Service worker cache error:', error);
         if (event.request.mode === 'navigate') {
           return caches.match('/');
         }
-        // For module scripts, we should not return JSON
-        const acceptHeader = event.request.headers.get('Accept');
-        if (acceptHeader && acceptHeader.includes('text/html')) {
-          return new Response('<!DOCTYPE html><html><head></head><body>Network error</body></html>', {
-            headers: { 'Content-Type': 'text/html' }
-          });
-        }
-        // Don't return JSON for module scripts
-        return fetch(event.request);
+        // For other requests, return a network error response
+        return Response.error();
       })
   );
 });
@@ -79,8 +130,7 @@ async function syncScans() {
     // Sync each scan with backend
     for (const scan of unsyncedScans) {
       try {
-        // In a real implementation, you would make an API call here
-        // For now, we'll simulate a successful sync
+        // Make API call to sync scan
         const response = await fetch('/api/feeding/scan', {
           method: 'POST',
           headers: {
@@ -99,6 +149,8 @@ async function syncScans() {
             s.id === scan.id ? { ...s, synced: true } : s
           );
           localStorage.setItem('cached_scans', JSON.stringify(updatedScans));
+        } else {
+          console.warn('Failed to sync scan, server response:', response.status);
         }
       } catch (error) {
         console.error('Failed to sync scan:', error);

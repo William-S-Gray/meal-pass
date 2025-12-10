@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
@@ -10,12 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { QrCode, Camera, CameraOff, Loader2, User, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
-import QrScanner from 'qr-scanner';
-import Quagga from 'quagga';
 import { format, parseISO, isBefore } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import { capitalizeName } from '@/lib/utils';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import CameraScanner from '@/components/CameraScanner';
 
 // Add the EmployeeIDCard component inline to avoid import issues
 const EmployeeIDCard: React.FC<{ employee: Employee; businessName?: string }> = ({ 
@@ -87,6 +86,10 @@ const EmployeeIDCard: React.FC<{ employee: Employee; businessName?: string }> = 
           )}
         </div>
       </div>
+      <div className="text-center mt-2">
+        <p className="text-sm font-bold">{employee.uniqueId}</p>
+        <p className="text-xs">{capitalizeName(employee.name)}</p>
+      </div>
     </div>
   );
 };
@@ -96,378 +99,23 @@ export default function QRScanner() {
   const { user } = useAuth();
   const { isConnected } = useWebSocket();
   const { toast } = useToast();
-  const [scanning, setScanning] = useState(false);
-  const [scanMode, setScanMode] = useState<'qr' | 'barcode'>('qr'); // New state for scan mode
+  const [scanMode, setScanMode] = useState<'qr' | 'barcode'>('qr');
   const [manualInput, setManualInput] = useState('');
   const [bulkInput, setBulkInput] = useState('');
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [bulkResults, setBulkResults] = useState<Array<{id: string, status: string, message: string, employee?: Employee}>>([]);
   const [loading, setLoading] = useState(false);
-  const [cameraLoading, setCameraLoading] = useState(false); // New state for camera initialization
   const [showResult, setShowResult] = useState(false);
   const [scanResult, setScanResult] = useState<{
     status: 'success' | 'already_fed' | 'not_found' | 'error' | 'expired';
     message: string;
     employee?: Employee;
   } | null>(null);
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const qrScannerRef = useRef<QrScanner | null>(null);
-  const streamRef = useRef<MediaStream | null>(null); // To hold the media stream
-  const quaggaInitialized = useRef(false);
-  const lastScanTimeRef = useRef<number>(0);
 
-  // Cleanup scanner on unmount
-  useEffect(() => {
-    // Initialize video element to be hidden
-    if (videoRef.current) {
-      videoRef.current.style.display = 'none';
-      // Ensure autoplay and muted attributes for proper playback
-      videoRef.current.autoplay = true;
-      videoRef.current.muted = true;
-      videoRef.current.playsInline = true;
-      // Set object fit to cover for proper display
-      videoRef.current.style.objectFit = 'cover';
-      videoRef.current.style.width = '100%';
-      videoRef.current.style.height = '100%';
-    }
-    
-    return () => {
-      if (qrScannerRef.current) {
-        qrScannerRef.current.stop();
-        qrScannerRef.current.destroy();
-      }
-      // Stop any active media streams
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => {
-          try {
-            track.stop();
-          } catch (e) {
-            console.warn('Failed to stop track during cleanup:', e);
-          }
-        });
-      }
-      // Stop Quagga if initialized
-      if (quaggaInitialized.current) {
-        try {
-          Quagga.stop();
-        } catch (e) {
-          console.warn('Failed to stop Quagga during cleanup:', e);
-        }
-        quaggaInitialized.current = false;
-      }
-    };
-  }, []);
-
-  const initQuagga = async () => {
-    if (!videoRef.current) return;
-
-    try {
-      // Wrap Quagga init in a promise
-      await new Promise<void>((resolve, reject) => {
-        // Configure Quagga for barcode detection
-        Quagga.init({
-          inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: videoRef.current,
-            constraints: {
-              width: 640,
-              height: 480,
-              facingMode: "environment"
-            },
-          },
-          decoder: {
-            readers: [
-              "code_128_reader",
-              "ean_reader",
-              "ean_8_reader",
-              "code_39_reader",
-              "code_39_vin_reader",
-              "codabar_reader",
-              "upc_reader",
-              "upc_e_reader",
-              "i2of5_reader"
-            ]
-          },
-          locate: true
-        }, (err) => {
-          if (err) {
-            console.error("Quagga initialization error:", err);
-            reject(err);
-            return;
-          }
-          
-          Quagga.start();
-          quaggaInitialized.current = true;
-          resolve();
-        });
-      });
-
-      // Set up result processing
-      Quagga.onDetected((data) => {
-        // Add debounce to prevent multiple rapid scans
-        const now = Date.now();
-        if (now - lastScanTimeRef.current < 1000) { // 1 second debounce
-          return;
-        }
-        lastScanTimeRef.current = now;
-        
-        if (data && data.codeResult && data.codeResult.code) {
-          handleScan(data.codeResult.code);
-        }
-      });
-    } catch (error) {
-      console.error('Failed to initialize Quagga:', error);
-      toast({
-        title: 'Barcode Scanner Error',
-        description: error instanceof Error ? error.message : 'Failed to initialize barcode scanner',
-        variant: 'destructive'
-      });
-      throw error; // Re-throw to be caught by startScanning
-    }
-  };
-
-  const startScanning = async () => {
-    if (!videoRef.current) return;
-
-    // Check if we're in a secure context (required for camera access)
-    if (typeof window !== 'undefined' && window.isSecureContext === false) {
-      toast({
-        title: 'Security Error',
-        description: 'Camera access requires a secure connection (HTTPS). Please use HTTPS to access this feature.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    try {
-      setCameraLoading(true);
-      setScanning(true);
-      
-      // Stop any existing scanner
-      if (qrScannerRef.current) {
-        qrScannerRef.current.stop();
-        qrScannerRef.current.destroy();
-        qrScannerRef.current = null;
-      }
-      
-      // Stop any existing media streams
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-      
-      // Stop Quagga if running
-      if (quaggaInitialized.current) {
-        Quagga.stop();
-        quaggaInitialized.current = false;
-      }
-      
-      // Check for camera permissions first with fallback constraints
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'environment', // Prefer rear camera for scanning
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          } 
-        });
-      } catch (primaryError) {
-        console.warn('Primary camera constraints failed, trying fallback:', primaryError);
-        try {
-          // Fallback to simpler constraints
-          stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              facingMode: 'environment'
-            } 
-          });
-        } catch (fallbackError) {
-          console.warn('Fallback camera constraints failed:', fallbackError);
-          // Last resort - any camera
-          stream = await navigator.mediaDevices.getUserMedia({ 
-            video: true
-          });
-        }
-      }
-      
-      // Store the stream reference for cleanup
-      streamRef.current = stream;
-      
-      // Attach stream to video element
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.style.display = 'block';
-        
-        // Ensure the video element is properly loaded
-        videoRef.current.load();
-        
-        // Wait for video to be ready
-        await new Promise<void>((resolve, reject) => {
-          const onCanPlay = () => {
-            videoRef.current!.removeEventListener('canplay', onCanPlay);
-            clearTimeout(timeoutId);
-            resolve();
-          };
-          
-          const onError = (e: Event) => {
-            videoRef.current!.removeEventListener('canplay', onCanPlay);
-            videoRef.current!.removeEventListener('error', onError);
-            clearTimeout(timeoutId);
-            reject(new Error('Video failed to load'));
-          };
-          
-          // Timeout to prevent hanging
-          const timeoutId = setTimeout(() => {
-            videoRef.current!.removeEventListener('canplay', onCanPlay);
-            videoRef.current!.removeEventListener('error', onError);
-            reject(new Error('Video loading timed out'));
-          }, 5000);
-          
-          videoRef.current.addEventListener('canplay', onCanPlay);
-          videoRef.current.addEventListener('error', onError);
-          
-          // Try to play the video
-          videoRef.current.play().catch(reject);
-        });
-      }
-      
-      // For QR scanning, initialize QR scanner
-      if (scanMode === 'qr') {
-        // Initialize QR scanner
-        qrScannerRef.current = new QrScanner(
-          videoRef.current!,
-          (result) => {
-            // Add debounce to prevent multiple rapid scans
-            const now = Date.now();
-            if (now - lastScanTimeRef.current < 1000) { // 1 second debounce
-              return;
-            }
-            lastScanTimeRef.current = now;
-            handleScan(result.data);
-          },
-          {
-            highlightScanRegion: true,
-            highlightCodeOutline: true,
-            maxScansPerSecond: 2, // Reduce scan rate
-          }
-        );
-
-        await qrScannerRef.current.start();
-      } else {
-        // For barcode scanning, initialize Quagga
-        await initQuagga();
-      }
-    } catch (error) {
-      console.error('Failed to start camera:', error);      
-      // Handle specific error types
-      let errorMessage = 'Failed to access camera. Please check permissions.';
-      
-      // Type guard to check if error is a MediaError
-      if (error instanceof Error) {
-        if ('name' in error) {
-          const mediaError = error as MediaError & { name: string };
-          if (mediaError.name === 'NotAllowedError') {
-            errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
-          } else if (mediaError.name === 'NotFoundError') {
-            errorMessage = 'No camera found on this device.';
-          } else if (mediaError.name === 'NotReadableError') {
-            errorMessage = 'Camera is already in use by another application.';
-          } else if (mediaError.name === 'OverconstrainedError') {
-            errorMessage = 'Camera does not support the required constraints.';
-          }
-        }
-      }
-      
-      toast({
-        title: 'Camera Error',
-        description: errorMessage,
-        variant: 'destructive'
-      });
-      
-      setScanning(false);
-    } finally {
-      setCameraLoading(false);
-    }
-  };
-
-  // Add retry mechanism
-  const retryCameraInitialization = async () => {
-    // Stop any existing operations first
-    stopScanning();
-    
-    // Small delay before retry
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Show a message that we're retrying
-    toast({
-      title: 'Retrying Camera Initialization',
-      description: 'Attempting to restart the camera...',
-    });
-    
-    // Try to start scanning again
-    await startScanning();
-  };
-
-  const stopScanning = () => {
-    try {
-      if (qrScannerRef.current) {
-        qrScannerRef.current.stop();
-        qrScannerRef.current.destroy();
-        qrScannerRef.current = null;
-      }
-      
-      // Stop media streams
-      if (streamRef.current) {
-        try {
-          streamRef.current.getTracks().forEach(track => {
-            try {
-              track.stop();
-            } catch (e) {
-              console.warn('Failed to stop track:', e);
-            }
-          });
-        } catch (e) {
-          console.warn('Failed to stop stream tracks:', e);
-        }
-        streamRef.current = null;
-      }
-      
-      // Stop Quagga if initialized
-      if (quaggaInitialized.current) {
-        try {
-          Quagga.stop();
-        } catch (e) {
-          console.warn('Failed to stop Quagga:', e);
-        }
-        quaggaInitialized.current = false;
-      }
-      
-      setScanning(false);
-      
-      // Hide the video element when not scanning
-      if (videoRef.current) {
-        videoRef.current.style.display = 'none';
-        try {
-          videoRef.current.srcObject = null;
-        } catch (e) {
-          console.warn('Failed to clear video srcObject:', e);
-        }
-      }
-    } catch (error) {
-      console.error('Error stopping scanning:', error);
-    }
-  };
-
-  const handleScan = async (uniqueId: string) => {
-    // Prevent multiple scans from happening too quickly
-    if (loading) return;
-    
+  const handleScanSuccess = async (uniqueId: string) => {
     if (!uniqueId) return;
 
     setLoading(true);
-    stopScanning();
 
     try {
       // First, get employee details to check validity
@@ -498,21 +146,21 @@ export default function QRScanner() {
         return;
       }
 
-      // If employee is valid, proceed with scanning
-      const deviceId = user?.fullName || 'Unknown Device';
-      const result = await scanQRCode(uniqueId, deviceId, 'scan');
+      // Process the scan
+      const response = await scanQRCode(uniqueId, 'web-scanner', 'scan');
       
       setScanResult({
-        status: result.status,
-        message: result.message,
-        employee
+        status: response.status as 'success' | 'already_fed' | 'not_found' | 'error',
+        message: response.message,
+        employee: employee
       });
+      
       setShowResult(true);
     } catch (error) {
-      console.error('Scan error:', error);
+      console.error('Scan processing error:', error);
       setScanResult({
         status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to process code'
+        message: error instanceof Error ? error.message : 'Failed to process scan'
       });
       setShowResult(true);
     } finally {
@@ -522,158 +170,86 @@ export default function QRScanner() {
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!manualInput.trim()) return;
+
+    setLoading(true);
     
-    if (isBulkMode) {
-      // Handle bulk submission
-      if (!bulkInput.trim()) return;
+    try {
+      const response = await scanQRCode(manualInput.trim(), 'manual-entry', 'manual');
       
-      setLoading(true);
-      setBulkResults([]);
-      
+      // Get employee details for display
+      let employee = null;
       try {
-        // Split input by newlines and commas, then clean and filter
-        const employeeIds = bulkInput
-          .split(/[\n,]+/)
-          .map(id => id.trim())
-          .filter(id => id.length > 0);
-        
-        if (employeeIds.length === 0) {
-          toast({
-            title: 'Error',
-            description: 'No valid employee IDs found',
-            variant: 'destructive'
-          });
-          setLoading(false);
-          return;
-        }
-        
-        // Process each employee ID
-        const results = [];
-        for (const employeeId of employeeIds) {
+        employee = await getEmployeeByUid(manualInput.trim());
+      } catch (e) {
+        console.warn("Could not fetch employee details:", e);
+      }
+      
+      setScanResult({
+        status: response.status as 'success' | 'already_fed' | 'not_found' | 'error',
+        message: response.message,
+        employee: employee || undefined
+      });
+      
+      setShowResult(true);
+      setManualInput('');
+    } catch (error) {
+      console.error('Manual entry error:', error);
+      setScanResult({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to process manual entry'
+      });
+      setShowResult(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkInput.trim()) return;
+
+    setLoading(true);
+    const ids = bulkInput.split('\n').filter(id => id.trim()).map(id => id.trim());
+    const results = [];
+
+    try {
+      for (const id of ids) {
+        try {
+          const response = await scanQRCode(id, 'bulk-entry', 'manual');
+          
+          // Get employee details for display
+          let employee = null;
           try {
-            // First, get employee details to check validity
-            const employee = await getEmployeeByUid(employeeId);
-            
-            if (!employee) {
-              results.push({
-                id: employeeId,
-                status: 'not_found',
-                message: 'Employee not found in system'
-              });
-              continue;
-            }
-            
-            // Check if employee is expired
-            const currentDate = new Date();
-            const validUntilDate = parseISO(employee.validUntil);
-            
-            if (isBefore(validUntilDate, currentDate)) {
-              results.push({
-                id: employeeId,
-                status: 'expired',
-                message: 'Employee meal access expired',
-                employee
-              });
-              continue;
-            }
-            
-            // If employee is valid, proceed with manual entry
-            const deviceId = user?.fullName || 'Manual Entry';
-            const result = await scanQRCode(employeeId, deviceId, 'manual');
-            
-            results.push({
-              id: employeeId,
-              status: result.status,
-              message: result.message,
-              employee
-            });
-          } catch (error) {
-            console.error(`Error processing employee ${employeeId}:`, error);
-            results.push({
-              id: employeeId,
-              status: 'error',
-              message: error instanceof Error ? error.message : 'Failed to process employee'
-            });
+            employee = await getEmployeeByUid(id);
+          } catch (e) {
+            console.warn("Could not fetch employee details:", e);
           }
-        }
-        
-        setBulkResults(results);
-        
-        // Show summary toast
-        const successCount = results.filter(r => r.status === 'success').length;
-        const errorCount = results.length - successCount;
-        
-        toast({
-          title: 'Bulk Processing Complete',
-          description: `Successfully processed: ${successCount}, Errors: ${errorCount}`,
-          variant: successCount > 0 ? 'default' : 'destructive'
-        });
-      } catch (error) {
-        console.error('Bulk entry error:', error);
-        toast({
-          title: 'Error',
-          description: error instanceof Error ? error.message : 'Failed to process bulk entry',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      // Handle single submission
-      if (!manualInput.trim()) return;
-      
-      setLoading(true);
-      
-      try {
-        // First, get employee details to check validity
-        const employee = await getEmployeeByUid(manualInput.trim());
-        
-        if (!employee) {
-          setScanResult({
-            status: 'not_found',
-            message: 'Employee not found in system'
+          
+          results.push({
+            id,
+            status: response.status,
+            message: response.message,
+            employee: employee || undefined
           });
-          setShowResult(true);
-          setLoading(false);
-          return;
-        }
-        
-        // Check if employee is expired
-        const currentDate = new Date();
-        const validUntilDate = parseISO(employee.validUntil);
-        
-        if (isBefore(validUntilDate, currentDate)) {
-          setScanResult({
-            status: 'expired',
-            message: 'Employee meal access expired',
-            employee
+        } catch (error) {
+          results.push({
+            id,
+            status: 'error',
+            message: error instanceof Error ? error.message : 'Failed to process'
           });
-          setShowResult(true);
-          setLoading(false);
-          return;
         }
-        
-        // If employee is valid, proceed with manual entry
-        const deviceId = user?.fullName || 'Manual Entry';
-        const result = await scanQRCode(manualInput.trim(), deviceId, 'manual');
-        
-        setScanResult({
-          status: result.status,
-          message: result.message,
-          employee
-        });
-        setShowResult(true);
-        setManualInput('');
-      } catch (error) {
-        console.error('Manual entry error:', error);
-        setScanResult({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Failed to process manual entry'
-        });
-        setShowResult(true);
-      } finally {
-        setLoading(false);
       }
+      
+      setBulkResults(results);
+    } catch (error) {
+      toast({
+        title: 'Bulk Processing Error',
+        description: error instanceof Error ? error.message : 'Failed to process bulk entries',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -681,14 +257,6 @@ export default function QRScanner() {
     setShowResult(false);
     setScanResult(null);
   };
-
-  // Add effect to stop scanning when scan mode changes
-  useEffect(() => {
-    if (scanning) {
-      // Stop current scanning when mode changes
-      stopScanning();
-    }
-  }, [scanMode]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
@@ -720,186 +288,85 @@ export default function QRScanner() {
         <div className="max-w-2xl mx-auto space-y-6">
           <Card className="border-2">
             <CardHeader>
-              <CardTitle>{scanMode === 'qr' ? 'QR Code Scanner' : 'Barcode Scanner'}</CardTitle>
+              <CardTitle>Scan Employee QR Code</CardTitle>
               <CardDescription>
-                Point your camera at an employee's {scanMode === 'qr' ? 'QR code' : 'barcode'} to mark them as fed
+                Point your camera at an employee's QR code to mark them as fed
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Scan Mode Toggle */}
-              <div className="flex rounded-md overflow-hidden border">
-                <Button
-                  variant={scanMode === 'qr' ? 'default' : 'outline'}
-                  onClick={() => setScanMode('qr')}
-                  className="flex-1 rounded-none"
-                  disabled={scanning || cameraLoading}
-                >
-                  QR Code
-                </Button>
-                <Button
-                  variant={scanMode === 'barcode' ? 'default' : 'outline'}
-                  onClick={() => setScanMode('barcode')}
-                  className="flex-1 rounded-none"
-                  disabled={scanning || cameraLoading}
-                >
-                  Barcode
-                </Button>
+              {/* Camera Scanner Component */}
+              <div className="space-y-4">
+                <CameraScanner onScanSuccess={handleScanSuccess} />
               </div>
               
-              {/* Camera Preview */}
-              <div className="relative bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center">
-                {scanning ? (
-                  <>
-                    <video 
-                      ref={videoRef} 
-                      className="w-full h-full object-cover"
-                      playsInline
-                      muted
+              {/* Manual Entry */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium mb-4">Manual Entry</h3>
+                <form onSubmit={handleManualSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="manual-input">Employee ID</Label>
+                    <Input
+                      id="manual-input"
+                      value={manualInput}
+                      onChange={(e) => setManualInput(e.target.value)}
+                      placeholder="Enter employee unique ID"
+                      disabled={loading}
                     />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-48 h-48 border-2 border-white rounded-lg"></div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center text-white">
-                    <Camera className="mx-auto h-12 w-12 opacity-70" />
-                    <p className="mt-2 opacity-70">Camera not active</p>
                   </div>
-                )}
-                
-                {/* Camera Loading Overlay */}
-                {cameraLoading && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <LoadingSpinner size="lg" message="Initializing camera..." />
-                  </div>
-                )}
-              </div>
-
-              {/* Camera Controls */}
-              <div className="flex flex-col sm:flex-row justify-center gap-2">
-                {scanning ? (
-                  <Button 
-                    onClick={stopScanning} 
-                    variant="destructive" 
-                    className="gap-2"
-                    disabled={loading}
-                  >
-                    <CameraOff className="h-4 w-4" />
-                    Stop Camera
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={startScanning} 
-                    variant="default" 
-                    className="gap-2"
-                    disabled={loading || cameraLoading}
-                  >
-                    {cameraLoading ? (
+                  <Button type="submit" disabled={loading || !manualInput.trim()}>
+                    {loading ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Initializing...
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
                       </>
                     ) : (
                       <>
-                        <Camera className="h-4 w-4" />
-                        Start Camera
+                        <User className="mr-2 h-4 w-4" />
+                        Mark as Fed
                       </>
                     )}
                   </Button>
-                )}
-                
-                {/* Retry button when not scanning */}
-                {!scanning && !cameraLoading && (
+                </form>
+              </div>
+              
+              {/* Bulk Entry */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium">Bulk Entry</h3>
                   <Button 
-                    onClick={retryCameraInitialization} 
                     variant="outline" 
-                    className="gap-2"
-                    disabled={loading}
+                    size="sm" 
+                    onClick={() => setIsBulkMode(!isBulkMode)}
                   >
-                    <Loader2 className="h-4 w-4" />
-                    Retry
+                    {isBulkMode ? 'Cancel' : 'Bulk Mark'}
                   </Button>
-                )}
-              </div>
-              
-              {/* Scan Mode Info */}
-              <div className="text-center text-sm text-muted-foreground">
-                {scanMode === 'qr' 
-                  ? 'Scanning QR codes from employee ID cards' 
-                  : 'Scanning barcodes from employee ID cards (Code 128, EAN, UPC, etc.)'}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Manual Entry */}
-          <Card className="border-2">
-            <CardHeader>
-              <CardTitle>Manual Entry</CardTitle>
-              <CardDescription>Enter employee ID manually if scanning is not possible</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Toggle between single and bulk mode */}
-              <div className="flex mb-4">
-                <Button
-                  variant={!isBulkMode ? "default" : "outline"}
-                  onClick={() => setIsBulkMode(false)}
-                  className="rounded-r-none"
-                >
-                  Single Entry
-                </Button>
-                <Button
-                  variant={isBulkMode ? "default" : "outline"}
-                  onClick={() => setIsBulkMode(true)}
-                  className="rounded-l-none"
-                >
-                  Bulk Entry
-                </Button>
-              </div>
-              
-              <form onSubmit={handleManualSubmit} className="space-y-4">
-                {!isBulkMode ? (
-                  // Single entry mode
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="employee-id">Employee ID</Label>
-                      <Input
-                        id="employee-id"
-                        value={manualInput}
-                        onChange={(e) => setManualInput(e.target.value)}
-                        placeholder="Enter employee unique ID"
-                        disabled={loading}
-                      />
-                    </div>
-                    <Button type="submit" className="w-full gap-2" disabled={loading || !manualInput.trim()}>
-                      {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <User className="h-4 w-4" />
-                      )}
-                      Mark as Fed
-                    </Button>
-                  </>
-                ) : (
-                  // Bulk entry mode
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="bulk-ids">Employee IDs (one per line or comma separated)</Label>
+                </div>
+                
+                {isBulkMode && (
+                  <form onSubmit={handleBulkSubmit} className="space-y-4">
+                    <div>
+                      <Label htmlFor="bulk-input">Employee IDs (one per line)</Label>
                       <textarea
-                        id="bulk-ids"
+                        id="bulk-input"
                         value={bulkInput}
                         onChange={(e) => setBulkInput(e.target.value)}
-                        placeholder="Enter employee IDs, one per line or separated by commas&#10;Example:&#10;EMP001&#10;EMP002&#10;EMP003&#10;&#10;Or: EMP001, EMP002, EMP003"
+                        placeholder="Enter employee IDs, one per line&#10;EMP001&#10;EMP002&#10;EMP003"
+                        className="w-full min-h-[120px] px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-input"
                         disabled={loading}
-                        className="w-full min-h-[120px] p-3 border border-input rounded-md bg-background text-foreground"
                       />
                     </div>
-                    <Button type="submit" className="w-full gap-2" disabled={loading || !bulkInput.trim()}>
+                    <Button type="submit" disabled={loading || !bulkInput.trim()}>
                       {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
                       ) : (
-                        <User className="h-4 w-4" />
+                        <>
+                          <User className="mr-2 h-4 w-4" />
+                          Mark All as Fed
+                        </>
                       )}
-                      Mark All as Fed
                     </Button>
                     
                     {/* Bulk results display */}
@@ -936,9 +403,9 @@ export default function QRScanner() {
                         </div>
                       </div>
                     )}
-                  </>
+                  </form>
                 )}
-              </form>
+              </div>
             </CardContent>
           </Card>
         </div>

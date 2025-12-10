@@ -1,5 +1,6 @@
 const FeedingRecord = require('../models/FeedingRecord');
 const Employee = require('../models/Employee');
+const { decodeQRData } = require('../utils/qrDecoder'); // Import our QR decoder
 const logger = require('../utils/logger');
 
 /**
@@ -48,14 +49,22 @@ const recordFeeding = async (feedingData) => {
   try {
     logger.info('Recording feeding event for employee', { uniqueId: feedingData.uniqueId });
     
+    // Decode the QR data to extract the uniqueId
+    const decodedUniqueId = decodeQRData(feedingData.uniqueId);
+    
+    if (!decodedUniqueId) {
+      logger.warn('Invalid QR code data', { qrData: feedingData.uniqueId });
+      throw new Error('Invalid QR code data');
+    }
+    
     // Check if employee exists and is active using lean for better performance
     const employee = await Employee.findOne({ 
-      uniqueId: feedingData.uniqueId, 
+      uniqueId: decodedUniqueId, 
       active: true 
     }).lean();
     
     if (!employee) {
-      logger.warn('Employee not found or inactive', { uniqueId: feedingData.uniqueId });
+      logger.warn('Employee not found or inactive', { uniqueId: decodedUniqueId });
       throw new Error('Employee not found or inactive');
     }
     
@@ -64,25 +73,26 @@ const recordFeeding = async (feedingData) => {
     const validUntilDate = new Date(employee.validUntil);
     
     if (currentDate > validUntilDate) {
-      logger.warn('Employee access expired', { uniqueId: feedingData.uniqueId });
+      logger.warn('Employee access expired', { uniqueId: decodedUniqueId });
       throw new Error('Employee meal access expired');
     }
     
     // Check if already fed today using lean for better performance
     const today = new Date().toISOString().split('T')[0];
     const existingRecord = await FeedingRecord.findOne({
-      uniqueId: feedingData.uniqueId,
+      uniqueId: decodedUniqueId,
       date: today
     }).lean();
     
     if (existingRecord) {
-      logger.warn('Employee already fed today', { uniqueId: feedingData.uniqueId, date: today });
+      logger.warn('Employee already fed today', { uniqueId: decodedUniqueId, date: today });
       throw new Error('Employee already fed today');
     }
     
     // Create feeding record
     const feedingRecord = new FeedingRecord({
       ...feedingData,
+      uniqueId: decodedUniqueId, // Use the decoded uniqueId
       employee: {
         name: employee.name,
         department: employee.department,
@@ -94,7 +104,7 @@ const recordFeeding = async (feedingData) => {
     
     await feedingRecord.save();
     
-    logger.info('Feeding recorded successfully', { id: feedingRecord._id, uniqueId: feedingData.uniqueId });
+    logger.info('Feeding recorded successfully', { id: feedingRecord._id, uniqueId: decodedUniqueId });
     
     // Emit WebSocket event for real-time updates
     const app = require('../server'); // Get app instance to access io

@@ -70,9 +70,9 @@ const create = async (employeeData) => {
     
     await employee.save();
     
-    // Generate QR code and store filename in qrFileName field
+    // Generate QR code with both uniqueId and name, and store filename in qrFileName field
     try {
-      const qrFileName = await qrService.generateQRCode(uniqueId);
+      const qrFileName = await qrService.generateQRCode(uniqueId, employeeData.name);
       employee.qrFileName = qrFileName; // Store filename in correct field
       await employee.save();
     } catch (qrError) {
@@ -81,31 +81,12 @@ const create = async (employeeData) => {
         uniqueId,
         error: qrError.message 
       });
-      // Don't fail employee creation if QR generation fails
-    }
-    
-    logger.info('Employee created successfully', { id: employee._id, uniqueId });
-    
-    // Emit WebSocket event for real-time updates
-    try {
-      const app = require('../server'); // Get app instance to access io
-      const io = app.get('io');
-      if (io) {
-        // Emit specific event for employee creation
-        io.emit('employeeCreated', {
-          employee: formatEmployeeResponse(employee)
-        });
-      }
-    } catch (wsError) {
-      logger.warn('Failed to emit WebSocket event', { 
-        id: employee._id, 
-        error: wsError.message 
-      });
+      // Don't throw error here as we still want to create the employee
     }
     
     return formatEmployeeResponse(employee);
   } catch (error) {
-    logger.error('Error creating employee', { error: error.message, stack: error.stack });
+    logger.error('Error creating employee', { error: error.message });
     throw error;
   }
 };
@@ -150,8 +131,7 @@ const getAll = async (filters = {}, page = 1, limit = 10) => {
         pages: Math.ceil(total / limit)
       }
     };
-    
-    logger.info('Employees fetched successfully', { count: employees.length });
+
     return result;
   } catch (error) {
     logger.error('Error fetching employees', { error: error.message });
@@ -160,44 +140,21 @@ const getAll = async (filters = {}, page = 1, limit = 10) => {
 };
 
 /**
- * Get employee by ID
- * @param {string} id - Employee ID
- * @returns {Object|null} Employee data or null if not found
- */
-const getById = async (id) => {
-  try {
-    logger.info('Fetching employee by ID', { id });
-    
-    const employee = await Employee.findById(id).lean(); // Use lean for better performance
-    if (!employee) {
-      logger.warn('Employee not found', { id });
-      return null;
-    }
-    
-    logger.info('Employee fetched successfully', { id });
-    return formatEmployeeResponse(employee);
-  } catch (error) {
-    logger.error('Error fetching employee by ID', { id, error: error.message });
-    throw error;
-  }
-};
-
-/**
  * Get employee by unique ID
  * @param {string} uniqueId - Employee unique ID
- * @returns {Object|null} Employee data or null if not found
+ * @returns {Object} Employee data
  */
 const getByUniqueId = async (uniqueId) => {
   try {
     logger.info('Fetching employee by unique ID', { uniqueId });
     
-    const employee = await Employee.findOne({ uniqueId, active: true }).lean(); // Use lean for better performance
+    // Find employee by uniqueId
+    const employee = await Employee.findOne({ uniqueId, active: true }).lean();
+    
     if (!employee) {
-      logger.warn('Employee not found', { uniqueId });
-      return null;
+      throw new Error('Employee not found');
     }
     
-    logger.info('Employee fetched successfully', { uniqueId });
     return formatEmployeeResponse(employee);
   } catch (error) {
     logger.error('Error fetching employee by unique ID', { uniqueId, error: error.message });
@@ -206,40 +163,100 @@ const getByUniqueId = async (uniqueId) => {
 };
 
 /**
- * Update employee
+ * Get employee by ID
  * @param {string} id - Employee ID
- * @param {Object} updateData - Data to update
+ * @returns {Object} Employee data
+ */
+const getById = async (id) => {
+  try {
+    logger.info('Fetching employee by ID', { id });
+    
+    // Find employee by ID
+    const employee = await Employee.findById(id).lean();
+    
+    if (!employee) {
+      throw new Error('Employee not found');
+    }
+    
+    return formatEmployeeResponse(employee);
+  } catch (error) {
+    logger.error('Error fetching employee by ID', { id, error: error.message });
+    throw error;
+  }
+};
+
+/**
+ * Remove an employee (soft delete)
+ * @param {string} id - Employee ID
+ * @returns {boolean} Success status
+ */
+const remove = async (id) => {
+  try {
+    logger.info('Removing employee', { id });
+    
+    // Soft delete by setting active to false
+    const employee = await Employee.findByIdAndUpdate(
+      id,
+      { active: false },
+      { new: true }
+    );
+    
+    if (!employee) {
+      throw new Error('Employee not found');
+    }
+    
+    return true;
+  } catch (error) {
+    logger.error('Error removing employee', { id, error: error.message });
+    throw error;
+  }
+};
+
+/**
+ * Update an employee
+ * @param {string} id - Employee ID
+ * @param {Object} updateData - Update data
  * @returns {Object} Updated employee
  */
 const update = async (id, updateData) => {
   try {
-    logger.info('Updating employee', { id });
+    logger.info('Updating employee', { id, updateData });
     
-    // Remove protected fields
-    const protectedFields = ['uniqueId', 'qrCodeUrl', 'createdAt', 'updatedAt'];
-    protectedFields.forEach(field => delete updateData[field]);
+    // Find the existing employee
+    const existingEmployee = await Employee.findById(id);
+    if (!existingEmployee) {
+      throw new Error('Employee not found');
+    }
     
+    // Check if name is being updated
+    const nameChanged = updateData.name && updateData.name !== existingEmployee.name;
+    
+    // Update employee
     const employee = await Employee.findByIdAndUpdate(
       id,
       updateData,
       { new: true, runValidators: true }
-    ).lean(); // Use lean for better performance
+    );
     
     if (!employee) {
-      logger.warn('Employee not found for update', { id });
       throw new Error('Employee not found');
     }
     
-    logger.info('Employee updated successfully', { id });
-    
-    // Emit WebSocket event for real-time updates
-    const app = require('../server'); // Get app instance to access io
-    const io = app.get('io');
-    if (io) {
-      // Emit specific event for employee update
-      io.emit('employeeUpdated', {
-        employee: formatEmployeeResponse(employee)
-      });
+    // If name changed or QR code doesn't exist, regenerate QR code
+    if (nameChanged || !employee.qrFileName) {
+      try {
+        // Generate new QR code with updated name
+        const qrFileName = await qrService.generateQRCode(employee.uniqueId, employee.name);
+        employee.qrFileName = qrFileName;
+        await employee.save();
+      } catch (qrError) {
+        logger.error('Failed to regenerate QR code for employee', { 
+          id: employee._id, 
+          uniqueId: employee.uniqueId,
+          error: qrError.message 
+        });
+        // Don't throw error here as we still want to update the employee
+      }
     }
     
     return formatEmployeeResponse(employee);
@@ -249,50 +266,13 @@ const update = async (id, updateData) => {
   }
 };
 
-/**
- * Delete employee (soft delete)
- * @param {string} id - Employee ID
- * @returns {boolean} Success status
- */
-const remove = async (id) => {
-  try {
-    logger.info('Deleting employee', { id });
-    
-    const employee = await Employee.findByIdAndUpdate(
-      id,
-      { active: false },
-      { new: true }
-    );
-    
-    if (!employee) {
-      logger.warn('Employee not found for deletion', { id });
-      return false;
-    }
-    
-    logger.info('Employee deleted successfully', { id });
-    
-    // Emit WebSocket event for real-time updates
-    const app = require('../server'); // Get app instance to access io
-    const io = app.get('io');
-    if (io) {
-      // Emit specific event for employee deletion
-      io.emit('employeeDeleted', {
-        employeeId: id
-      });
-    }
-    
-    return true;
-  } catch (error) {
-    logger.error('Error deleting employee', { id, error: error.message });
-    throw error;
-  }
-};
-
 module.exports = {
+  capitalizeName,
+  formatEmployeeResponse,
   create,
   getAll,
   getById,
   getByUniqueId,
-  update,
-  remove
+  remove,
+  update
 };

@@ -59,12 +59,13 @@ Set the following environment variables in your Render dashboard:
 
 ```env
 NODE_ENV=production
-PORT=5001
+PORT=10000
 MONGODB_URI=mongodb://<username>:<password>@<mongodb-host>:<port>/<database>?authSource=admin
 JWT_SECRET=your_production_jwt_secret
 JWT_EXPIRE=30d
 ENABLE_AUTH=true
-CLIENT_URL=https://your-frontend-domain.com
+FRONTEND_URL=https://your-frontend-domain.com
+ACTIVE_ENV=blue
 ```
 
 ### 2. Deploy Using Render Blueprint

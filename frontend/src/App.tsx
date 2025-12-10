@@ -17,7 +17,6 @@ import ReportsDashboard from "./pages/ReportsDashboard";
 import Statistics from "./pages/Statistics";
 import FedToday from "./pages/FedToday";
 import NotFound from "./pages/NotFound";
-import { OptimizedScannerDemo } from "./pages/OptimizedScannerDemo"; // Added import
 import { useState } from "react";
 import { lazy, Suspense } from "react";
 
@@ -62,7 +61,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <HashRouter>
+          <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/login" element={<Login />} />
@@ -74,11 +73,6 @@ const App = () => (
               <Route path="/scan" element={
                 <ProtectedRoute>
                   <QRScanner />
-                </ProtectedRoute>
-              } />
-              <Route path="/optimized-scan" element={ // Added new route
-                <ProtectedRoute>
-                  <OptimizedScannerDemo />
                 </ProtectedRoute>
               } />
               <Route path="/employees/register" element={
