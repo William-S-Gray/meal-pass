@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Users, Check, QrCode, UserPlus, FileText, LogOut, 
-  BarChart, Printer, PlusCircle, TrendingUp 
+  BarChart, Printer, PlusCircle, TrendingUp, Scan
 } from 'lucide-react';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 
@@ -208,6 +208,13 @@ const DashboardComponent = () => {
                 </Button>
               </Link>
 
+              <Link to="/scanner-test" className="block">
+                <Button variant="secondary" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold" size="lg">
+                  <Scan className="h-6 w-6 sm:h-8 sm:w-8" />
+                  Test Scanner
+                </Button>
+              </Link>
+
               {(isAdmin || isVolunteer) && (
                 <Link to="/employees/register" className="block">
                   <Button variant="secondary" className="w-full h-20 sm:h-24 flex-col gap-2 text-sm sm:text-base font-semibold" size="lg">
@@ -263,6 +270,15 @@ const DashboardComponent = () => {
               <div>
                 <h4 className="font-semibold text-sm sm:text-base">Scan QR Code</h4>
                 <p className="text-xs sm:text-sm text-muted-foreground">Use the scanner to mark employees as fed</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <Scan className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm sm:text-base">Test Scanner</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">Test QR code and barcode scanning functionality</p>
               </div>
             </div>
             <div className="flex items-start gap-3">

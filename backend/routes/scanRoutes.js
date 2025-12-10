@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const Jimp = require('jimp');
 const jsQR = require('jsqr');
-const { BrowserQRCodeReader } = require('@zxing/library');
+const Quagga = require('quagga').default;
 
 // Configure multer for image upload
 const storage = multer.memoryStorage();
@@ -24,6 +24,9 @@ const upload = multer({
 // QR/Barcode scanning endpoint
 router.post('/scan', upload.single('image'), async (req, res) => {
   try {
+    // Get scan mode from form data or default to 'both'
+    const scanMode = req.body.scanMode || 'both';
+    
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -35,40 +38,80 @@ router.post('/scan', upload.single('image'), async (req, res) => {
     const image = await Jimp.read(req.file.buffer);
     const { data, width, height } = image.bitmap;
 
-    // Attempt QR code detection with jsQR
-    let qrResult = jsQR(data, width, height);
-    
-    if (qrResult) {
-      return res.json({
-        success: true,
-        data: qrResult.data,
-        type: 'QR_CODE',
-        bounds: qrResult.location
-      });
+    // Attempt QR code detection with jsQR if scan mode allows
+    if (scanMode === 'qr' || scanMode === 'both') {
+      let qrResult = jsQR(data, width, height);
+      
+      if (qrResult) {
+        return res.json({
+          success: true,
+          data: qrResult.data,
+          type: 'QR_CODE',
+          bounds: qrResult.location
+        });
+      }
     }
 
-    // Fallback to ZXing for barcode detection
-    try {
-      const codeReader = new BrowserQRCodeReader();
-      // Note: ZXing library usage might need adjustment based on actual implementation
-      // This is a simplified example
-      const luminanceSource = new com.google.zxing.BufferedImageLuminanceSource(image);
-      const binaryBitmap = new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(luminanceSource));
-      
-      // This is pseudocode - actual implementation would depend on ZXing JS library specifics
-      // const result = codeReader.decode(binaryBitmap);
-      
-      // if (result) {
-      //   return res.json({
-      //     success: true,
-      //     data: result.getText(),
-      //     type: result.getBarcodeFormat().toString(),
-      //     bounds: null
-      //   });
-      // }
-    } catch (zxingError) {
-      // ZXing couldn't decode either
-      console.log('ZXing decode error:', zxingError);
+    // Attempt barcode detection with Quagga if scan mode allows
+    if (scanMode === 'barcode' || scanMode === 'both') {
+      try {
+        // Convert Jimp image to format suitable for Quagga
+        const imageData = {
+          data: data,
+          width: width,
+          height: height
+        };
+
+        // Configure Quagga for barcode detection
+        const config = {
+          inputStream: {
+            size: 800,
+            singleChannel: false
+          },
+          locator: {
+            patchSize: "medium",
+            halfSample: true
+          },
+          numOfWorkers: 2,
+          frequency: 10,
+          decoder: {
+            readers: [
+              'code_128_reader',
+              'ean_reader',
+              'ean_8_reader',
+              'code_39_reader',
+              'code_39_vin_reader',
+              'codabar_reader',
+              'upc_reader',
+              'upc_e_reader',
+              'i2of5_reader'
+            ]
+          },
+          locate: true
+        };
+
+        // Process with Quagga
+        const barcodeResult = await new Promise((resolve) => {
+          Quagga.decodeSingle({
+            ...config,
+            src: imageData
+          }, (result) => {
+            resolve(result);
+          });
+        });
+
+        if (barcodeResult && barcodeResult.codeResult) {
+          return res.json({
+            success: true,
+            data: barcodeResult.codeResult.code,
+            type: barcodeResult.codeResult.format,
+            bounds: barcodeResult.box
+          });
+        }
+      } catch (quaggaError) {
+        // Quagga couldn't decode
+        console.log('Quagga decode error:', quaggaError);
+      }
     }
 
     // No codes detected

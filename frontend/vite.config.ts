@@ -6,8 +6,13 @@ import path from "path";
 export default defineConfig(({ mode }) => ({
   base: '/',
   server: {
-    host: "::",
+    host: 'localhost',
     port: 8080,
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 8080
+    }
   },
   plugins: [react()],
   resolve: {

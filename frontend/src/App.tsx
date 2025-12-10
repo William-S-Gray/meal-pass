@@ -12,6 +12,7 @@ import RegisterEmployee from "./pages/RegisterEmployee";
 import EmployeesList from "./pages/EmployeesList";
 import EmployeeProfile from "./pages/EmployeeProfile";
 import QRScanner from "./pages/QRScanner";
+import ScannerTest from "./pages/ScannerTest";
 import Reports from "./pages/Reports";
 import ReportsDashboard from "./pages/ReportsDashboard";
 import Statistics from "./pages/Statistics";
@@ -73,6 +74,11 @@ const App = () => (
               <Route path="/scan" element={
                 <ProtectedRoute>
                   <QRScanner />
+                </ProtectedRoute>
+              } />
+              <Route path="/scanner-test" element={
+                <ProtectedRoute>
+                  <ScannerTest />
                 </ProtectedRoute>
               } />
               <Route path="/employees/register" element={

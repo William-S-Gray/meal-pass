@@ -3,9 +3,10 @@ import React, { useRef, useEffect, useState } from 'react';
 interface CameraScannerProps {
   onScanSuccess: (data: string) => void;
   scanInterval?: number;
+  scanMode?: 'qr' | 'barcode' | 'both';
 }
 
-const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterval = 500 }) => {
+const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterval = 500, scanMode = 'both' }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -86,7 +87,13 @@ const CameraScanner: React.FC<CameraScannerProps> = ({ onScanSuccess, scanInterv
       const formData = new FormData();
       formData.append('image', imageBlob, 'scan-frame.jpg');
 
-      const response = await fetch('/api/scan', {
+      // Get the base URL from environment variables
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      // Include scan mode in the request
+      formData.append('scanMode', scanMode);
+      
+      const response = await fetch(`${baseUrl}/api/scan`, {
         method: 'POST',
         body: formData
       });

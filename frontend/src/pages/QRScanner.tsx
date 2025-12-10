@@ -99,7 +99,7 @@ export default function QRScanner() {
   const { user } = useAuth();
   const { isConnected } = useWebSocket();
   const { toast } = useToast();
-  const [scanMode, setScanMode] = useState<'qr' | 'barcode'>('qr');
+  const [scanMode, setScanMode] = useState<'qr' | 'barcode' | 'both'>('both');
   const [manualInput, setManualInput] = useState('');
   const [bulkInput, setBulkInput] = useState('');
   const [isBulkMode, setIsBulkMode] = useState(false);
@@ -288,15 +288,43 @@ export default function QRScanner() {
         <div className="max-w-2xl mx-auto space-y-6">
           <Card className="border-2">
             <CardHeader>
-              <CardTitle>Scan Employee QR Code</CardTitle>
+              <CardTitle>Scan Employee Code</CardTitle>
               <CardDescription>
-                Point your camera at an employee's QR code to mark them as fed
+                Point your camera at an employee's QR code or barcode to mark them as fed
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Scan Mode Selection */}
+              <div className="flex rounded-md overflow-hidden border">
+                <Button
+                  variant={scanMode === 'qr' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('qr')}
+                  className="flex-1 rounded-none"
+                >
+                  QR Code
+                </Button>
+                <Button
+                  variant={scanMode === 'barcode' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('barcode')}
+                  className="flex-1 rounded-none"
+                >
+                  Barcode
+                </Button>
+                <Button
+                  variant={scanMode === 'both' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('both')}
+                  className="flex-1 rounded-none"
+                >
+                  Both
+                </Button>
+              </div>
+              
               {/* Camera Scanner Component */}
               <div className="space-y-4">
-                <CameraScanner onScanSuccess={handleScanSuccess} />
+                <CameraScanner 
+                  onScanSuccess={handleScanSuccess} 
+                  scanMode={scanMode}
+                />
               </div>
               
               {/* Manual Entry */}

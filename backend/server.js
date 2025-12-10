@@ -10,8 +10,14 @@ const morgan = require('morgan');
 const mongoose = require('mongoose');
 require('colors');
 
-// Load env vars
-dotenv.config();
+// Load env vars with explicit path
+dotenv.config({ path: __dirname + '/.env' });
+
+// Debug environment variables
+console.log('Environment variables:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('MONGODB_URI:', process.env.MONGODB_URI);
 
 // Database connection
 const connectDB = require('./config/db');
