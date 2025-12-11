@@ -692,13 +692,35 @@ const qrLandingPage = async (req, res, next) => {
     const userAgent = req.get('User-Agent') || '';
     const isBrowser = /mozilla|chrome|safari|firefox|edge/i.test(userAgent) && !/curl|postman/i.test(userAgent);
     
-    // If accessed directly via browser, show secure message
+    // Allow mobile camera access but show a different message
     if (isBrowser) {
-      return res.status(403).json({
-        success: false,
-        message: 'Unauthorized QR usage. Please use the meal pass system scanner to process this QR code.',
-        code: 'UNAUTHORIZED_QR_ACCESS'
-      });
+      // For browser access, show a user-friendly page instead of JSON
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Meal Pass QR Code</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+            .container { max-width: 400px; margin: 0 auto; }
+            .message { background: #f0f8ff; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .btn { background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>Meal Pass System</h1>
+            <div class="message">
+              <h2>Scan Successful!</h2>
+              <p>This QR code belongs to an employee in the Meal Pass system.</p>
+              <p>To process this employee, please use the official Meal Pass scanner application.</p>
+            </div>
+            <p>If you're trying to access this from the Meal Pass app, please contact support.</p>
+          </div>
+        </body>
+        </html>
+      `);
     }
     
     // Get employee details

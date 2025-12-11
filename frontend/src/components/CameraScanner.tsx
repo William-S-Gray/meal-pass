@@ -30,9 +30,15 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     try {
       // Handle URL format first
       // Check if it's a URL format pointing to our QR endpoint
-      const urlMatch = qrData.match(/\/api\/employees\/qr\/([A-Za-z0-9\-_]+)/);
-      if (urlMatch && urlMatch[1]) {
-        return urlMatch[1];
+      const apiUrlMatch = qrData.match(/\/api\/employees\/qr\/([A-Za-z0-9\-_]+)/);
+      if (apiUrlMatch && apiUrlMatch[1]) {
+        return apiUrlMatch[1];
+      }
+      
+      // Also check for direct /qr/ format (for mobile camera compatibility)
+      const directUrlMatch = qrData.match(/\/qr\/([A-Za-z0-9\-_]+)/);
+      if (directUrlMatch && directUrlMatch[1]) {
+        return directUrlMatch[1];
       }
       
       // Try to parse as JSON (old format)
@@ -80,7 +86,22 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
       }
     } catch (err) {
       console.error('Camera access error:', err);
-      const errorMessage = `Camera access denied: ${err instanceof Error ? err.message : 'Unknown error'}`;
+      let errorMessage = 'Camera access denied. ';
+      
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          errorMessage += 'Please grant camera permission to use the scanner.';
+        } else if (err.name === 'NotFoundError') {
+          errorMessage += 'No camera found. Please ensure a camera is connected.';
+        } else if (err.name === 'NotReadableError') {
+          errorMessage += 'Camera is busy. Please close other applications using the camera.';
+        } else {
+          errorMessage += err.message;
+        }
+      } else {
+        errorMessage += 'Unknown error occurred.';
+      }
+      
       setError(errorMessage);
       setPermissionGranted(false);
       if (onScanError) {
@@ -232,7 +253,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
 
   // Initialize camera on component mount
   useEffect(() => {
-    // initializeCamera();
+    // Initialize camera when component mounts
+    initializeCamera();
 
     // Cleanup on unmount
     return () => {

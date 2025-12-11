@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const Jimp = require('jimp');
+const { Jimp } = require('jimp');
 const jsQR = require('jsqr');
 const Quagga = require('quagga').default;
 
@@ -24,10 +24,20 @@ const upload = multer({
 // QR/Barcode scanning endpoint
 router.post('/scan', upload.single('image'), async (req, res) => {
   try {
+    console.log('Received scan request');
+    console.log('Request body:', req.body);
+    console.log('Request file:', req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    } : null);
+    
     // Get scan mode from form data or default to 'both'
     const scanMode = req.body.scanMode || 'both';
+    console.log('Scan mode:', scanMode);
     
     if (!req.file) {
+      console.log('No file provided in request');
       return res.status(400).json({
         success: false,
         message: 'No image file provided'
@@ -35,8 +45,11 @@ router.post('/scan', upload.single('image'), async (req, res) => {
     }
 
     // Process image with Jimp
+    console.log('Processing image with Jimp...');
     const image = await Jimp.read(req.file.buffer);
+    console.log('Jimp processing complete');
     let { data, width, height } = image.bitmap;
+    console.log('Image dimensions:', width, 'x', height);
 
     // Attempt QR code detection with jsQR if scan mode allows
     if (scanMode === 'qr' || scanMode === 'both') {
@@ -194,6 +207,7 @@ router.post('/scan', upload.single('image'), async (req, res) => {
     });
   } catch (error) {
     console.error('Scan processing error:', error);
+        console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error processing scan request'

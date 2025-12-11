@@ -1,5 +1,19 @@
 // Service Worker for PWA Support
 const CACHE_NAME = 'meal-pass-v1';
+
+// Skip service worker registration during development
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  self.addEventListener('install', (event) => {
+    event.waitUntil(self.skipWaiting());
+  });
+  
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim());
+  });
+  
+  // Immediately unregister the service worker in development
+  self.registration.unregister();
+}
 const urlsToCache = [
   '/',
   '/index.html',
@@ -19,6 +33,16 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - serve cached content when offline
 self.addEventListener('fetch', (event) => {
+  // Skip all requests in development
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    return;
+  }
+  
+  // Skip API and socket requests
+  if (event.request.url.includes('/api/') || event.request.url.includes('/socket.io/')) {
+    return;
+  }
+  
   // Skip requests that are not GET requests or not same-origin
   if (event.request.method !== 'GET') {
     return;

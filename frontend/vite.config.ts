@@ -12,6 +12,19 @@ export default defineConfig(({ mode }) => ({
       protocol: 'ws',
       host: 'localhost',
       port: 8080
+    },
+    // Add proxy for API requests to avoid CORS issues during development
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false
+      },
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        ws: true,
+        changeOrigin: true
+      }
     }
   },
   plugins: [react()],

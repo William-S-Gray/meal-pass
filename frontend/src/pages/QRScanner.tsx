@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
@@ -101,6 +101,8 @@ export default function QRScanner() {
   const { toast } = useToast();
   const [scanMode, setScanMode] = useState<'qr' | 'barcode' | 'both'>('both');
   const [manualInput, setManualInput] = useState('');
+  const [manualEmployee, setManualEmployee] = useState<Employee | null>(null);
+  const [manualEmployeeLoading, setManualEmployeeLoading] = useState(false);
   const [bulkInput, setBulkInput] = useState('');
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [bulkResults, setBulkResults] = useState<Array<{id: string, status: string, message: string, employee?: Employee}>>([]);
@@ -111,6 +113,30 @@ export default function QRScanner() {
     message: string;
     employee?: Employee;
   } | null>(null);
+
+  // Validate employee in real-time as user types
+  useEffect(() => {
+    if (!manualInput.trim()) {
+      setManualEmployee(null);
+      return;
+    }
+
+    const validateEmployee = async () => {
+      setManualEmployeeLoading(true);
+      try {
+        const employee = await getEmployeeByUid(manualInput.trim());
+        setManualEmployee(employee);
+      } catch (error) {
+        setManualEmployee(null);
+      } finally {
+        setManualEmployeeLoading(false);
+      }
+    };
+
+    // Debounce the validation to avoid too many API calls
+    const timerId = setTimeout(validateEmployee, 500);
+    return () => clearTimeout(timerId);
+  }, [manualInput]);
 
   const handleScanSuccess = async (uniqueId: string) => {
     if (!uniqueId) return;
@@ -224,6 +250,15 @@ export default function QRScanner() {
     }
   };
 
+  const validateEmployeeId = async (employeeId: string) => {
+    try {
+      const employee = await getEmployeeByUid(employeeId);
+      return employee;
+    } catch (error) {
+      return null;
+    }
+  };
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualInput.trim()) return;
@@ -231,24 +266,28 @@ export default function QRScanner() {
     setLoading(true);
     
     try {
-      const response = await scanQRCode(manualInput.trim(), 'manual-entry', 'manual');
-      
-      // Get employee details for display
-      let employee = null;
-      try {
-        employee = await getEmployeeByUid(manualInput.trim());
-      } catch (e) {
-        console.warn("Could not fetch employee details:", e);
+      // Use already validated employee
+      if (!manualEmployee) {
+        setScanResult({
+          status: 'not_found',
+          message: 'Employee not found in the system.'
+        });
+        setShowResult(true);
+        setLoading(false);
+        return;
       }
+
+      const response = await scanQRCode(manualInput.trim(), 'manual-entry', 'manual');
       
       setScanResult({
         status: response.status as 'success' | 'already_fed' | 'not_found' | 'error',
         message: response.message,
-        employee: employee || undefined
+        employee: manualEmployee
       });
       
       setShowResult(true);
       setManualInput('');
+      setManualEmployee(null);
     } catch (error) {
       console.error('Manual entry error:', error);
       setScanResult({
@@ -272,21 +311,24 @@ export default function QRScanner() {
     try {
       for (const id of ids) {
         try {
-          const response = await scanQRCode(id, 'bulk-entry', 'manual');
-          
-          // Get employee details for display
-          let employee = null;
-          try {
-            employee = await getEmployeeByUid(id);
-          } catch (e) {
-            console.warn("Could not fetch employee details:", e);
+          // Validate employee exists first
+          const employee = await validateEmployeeId(id);
+          if (!employee) {
+            results.push({
+              id,
+              status: 'not_found',
+              message: 'Employee not found in the system.'
+            });
+            continue;
           }
+
+          const response = await scanQRCode(id, 'bulk-entry', 'manual');
           
           results.push({
             id,
             status: response.status,
             message: response.message,
-            employee: employee || undefined
+            employee: employee
           });
         } catch (error) {
           results.push({
@@ -346,7 +388,14 @@ export default function QRScanner() {
             <CardHeader>
               <CardTitle>Scan Employee Code</CardTitle>
               <CardDescription>
-                Point your camera at an employee's QR code or barcode to mark them as fed
+                Point your camera at an employee's QR code to mark them as fed.
+                For best results:
+                <ul className="list-disc pl-5 mt-2 space-y-1">
+                  <li>Use the rear camera for better scanning</li>
+                  <li>Ensure good lighting conditions</li>
+                  <li>Hold the QR code steady within the scanning frame</li>
+                  <li>Make sure the entire QR code is visible</li>
+                </ul>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -398,7 +447,51 @@ export default function QRScanner() {
                       disabled={loading}
                     />
                   </div>
-                  <Button type="submit" disabled={loading || !manualInput.trim()}>
+                  
+                  {/* Employee Preview */}
+                  {manualInput.trim() && (
+                    <div className="mt-2 p-3 bg-muted rounded-lg">
+                      {manualEmployeeLoading ? (
+                        <div className="flex items-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <span className="text-sm text-muted-foreground">Checking employee...</span>
+                        </div>
+                      ) : manualEmployee ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{manualEmployee.name}</span>
+                            <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
+                              {manualEmployee.uniqueId}
+                            </span>
+                          </div>
+                          {manualEmployee.department && (
+                            <p className="text-sm text-muted-foreground">
+                              Department: {manualEmployee.department}
+                            </p>
+                          )}
+                          {manualEmployee.position && (
+                            <p className="text-sm text-muted-foreground">
+                              Position: {manualEmployee.position}
+                            </p>
+                          )}
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <Calendar className="mr-1 h-3 w-3" />
+                            Valid until: {format(parseISO(manualEmployee.validUntil), 'MMM dd, yyyy')}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center text-destructive">
+                          <AlertTriangle className="mr-2 h-4 w-4" />
+                          <span className="text-sm">Employee not found in the system.</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <Button 
+                    type="submit" 
+                    disabled={loading || !manualInput.trim() || !manualEmployee}
+                  >
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

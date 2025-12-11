@@ -16,6 +16,29 @@ const apiClient = axios.create({
   timeout: 10000 // Set timeout to 10 seconds
 });
 
+// Add cache-busting headers to all requests
+apiClient.interceptors.request.use(
+  (config) => {
+    // Add timestamp to prevent caching
+    if (config.method === 'get') {
+      config.params = {
+        ...config.params,
+        _t: Date.now()
+      };
+    }
+    
+    // Add cache control headers
+    config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    config.headers['Pragma'] = 'no-cache';
+    config.headers['Expires'] = '0';
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Add a request interceptor to add auth token to all requests
 apiClient.interceptors.request.use(
   (config) => {

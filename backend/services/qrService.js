@@ -16,15 +16,18 @@ const generateQRCode = async (uniqueId, name = '') => {
     // Create a URL that points to our QR landing page
     // This prevents mobile cameras from treating it as a search query
     // Ensure we use the correct BASE_URL for production
-    const baseUrl = process.env.BASE_URL || process.env.NODE_ENV === 'production' 
-      ? 'https://meal-backend-9zm8.onrender.com' 
-      : 'http://localhost:5000';
-    const qrUrl = `${baseUrl}/api/employees/qr/${uniqueId}`;
+    const baseUrl = process.env.BASE_URL || 
+      (process.env.NODE_ENV === 'production' 
+        ? 'https://meal-backend-9zm8.onrender.com' 
+        : 'http://localhost:5000');
+    const qrUrl = `${baseUrl}/qr/${uniqueId}`;
     
     // Generate QR code as buffer with the URL
+    // Use higher error correction level for better scanning reliability
     const buffer = await QRCode.toBuffer(qrUrl, {
       width: 300,
-      margin: 2,
+      margin: 4, // Increased margin for better scanning
+      errorCorrectionLevel: 'H', // High error correction
       color: {
         dark: '#000000',
         light: '#ffffff'
@@ -78,15 +81,18 @@ const generateQRCodeDataUri = async (uniqueId, name = '') => {
     // Create a URL that points to our QR landing page
     // This prevents mobile cameras from treating it as a search query
     // Ensure we use the correct BASE_URL for production
-    const baseUrl = process.env.BASE_URL || process.env.NODE_ENV === 'production' 
-      ? 'https://meal-backend-9zm8.onrender.com' 
-      : 'http://localhost:5000';
-    const qrUrl = `${baseUrl}/api/employees/qr/${uniqueId}`;
+    const baseUrl = process.env.BASE_URL || 
+      (process.env.NODE_ENV === 'production' 
+        ? 'https://meal-backend-9zm8.onrender.com' 
+        : 'http://localhost:5000');
+    const qrUrl = `${baseUrl}/qr/${uniqueId}`;
     
     // Use smaller size for better performance
+    // Use higher error correction level for better scanning reliability
     const dataUri = await QRCode.toDataURL(qrUrl, {
       width: 200, // Reduced size for better performance
-      margin: 2,
+      margin: 4, // Increased margin for better scanning
+      errorCorrectionLevel: 'H', // High error correction
       color: {
         dark: '#000000',
         light: '#ffffff'
@@ -114,10 +120,11 @@ const generateQRCodeOnDemand = async (uniqueId, name = '') => {
     // Create a URL that points to our QR landing page
     // This prevents mobile cameras from treating it as a search query
     // Ensure we use the correct BASE_URL for production
-    const baseUrl = process.env.BASE_URL || process.env.NODE_ENV === 'production' 
-      ? 'https://meal-backend-9zm8.onrender.com' 
-      : 'http://localhost:5000';
-    const qrUrl = `${baseUrl}/api/employees/qr/${uniqueId}`;
+    const baseUrl = process.env.BASE_URL || 
+      (process.env.NODE_ENV === 'production' 
+        ? 'https://meal-backend-9zm8.onrender.com' 
+        : 'http://localhost:5000');
+    const qrUrl = `${baseUrl}/qr/${uniqueId}`;
     
     // Generate QR code as buffer with the URL
     const buffer = await QRCode.toBuffer(qrUrl, {
