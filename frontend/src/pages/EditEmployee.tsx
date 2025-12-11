@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getEmployeeByUid, updateEmployee, Employee } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronLeft, Loader2, Calendar } from 'lucide-react';
+import { ChevronLeft, Loader2, Calendar, User, Phone, Building, Briefcase, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWebSocket } from '@/contexts/WebSocketContext';
-import { performanceMonitor, tracePerformance } from '@/utils/performance-monitor';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Define error type for better type safety
 interface ApiError extends Error {
@@ -25,7 +25,7 @@ interface ApiError extends Error {
 
 export default function EditEmployee() {
   const { toast } = useToast();
-  const { id } = useParams<{ id: string }>();
+  const { uid } = useParams<{ uid: string }>();
   const navigate = useNavigate();
   const { socket } = useWebSocket();
   const [loading, setLoading] = useState(true);
@@ -39,133 +39,40 @@ export default function EditEmployee() {
     position: '',
     validUntil: ''
   });
-
-  // Refs for tracking component lifecycle
-  const componentMountTime = useRef<number>(performance.now());
-  const dataFetchStartTime = useRef<number | null>(null);
-
-  // Trace the entire component mount process
-  useEffect(() => {
-    const mountDuration = performance.now() - componentMountTime.current;
-    performanceMonitor.trackComponentLifecycle('EditEmployee', 'mount', componentMountTime.current, performance.now());
-    
-    console.log(`🔧 EditEmployee component mounted in ${mountDuration.toFixed(2)}ms`);
-    
-    return () => {
-      console.log('🧹 EditEmployee component unmounted');
-    };
-  }, []);
-
-  // Memoized employee loading function with enhanced performance monitoring
-  const loadEmployee = useCallback(
-    tracePerformance('Load Employee Data', async (id: string) => {
-      try {
-        setLoading(true);
-        performanceMonitor.startPageLoad();
-        dataFetchStartTime.current = performance.now();
-        
-        console.group('🔄 Employee Data Loading Process');
-        console.log(`🚀 Starting to load employee data for ID: ${id}`);
-        
-        // Track different phases of the loading process
-        performanceMonitor.startPageLoadPhase('API_Request_Startup');
-        
-        const { result: employeeData, duration } = await performanceMonitor.measureApiCall(getEmployeeByUid, id);
-        
-        performanceMonitor.endPageLoadPhase('API_Request_Startup');
-        performanceMonitor.startPageLoadPhase('Data_Processing');
-        
-        if (employeeData) {
-          console.log(`📥 Received employee data:`, {
-            name: employeeData.name,
-            uniqueId: employeeData.uniqueId,
-            department: employeeData.department,
-            position: employeeData.position
-          });
-          
-          // Track data processing time
-          const processingStart = performance.now();
-          
-          setEmployee(employeeData);
-          setFormData({
-            name: employeeData.name,
-            gender: employeeData.gender,
-            phone: employeeData.phone || '',
-            department: employeeData.department || '',
-            position: employeeData.position || '',
-            validUntil: employeeData.validUntil ? format(parseISO(employeeData.validUntil), 'yyyy-MM-dd') : ''
-          });
-          
-          const processingDuration = performance.now() - processingStart;
-          console.log(`⚙️  Data processing completed in ${processingDuration.toFixed(2)}ms`);
-        }
-        
-        performanceMonitor.endPageLoadPhase('Data_Processing');
-        performanceMonitor.startPageLoadPhase('UI_Render_Preparation');
-        
-        performanceMonitor.endPageLoad();
-        
-        // Track network performance
-        if (dataFetchStartTime.current) {
-          performanceMonitor.trackNetwork(
-            'FETCH_EMPLOYEE_DATA', 
-            `/api/employees/uid/${id}`, 
-            dataFetchStartTime.current, 
-            performance.now(),
-            JSON.stringify(employeeData).length
-          );
-        }
-        
-        performanceMonitor.endPageLoadPhase('UI_Render_Preparation');
-        
-        console.log(`✅ Employee data loaded successfully in ${duration.toFixed(2)}ms`);
-        console.groupEnd();
-        
-      } catch (error) {
-        console.error('💥 Failed to load employee:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load employee data',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoading(false);
-      }
-    }),
-    [toast]
-  );
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
-      console.log(`📍 useEffect triggered with employee ID: ${id}`);
-      loadEmployee(id);
+    // Check if uid is available, if not show error and redirect
+    if (!uid) {
+      console.error('Employee UID is missing from URL parameters');
+      toast({
+        title: 'Error',
+        description: 'Invalid employee identifier',
+        variant: 'destructive'
+      });
+      setLoading(false);
+      // Redirect to employees list after a short delay
+      setTimeout(() => navigate('/employees'), 2000);
+      return;
     }
-  }, [id, loadEmployee]);
+    
+    loadEmployee(uid);
+  }, [uid, navigate]);
 
-  // Listen for real-time employee updates with proper cleanup
+  // Listen for real-time employee updates
   useEffect(() => {
     if (!socket || !employee) return;
 
-    console.log(`📡 Setting up WebSocket listener for employee updates: ${employee._id}`);
-    
-    const handleEmployeeUpdateStart = performance.now();
-    
     const handleEmployeeUpdate = (data: { employee: Employee }) => {
-      const handleDuration = performance.now() - handleEmployeeUpdateStart;
-      console.log(`📨 Received employee update event in ${handleDuration.toFixed(2)}ms`);
-      
       // If the updated employee is the one we're currently editing, update the form
       if (data.employee._id === employee._id) {
-        console.log('🔄 Updating form with real-time employee data');
-        
-        const updateStart = performance.now();
         setEmployee(data.employee);
-        
-        // Batch state updates to prevent unnecessary re-renders
+        // Only update form data if it's different to prevent unnecessary re-renders
         setFormData(prevFormData => {
           const newFormData = {
-            name: data.employee.name,
-            gender: data.employee.gender,
+            name: data.employee.name || '',
+            gender: data.employee.gender || 'Male',
             phone: data.employee.phone || '',
             department: data.employee.department || '',
             position: data.employee.position || '',
@@ -177,10 +84,13 @@ export default function EditEmployee() {
             key => prevFormData[key as keyof typeof prevFormData] === newFormData[key as keyof typeof newFormData]
           );
           
-          const updateDuration = performance.now() - updateStart;
-          console.log(`🔄 Form update ${isSame ? 'skipped' : 'applied'} in ${updateDuration.toFixed(2)}ms`);
-          
           return isSame ? prevFormData : newFormData;
+        });
+        
+        // Show notification about external update
+        toast({
+          title: 'Employee Updated',
+          description: 'This employee record was updated by another user. The form has been synchronized.',
         });
       }
     };
@@ -188,22 +98,98 @@ export default function EditEmployee() {
     // Register event listener
     socket.on('employeeUpdated', handleEmployeeUpdate);
 
-    console.log('✅ WebSocket listener registered successfully');
-
     // Cleanup event listener
     return () => {
-      console.log('🧹 Cleaning up WebSocket listener');
       socket.off('employeeUpdated', handleEmployeeUpdate);
     };
-  }, [socket, employee]);
+  }, [socket, employee, toast]);
 
-  const handleSubmit = tracePerformance('Update Employee', async (e: React.FormEvent) => {
-    e.preventDefault();
+  const loadEmployee = useCallback(async (id: string) => {
+    try {
+      // Add defensive check
+      if (!id) {
+        throw new Error('Employee ID is required');
+      }
 
-    if (!employee || !formData.name || !formData.validUntil) {
+      setLoading(true);
+      const employeeData = await getEmployeeByUid(id);
+      if (employeeData) {
+        setEmployee(employeeData);
+        const formattedDate = employeeData.validUntil ? format(parseISO(employeeData.validUntil), 'yyyy-MM-dd') : '';
+        setFormData({
+          name: employeeData.name || '',
+          gender: employeeData.gender || 'Male',
+          phone: employeeData.phone || '',
+          department: employeeData.department || '',
+          position: employeeData.position || '',
+          validUntil: formattedDate
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Employee not found',
+          variant: 'destructive'
+        });
+        navigate('/employees');
+      }
+    } catch (error) {
+      console.error('Failed to load employee:', error);
       toast({
         title: 'Error',
-        description: 'Please fill in all required fields',
+        description: 'Failed to load employee data',
+        variant: 'destructive'
+      });
+      navigate('/employees');
+    } finally {
+      setLoading(false);
+    }
+  }, [toast, navigate]);
+
+  const validateForm = useCallback(() => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Full name is required';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Full name must be at least 2 characters';
+    }
+    
+    if (!formData.validUntil) {
+      newErrors.validUntil = 'Validity period is required';
+    } else {
+      const validUntilDate = new Date(formData.validUntil);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (validUntilDate < today) {
+        newErrors.validUntil = 'Validity period cannot be in the past';
+      }
+    }
+    
+    if (formData.phone && !/^[+]?[0-9\s\-()]{10,20}$/.test(formData.phone)) {
+      newErrors.phone = 'Please enter a valid phone number';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [formData]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please correct the errors in the form',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!employee) {
+      toast({
+        title: 'Error',
+        description: 'Employee data not loaded',
         variant: 'destructive'
       });
       return;
@@ -211,33 +197,31 @@ export default function EditEmployee() {
 
     setUpdating(true);
     try {
-      console.group('💾 Employee Update Process');
-      console.log('📤 Sending employee update request');
-      
-      performanceMonitor.startPageLoadPhase('Update_Form_Submission');
-      
-      const { result, duration } = await performanceMonitor.measureApiCall(updateEmployee, employee._id, formData);
-      console.log(`📥 Received update response in ${duration.toFixed(2)}ms`);
-      
-      performanceMonitor.endPageLoadPhase('Update_Form_Submission');
-      
+      const updatedEmployee = await updateEmployee(employee._id, formData);
+      setLastSaved(new Date().toLocaleTimeString());
       toast({
         title: 'Success',
         description: 'Employee updated successfully'
       });
-      navigate(`/employees/${employee.uniqueId}`);
-      
-      console.groupEnd();
+      navigate(`/employees/${updatedEmployee.uniqueId}`);
     } catch (error) {
-      console.error('💥 Employee update error:', error);
+      console.error('Employee update error:', error);
       let errorMessage = 'Failed to update employee';
       
       // Try to extract more specific error information
-      const apiError = error as ApiError;
-      if (apiError.response && apiError.response.data && apiError.response.data.error) {
-        errorMessage = apiError.response.data.error;
-      } else if (apiError.message) {
-        errorMessage = apiError.message;
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          // Server responded with error status
+          errorMessage = error.response.data?.error || error.response.data?.message || `HTTP error! status: ${error.response.status}`;
+        } else if (error.request) {
+          // Request was made but no response received
+          errorMessage = 'Network error - no response received from server. Please check if the backend is running.';
+        } else {
+          // Something else happened
+          errorMessage = error.message || 'Unknown error occurred';
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
       }
       
       toast({
@@ -248,7 +232,20 @@ export default function EditEmployee() {
     } finally {
       setUpdating(false);
     }
-  });
+  };
+
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear error for this field when user starts typing
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  }, [errors]);
 
   if (loading) {
     return (
@@ -256,7 +253,6 @@ export default function EditEmployee() {
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Loading employee data...</p>
-          <p className="text-xs text-muted-foreground">This may take a moment</p>
         </div>
       </div>
     );
@@ -265,7 +261,13 @@ export default function EditEmployee() {
   if (!employee) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">Employee not found</p>
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            Employee not found
+          </AlertDescription>
+        </Alert>
         <Button onClick={() => navigate('/employees')}>Back to List</Button>
       </div>
     );
@@ -284,154 +286,205 @@ export default function EditEmployee() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
+      <main className="container mx-auto px-4 py-8 max-w-3xl">
         <BreadcrumbNavigation 
-          items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }, { label: employee?.name || 'Employee', href: `/employees/${employee?.uniqueId}` }, { label: 'Edit' }]}
+          items={[
+            { label: 'Dashboard', href: '/dashboard' }, 
+            { label: 'Employees', href: '/employees' }, 
+            { label: employee?.name || 'Employee', href: `/employees/${employee?.uniqueId}` }, 
+            { label: 'Edit' }
+          ]}
           backButtonHref={`/employees/${employee?.uniqueId}`}
           backButtonLabel="Back to Profile"
         />
-        <Card className="border-2">
-          <CardHeader>
-            <CardTitle>Edit Employee</CardTitle>
-            <CardDescription>Update employee details</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form 
-              onSubmit={handleSubmit} 
-              className="space-y-6"
-              data-testid="edit-employee-form"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="John Doe"
-                    required
-                    disabled={updating}
-                  />
+        
+        <div className="space-y-6">
+          {lastSaved && (
+            <Alert className="border-green-200 bg-green-50">
+              <AlertTitle className="text-green-800">Changes Saved</AlertTitle>
+              <AlertDescription className="text-green-700">
+                Your changes were saved at {lastSaved}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <Card className="border-2">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 p-3 rounded-full">
+                  <User className="h-6 w-6 text-primary" />
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="gender">Gender *</Label>
-                  <Select 
-                    value={formData.gender} 
-                    onValueChange={(value) => setFormData({ ...formData, gender: value as 'Male' | 'Female' | 'Other' })}
-                    disabled={updating}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div>
+                  <CardTitle>Edit Employee</CardTitle>
+                  <CardDescription>Update employee details</CardDescription>
                 </div>
               </div>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Full Name *
+                    </Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      placeholder="John Doe"
+                      required
+                      disabled={updating}
+                      className={errors.name ? 'border-red-500' : ''}
+                    />
+                    {errors.name && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {errors.name}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="gender" className="flex items-center gap-2">
+                      Gender *
+                    </Label>
+                    <Select 
+                      value={formData.gender} 
+                      onValueChange={(value) => handleInputChange('gender', value)}
+                      disabled={updating}
+                    >
+                      <SelectTrigger className={errors.gender ? 'border-red-500' : ''}>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="uniqueId">Unique Identifier</Label>
-                  <Input
-                    id="uniqueId"
-                    value={employee.uniqueId}
-                    disabled
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Unique identifiers cannot be changed after creation
-                  </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="uniqueId" className="flex items-center gap-2">
+                      Unique Identifier
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="uniqueId"
+                        value={employee.uniqueId}
+                        disabled
+                        className="font-mono"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Unique identifiers cannot be changed after creation
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      placeholder="+1234567890"
+                      disabled={updating}
+                      className={errors.phone ? 'border-red-500' : ''}
+                    />
+                    {errors.phone && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {errors.phone}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+1234567890"
-                    disabled={updating}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Input
-                    id="department"
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    placeholder="HR, IT, Operations..."
-                    disabled={updating}
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="department" className="flex items-center gap-2">
+                      <Building className="h-4 w-4" />
+                      Department
+                    </Label>
+                    <Input
+                      id="department"
+                      value={formData.department}
+                      onChange={(e) => handleInputChange('department', e.target.value)}
+                      placeholder="Engineering"
+                      disabled={updating}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="position" className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4" />
+                      Position
+                    </Label>
+                    <Input
+                      id="position"
+                      value={formData.position}
+                      onChange={(e) => handleInputChange('position', e.target.value)}
+                      placeholder="Software Engineer"
+                      disabled={updating}
+                    />
+                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="position">Position</Label>
-                  <Input
-                    id="position"
-                    value={formData.position}
-                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                    placeholder="Manager, Developer, Analyst..."
-                    disabled={updating}
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="validUntil">Validity Period *</Label>
-                <div className="relative">
+                <div className="space-y-2">
+                  <Label htmlFor="validUntil" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Valid Until *
+                  </Label>
                   <Input
                     id="validUntil"
                     type="date"
                     value={formData.validUntil}
-                    onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
-                    required
+                    onChange={(e) => handleInputChange('validUntil', e.target.value)}
                     disabled={updating}
-                    className="pr-10"
+                    className={errors.validUntil ? 'border-red-500' : ''}
                   />
-                  <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button type="submit" className="flex-1" disabled={updating} data-testid="save-button">
-                  {updating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    'Update Employee'
+                  {errors.validUntil && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.validUntil}
+                    </p>
                   )}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => navigate(`/employees/${employee.uniqueId}`)} 
-                  disabled={updating}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-        
-        {/* Performance Summary Button */}
-        <div className="mt-6 text-center">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => performanceMonitor.logComprehensiveDebug()}
-          >
-            Show Detailed Performance Report
-          </Button>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <Button 
+                    type="submit" 
+                    disabled={updating}
+                    className="w-full sm:w-auto"
+                  >
+                    {updating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => navigate(`/employees/${employee.uniqueId}`)}
+                    disabled={updating}
+                    className="w-full sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>

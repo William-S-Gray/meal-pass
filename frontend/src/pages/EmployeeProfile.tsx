@@ -32,10 +32,22 @@ export default function EmployeeProfile() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    if (uid) {
-      loadData(uid);
+    // Check if uid is available, if not show error and redirect
+    if (!uid) {
+      console.error('Employee UID is missing from URL parameters');
+      toast({
+        title: 'Error',
+        description: 'Invalid employee identifier',
+        variant: 'destructive'
+      });
+      setLoading(false);
+      // Redirect to employees list after a short delay
+      setTimeout(() => navigate('/employees'), 2000);
+      return;
     }
-  }, [uid]);
+    
+    loadData(uid);
+  }, [uid, navigate]);
 
   // Listen for real-time employee updates
   useEffect(() => {
@@ -72,6 +84,19 @@ export default function EmployeeProfile() {
 
   const loadData = async (uid: string) => {
     try {
+      // Add defensive check for uid
+      if (!uid) {
+        console.error('UID is undefined or empty');
+        toast({
+          title: 'Error',
+          description: 'Invalid employee identifier',
+          variant: 'destructive'
+        });
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
       const [employeeData, historyData] = await Promise.all([
         getEmployeeByUid(uid),
         getFeedingRecordsForEmployee(uid)
@@ -91,7 +116,9 @@ export default function EmployeeProfile() {
   };
 
   const handleEditClick = () => {
-    navigate(`/employees/edit/${employee?.uniqueId}`);
+    if (employee?.uniqueId) {
+      navigate(`/employees/edit/${employee.uniqueId}`);
+    }
   };
 
   const handleSetFeedingStatus = async (fed: boolean) => {
@@ -105,7 +132,9 @@ export default function EmployeeProfile() {
         description: result.message
       });
       // Refresh the data to show updated status
-      loadData(employee.uniqueId);
+      if (employee.uniqueId) {
+        loadData(employee.uniqueId);
+      }
     } catch (error: unknown) {
       if (error instanceof Error) {
         toast({
@@ -268,76 +297,83 @@ export default function EmployeeProfile() {
                     <p className="text-base font-medium">{employee.position}</p>
                   </div>
                 )}
-
-                <div>
-                  <p className="text-sm text-muted-foreground">Validity Period</p>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-base font-medium">
-                      {format(parseISO(employee.validUntil), 'MMM dd, yyyy')}
-                    </span>
-                    {isExpired && (
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                    )}
-                  </div>
-                </div>
               </div>
               
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">QR Code</p>
-                  <div className="bg-white p-4 rounded-lg border flex flex-col items-center">
-                    <img 
-                      src={employee.qrCodeUrl} 
-                      alt={`QR Code for ${employee.name}`} 
-                      className="w-48 h-48 object-contain"
-                    />
-                    <DownloadQRButton employeeId={employee._id} employeeUid={employee.uniqueId} />
+                  <p className="text-sm text-muted-foreground">Validity Period</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-base font-medium">
+                      {format(parseISO(employee.validUntil), 'MMMM d, yyyy')}
+                    </span>
                   </div>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-muted-foreground">Registered On</p>
+                  <p className="text-base font-medium">
+                    {format(parseISO(employee.createdAt), 'MMMM d, yyyy')}
+                  </p>
+                </div>
+                
+                <div className="pt-2">
+                  <p className="text-sm text-muted-foreground mb-2">QR Code</p>
+                  <DownloadQRButton 
+                    employeeId={employee._id} 
+                    employeeUid={employee.uniqueId} 
+                    employeeName={employee.name}
+                  />
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Feeding History */}
-        <Card className="border-2">
-          <CardHeader>
-            <CardTitle>Feeding History</CardTitle>
-            <CardDescription>Recent feeding records for this employee</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {feedHistory.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">No feeding records found</p>
-            ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Method</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {feedHistory.map((record) => {
-                      const fedDate = new Date(record.fedAt);
-                      return (
+            
+            {/* Feed History */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Feed History</h3>
+                <Badge variant="secondary">{feedHistory.length} records</Badge>
+              </div>
+              
+              {feedHistory.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No feeding records found for this employee</p>
+                </div>
+              ) : (
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Time</TableHead>
+                        <TableHead>Scanner</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {feedHistory.map((record) => (
                         <TableRow key={record.id}>
-                          <TableCell>{format(fedDate, 'MMM dd, yyyy')}</TableCell>
-                          <TableCell>{format(fedDate, 'hh:mm a')}</TableCell>
+                          <TableCell>{record.date}</TableCell>
+                          <TableCell>{record.time}</TableCell>
+                          <TableCell>{record.scannerName || 'Unknown'}</TableCell>
                           <TableCell>
-                            <Badge variant={record.method === 'manual' ? 'secondary' : 'default'}>
-                              {record.method === 'manual' ? 'Manual' : 'Scan'}
+                            <Badge variant="outline">
+                              {record.method === 'scan' ? 'Scanned' : 'Manual'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={record.status === 'ok' ? 'default' : 'destructive'}>
+                              {record.status === 'ok' ? 'Fed' : 'Duplicate'}
                             </Badge>
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </main>

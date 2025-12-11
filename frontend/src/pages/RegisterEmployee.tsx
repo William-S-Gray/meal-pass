@@ -47,7 +47,7 @@ export default function RegisterEmployee() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.gender || !formData.validUntil) {
+    if (!formData.name || !formData.gender || !formData.validUntil || !formData.uniqueId) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
@@ -179,12 +179,13 @@ export default function RegisterEmployee() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="uniqueId">Unique Identifier</Label>
+                  <Label htmlFor="uniqueId">Unique Identifier *</Label>
                   <Input
                     id="uniqueId"
                     value={formData.uniqueId}
                     onChange={(e) => setFormData({ ...formData, uniqueId: e.target.value })}
                     placeholder="EMP-001"
+                    required
                     disabled={loading || isRegistered} // Disable when registered
                   />
                 </div>

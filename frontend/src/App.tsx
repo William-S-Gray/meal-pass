@@ -22,7 +22,7 @@ import { useState } from "react";
 import { lazy, Suspense } from "react";
 
 // Lazy load heavy components
-const EditEmployee = lazy(() => import("./pages/EditEmployeeEnhanced"));
+const EditEmployee = lazy(() => import("./pages/EditEmployee"));
 
 const queryClient = new QueryClient();
 

@@ -93,6 +93,12 @@ const create = async (employeeData) => {
     return formatEmployeeResponse(employee);
   } catch (error) {
     logger.error('Error creating employee', { error: error.message });
+    
+    // Handle duplicate key error for uniqueId
+    if (error.code === 11000 && error.keyPattern && error.keyPattern.uniqueId) {
+      throw new Error('An employee with this ID already exists. Please use a different ID.');
+    }
+    
     throw error;
   }
 };

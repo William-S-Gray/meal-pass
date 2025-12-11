@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useWebSocket } from '@/contexts/WebSocketContext';
-import { getTodayFeedRecords, PaginatedFeedRecords, FeedRecord } from '@/lib/api';
+import { getDailyReport, PaginatedReport, FeedRecord } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -63,7 +63,8 @@ export default function FedToday() {
   const loadFeedRecords = async () => {
     try {
       setLoading(true);
-      const result: PaginatedFeedRecords = await getTodayFeedRecords(currentPage, itemsPerPage);
+      // Use getDailyReport instead of getTodayFeedRecords
+      const result: PaginatedReport<FeedRecord> = await getDailyReport(currentPage, itemsPerPage);
       setFeedRecords(result.data);
       setTotalPages(result.pagination.pages);
       setTotalItems(result.pagination.total);
@@ -198,57 +199,43 @@ export default function FedToday() {
                 {/* Pagination Controls */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
                   <div className="text-xs sm:text-sm text-muted-foreground">
-                    Showing {Math.min(feedRecords.length, itemsPerPage * currentPage)} of {totalItems} feed records
+                    Showing {Math.min(itemsPerPage, feedRecords.length)} of {totalItems} records
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
+                    <span className="text-xs sm:text-sm text-muted-foreground">Rows per page:</span>
+                    <select 
+                      value={itemsPerPage}
+                      onChange={(e) => handleItemsPerPageChange(e.target.value)}
+                      className="border rounded px-2 py-1 text-xs sm:text-sm"
+                      disabled={loading}
+                    >
+                      <option value="5">5</option>
+                      <option value="10">10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
                       size="sm"
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1 || loading}
-                      className="h-8 sm:h-9"
+                      className="text-xs sm:text-sm"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      <span className="hidden xs:inline">Previous</span>
                     </Button>
-                    
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum;
-                        if (totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
-                        
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={currentPage === pageNum ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handlePageChange(pageNum)}
-                            className="w-8 h-8 sm:w-10 sm:h-10"
-                            disabled={loading}
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    
-                    <Button
-                      variant="outline"
+                    <span className="text-xs sm:text-sm">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button 
+                      variant="outline" 
                       size="sm"
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages || loading}
-                      className="h-8 sm:h-9"
+                      className="text-xs sm:text-sm"
                     >
-                      <span className="hidden xs:inline">Next</span>
-                      <ChevronRight className="h-4 w-4 ml-2" />
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>

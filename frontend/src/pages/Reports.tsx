@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useWebSocket } from '@/contexts/WebSocketContext';
-import { getFeedRecordsByDateRange, FeedRecord, exportFeedRecordsToCSV } from '@/lib/api';
+import { getDateRangeReport, FeedRecord, exportFeedRecordsToCSV, PaginatedReport } from '@/lib/api';
 import { capitalizeName } from '@/lib/utils'; // Import the capitalizeName function
 import { useToast } from '@/hooks/use-toast'; // Use useToast hook instead
 import { Button } from '@/components/ui/button';
@@ -66,8 +66,9 @@ export default function Reports() {
   const loadRecords = async () => {
     setLoading(true);
     try {
-      const records = await getFeedRecordsByDateRange(startDate, endDate, site || undefined);
-      setFeedRecords(records);
+      // Use getDateRangeReport instead of getFeedRecordsByDateRange
+      const response: PaginatedReport<FeedRecord> = await getDateRangeReport(startDate, endDate);
+      setFeedRecords(response.data);
     } catch (error) {
       toast({
         title: 'Error',
@@ -207,44 +208,61 @@ export default function Reports() {
           </Card>
         </div>
 
-        {/* Records Table */}
+        {/* Feed Records Table */}
         <Card className="border-2">
           <CardHeader>
             <CardTitle>Feed Records</CardTitle>
+            <CardDescription>Detailed feeding records for the selected date range</CardDescription>
           </CardHeader>
           <CardContent>
             {feedRecords.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">
-                {loading ? 'Loading records...' : 'No records found for selected date range'}
-              </p>
+              <div className="text-center py-8 text-muted-foreground">
+                {loading ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <p>Loading records...</p>
+                  </div>
+                ) : (
+                  <p>No records found for the selected date range</p>
+                )}
+              </div>
             ) : (
-              // Make table responsive with horizontal scrolling on small screens
-              <div className="overflow-x-auto w-full rounded-lg border-2">
-                <Table className="min-w-[600px] md:min-w-full">
+              <div className="rounded-md border overflow-hidden">
+                <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs sm:text-sm">UID</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Name</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Date</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Time</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Scanner</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                      <TableHead>Employee ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Scanner</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {feedRecords.map((record) => (
                       <TableRow key={record.id}>
-                        <TableCell className="font-mono font-semibold text-xs sm:text-sm">{record.employeeUid}</TableCell>
-                        <TableCell className="text-xs sm:text-sm">{capitalizeName(record.employeeName)}</TableCell>
-                        <TableCell className="text-xs sm:text-sm">{new Date(record.date).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-xs sm:text-sm">{record.time}</TableCell>
-                        <TableCell className="text-xs sm:text-sm">{record.scannerName}</TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {record.employeeUid}
+                        </TableCell>
+                        <TableCell>
+                          {capitalizeName(record.employeeName)}
+                        </TableCell>
+                        <TableCell>
+                          {record.date}
+                        </TableCell>
+                        <TableCell>
+                          {record.time}
+                        </TableCell>
+                        <TableCell>
+                          {record.scannerName}
+                        </TableCell>
                         <TableCell>
                           <Badge 
-                            variant={record.status === 'ok' ? 'default' : 'secondary'}
-                            className={`text-xs sm:text-sm ${record.status === 'ok' ? 'bg-success' : ''}`}
+                            variant={record.status === 'ok' ? 'default' : 'destructive'}
+                            className={record.status === 'duplicate' ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
                           >
-                            {record.status}
+                            {record.status === 'ok' ? 'Fed' : 'Duplicate'}
                           </Badge>
                         </TableCell>
                       </TableRow>

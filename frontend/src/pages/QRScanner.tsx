@@ -388,14 +388,16 @@ export default function QRScanner() {
             <CardHeader>
               <CardTitle>Scan Employee Code</CardTitle>
               <CardDescription>
-                Point your camera at an employee's QR code to mark them as fed.
-                For best results:
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Use the rear camera for better scanning</li>
-                  <li>Ensure good lighting conditions</li>
-                  <li>Hold the QR code steady within the scanning frame</li>
-                  <li>Make sure the entire QR code is visible</li>
-                </ul>
+                <div>
+                  Point your camera at an employee's QR code to mark them as fed.
+                  For best results:
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    <li>Use the rear camera for better scanning</li>
+                    <li>Ensure good lighting conditions</li>
+                    <li>Hold the QR code steady within the scanning frame</li>
+                    <li>Make sure the entire QR code is visible</li>
+                  </ul>
+                </div>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

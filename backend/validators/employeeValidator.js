@@ -11,7 +11,8 @@ const create = Joi.object({
     'any.only': 'Gender must be Male, Female, or Other',
     'any.required': 'Gender is required'
   }),
-  uniqueId: Joi.string().optional().trim().max(50).messages({
+  uniqueId: Joi.string().required().trim().max(50).messages({
+    'string.empty': 'Employee ID is required',
     'string.max': 'Unique ID must be less than 50 characters'
   }),
   phone: Joi.string().optional().trim().max(20).messages({
@@ -64,7 +65,7 @@ const query = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(10),
   search: Joi.string().optional().trim().max(100)
-});
+}).unknown(true); // Allow unknown parameters like _t for cache busting
 
 module.exports = {
   create,

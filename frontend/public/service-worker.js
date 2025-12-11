@@ -1,19 +1,14 @@
 // Service Worker for PWA Support
 const CACHE_NAME = 'meal-pass-v1';
 
-// Skip service worker registration during development
-if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-  self.addEventListener('install', (event) => {
-    event.waitUntil(self.skipWaiting());
-  });
-  
-  self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
-  });
-  
-  // Immediately unregister the service worker in development
+// Check if we're in development mode
+const isDevelopment = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+// Immediately unregister the service worker in development
+if (isDevelopment) {
   self.registration.unregister();
 }
+
 const urlsToCache = [
   '/',
   '/index.html',
@@ -22,6 +17,11 @@ const urlsToCache = [
 
 // Install event - cache essential files
 self.addEventListener('install', (event) => {
+  // Skip in development
+  if (isDevelopment) {
+    return;
+  }
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -31,10 +31,31 @@ self.addEventListener('install', (event) => {
   );
 });
 
+// Activate event - clean up old caches
+self.addEventListener('activate', (event) => {
+  // Skip in development
+  if (isDevelopment) {
+    return;
+  }
+  
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
+
 // Fetch event - serve cached content when offline
 self.addEventListener('fetch', (event) => {
-  // Skip all requests in development
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  // Skip service worker in development mode
+  if (isDevelopment) {
     return;
   }
   
@@ -119,24 +140,13 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-});
-
 // Handle background sync for offline scans
 self.addEventListener('sync', (event) => {
+  // Skip in development
+  if (isDevelopment) {
+    return;
+  }
+  
   if (event.tag === 'sync-scans') {
     event.waitUntil(syncScans());
   }

@@ -393,11 +393,11 @@ export async function createEmployee(data: Omit<Employee, '_id' | 'qrCodeUrl' | 
       department: response.data.department,
       position: response.data.position,
       validUntil: response.data.validUntil,
-      qrCodeUrl: response.data.qrCodeUrl.startsWith('http') ? 
+      qrCodeUrl: response.data.qrCodeUrl && typeof response.data.qrCodeUrl === 'string' && response.data.qrCodeUrl.startsWith('http') ? 
         // If it's already a full URL, make sure it uses the correct domain
         response.data.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
         // If it's a relative URL, prepend the baseURL
-        `${apiClient.defaults.baseURL}${response.data.qrCodeUrl}`,
+        `${apiClient.defaults.baseURL}${response.data.qrCodeUrl || ''}`,
       createdAt: response.data.createdAt,
       fedToday: response.data.fedToday || false,
       active: response.data.active !== undefined ? response.data.active : true
@@ -438,11 +438,11 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
       department: item.department,
       position: item.position,
       validUntil: item.validUntil,
-      qrCodeUrl: item.qrCodeUrl.startsWith('http') ? 
+      qrCodeUrl: item.qrCodeUrl && typeof item.qrCodeUrl === 'string' && item.qrCodeUrl.startsWith('http') ? 
         // If it's already a full URL, make sure it uses the correct domain
         item.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
         // If it's a relative URL, prepend the baseURL
-        `${apiClient.defaults.baseURL}${item.qrCodeUrl}`,
+        `${apiClient.defaults.baseURL}${item.qrCodeUrl || ''}`,
       createdAt: item.createdAt,
       fedToday: item.fedToday || false,
       active: item.active !== undefined ? item.active : true
@@ -460,6 +460,12 @@ export async function getEmployees(search?: string, page: number = 1, limit: num
 
 export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
   try {
+    // Add defensive check for uid
+    if (!uid) {
+      console.error('UID is undefined or empty in getEmployeeByUid');
+      return null;
+    }
+
     // Simplified caching approach - check cache first
     const cacheKey = `/api/employees/uid/${uid}`;
     const cached = apiCache.get(cacheKey);
@@ -467,11 +473,11 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
       const result = cached.data as { data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean; fedToday?: boolean } };
       
       // Ensure qrCodeUrl uses the correct domain
-      const qrCodeUrl = result.data.qrCodeUrl.startsWith('http') ? 
+      const qrCodeUrl = result.data.qrCodeUrl && typeof result.data.qrCodeUrl === 'string' && result.data.qrCodeUrl.startsWith('http') ? 
         // If it's already a full URL, make sure it uses the correct domain
         result.data.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
         // If it's a relative URL, prepend the baseURL
-        `${apiClient.defaults.baseURL}${result.data.qrCodeUrl}`;
+        `${apiClient.defaults.baseURL}${result.data.qrCodeUrl || ''}`;
 
       return {
         _id: result.data._id,
@@ -503,11 +509,11 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
     apiCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
     
     // Ensure qrCodeUrl uses the correct domain
-    const qrCodeUrl = response.data.qrCodeUrl.startsWith('http') ? 
+    const qrCodeUrl = response.data.qrCodeUrl && typeof response.data.qrCodeUrl === 'string' && response.data.qrCodeUrl.startsWith('http') ? 
       // If it's already a full URL, make sure it uses the correct domain
       response.data.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
       // If it's a relative URL, prepend the baseURL
-      `${apiClient.defaults.baseURL}${response.data.qrCodeUrl}`;
+      `${apiClient.defaults.baseURL}${response.data.qrCodeUrl || ''}`;
 
     // Map backend response to frontend interface
     return {
@@ -542,16 +548,13 @@ export async function getEmployeeByUid(uid: string): Promise<Employee | null> {
 
 export async function updateEmployee(id: string, data: Partial<Employee>): Promise<Employee> {
   try {
-    const formData = new FormData();
-    
-    if (data.name !== undefined) formData.append('name', data.name);
-    if (data.gender !== undefined) formData.append('gender', data.gender);
-    if (data.phone !== undefined) formData.append('phone', data.phone || '');
-    if (data.department !== undefined) formData.append('department', data.department || '');
-    if (data.position !== undefined) formData.append('position', data.position || '');
-    if (data.validUntil !== undefined) formData.append('validUntil', data.validUntil);
-    
-    const response = await putWithCacheClear<{ success: boolean; message: string; data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, formData);
+    // Add defensive check for id
+    if (!id) {
+      throw new Error('Employee ID is required for update');
+    }
+
+    // Send JSON data instead of FormData
+    const response = await putWithCacheClear<{ success: boolean; message: string; data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, data);
     
     // Clear cache for this specific employee
     if (response.data.uniqueId) {
@@ -568,11 +571,11 @@ export async function updateEmployee(id: string, data: Partial<Employee>): Promi
       department: response.data.department,
       position: response.data.position,
       validUntil: response.data.validUntil,
-      qrCodeUrl: response.data.qrCodeUrl.startsWith('http') ? 
+      qrCodeUrl: response.data.qrCodeUrl && typeof response.data.qrCodeUrl === 'string' && response.data.qrCodeUrl.startsWith('http') ? 
         // If it's already a full URL, make sure it uses the correct domain
         response.data.qrCodeUrl.replace(/https?:\/\/[^/]+/, apiClient.defaults.baseURL) : 
         // If it's a relative URL, prepend the baseURL
-        `${apiClient.defaults.baseURL}${response.data.qrCodeUrl}`,
+        `${apiClient.defaults.baseURL}${response.data.qrCodeUrl || ''}`,
       createdAt: response.data.createdAt,
       fedToday: false, // fedToday is not returned from update
       active: response.data.active !== undefined ? response.data.active : true
@@ -585,6 +588,11 @@ export async function updateEmployee(id: string, data: Partial<Employee>): Promi
 
 export async function deleteEmployee(id: string): Promise<void> {
   try {
+    // Add defensive check for id
+    if (!id) {
+      throw new Error('Employee ID is required for deletion');
+    }
+
     await deleteWithCacheClear(`/api/employees/${id}`);
     // Also clear cache for this specific employee if we have the ID
     clearSpecificEmployeeCache(id);
@@ -619,6 +627,11 @@ export async function printBulkCards(employeeIds: string[]): Promise<Blob> {
 // Generate QR code dynamically without storing it
 export async function generateDynamicQRCode(employeeUid: string): Promise<string> {
   try {
+    // Add defensive check for employeeUid
+    if (!employeeUid) {
+      throw new Error('Employee UID is required for QR code generation');
+    }
+
     const response = await apiClient.get(`/api/employees/uid/${employeeUid}/qrcode/dynamic`, {
       responseType: 'blob'
     });
@@ -635,6 +648,14 @@ export async function generateDynamicQRCode(employeeUid: string): Promise<string
 // ============ QR CODE FUNCTIONS ============
 export async function downloadQRCode(employeeId: string, employeeUid: string): Promise<void> {
   try {
+    // Add defensive checks
+    if (!employeeId) {
+      throw new Error('Employee ID is required for QR code download');
+    }
+    if (!employeeUid) {
+      throw new Error('Employee UID is required for QR code download');
+    }
+
     // Use the new endpoint that accepts uniqueId instead of _id
     const response = await apiClient.get(`/api/employees/uid/${employeeUid}/qrcode`, {
       responseType: 'blob'
@@ -709,6 +730,12 @@ export async function getTodayFeedingRecords(): Promise<FeedingRecord[]> {
 
 export async function getFeedingRecordsForEmployee(uniqueId: string): Promise<FeedingRecord[]> {
   try {
+    // Add defensive check for uniqueId
+    if (!uniqueId) {
+      console.error('uniqueId is undefined or empty in getFeedingRecordsForEmployee');
+      return [];
+    }
+
     const response = await cachedGet<{ data: BackendFeedingRecord[] }>(`/api/feeding/employee/${uniqueId}`);
     
     return response.data.map((item) => ({
@@ -728,6 +755,14 @@ export async function getFeedingRecordsForEmployee(uniqueId: string): Promise<Fe
 
 export async function scanQRCode(uniqueId: string, deviceId: string, method: 'scan' | 'manual'): Promise<QRScanResponse> {
   try {
+    // Add defensive checks
+    if (!uniqueId) {
+      throw new Error('Employee unique ID is required for scanning');
+    }
+    if (!deviceId) {
+      throw new Error('Device ID is required for scanning');
+    }
+
     const response = await postWithCacheClear<{ status: string; message: string }>('/api/feeding/scan', { uniqueId, deviceId, method });
     return {
       status: response.status as 'success' | 'already_fed' | 'not_found' | 'error',
@@ -760,6 +795,11 @@ export async function scanQRCode(uniqueId: string, deviceId: string, method: 'sc
 }
 
 export async function setManualFeedingStatus(uniqueId: string, fed: boolean): Promise<QRScanResponse> {
+  // Add defensive check for uniqueId
+  if (!uniqueId) {
+    throw new Error('Employee unique ID is required');
+  }
+
   // For setting fed status to true, we use the scan endpoint with method 'manual'
   // For setting fed status to false, we use the remove feeding record endpoint
   const deviceId = 'manual-admin'; // Default device ID for admin actions
@@ -775,6 +815,11 @@ export async function setManualFeedingStatus(uniqueId: string, fed: boolean): Pr
 
 export async function removeFeedingStatus(uniqueId: string): Promise<QRScanResponse> {
   try {
+    // Add defensive check for uniqueId
+    if (!uniqueId) {
+      throw new Error('Employee unique ID is required');
+    }
+
     const response = await deleteWithCacheClear<{ status: string; message: string }>(`/api/feeding/record/${uniqueId}`);
     return {
       status: response.status as 'success' | 'already_fed' | 'not_found' | 'error',
@@ -865,6 +910,11 @@ interface EmployeeReportData {
 
 export async function getEmployeeReport(uniqueId: string, page: number = 1, limit: number = 50): Promise<EmployeeReportData> {
   try {
+    // Add defensive check for uniqueId
+    if (!uniqueId) {
+      throw new Error('Employee unique ID is required for report generation');
+    }
+
     const response = await cachedGet<EmployeeReportData>(`/api/reports/employee/${uniqueId}?page=${page}&limit=${limit}`);
     return response;
   } catch (error) {
@@ -997,58 +1047,4 @@ export interface PaginatedFeedRecords {
     total: number;
     pages: number;
   };
-}
-
-export async function getFeedRecordsByDateRange(startDate: string, endDate: string, site?: string): Promise<FeedRecord[]> {
-  try {
-    let url = `/api/feed/date-range?startDate=${startDate}&endDate=${endDate}`;
-    if (site) {
-      url += `&site=${encodeURIComponent(site)}`;
-    }
-    
-    const response = await cachedGet<{ data: { id: string; employeeUid: string; employeeName: string; date: string; time: string; scannerName: string; status?: string }[] }>(url);
-    
-    // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = response.data.map((item) => ({
-      id: item.id,
-      employeeUid: item.employeeUid,
-      employeeName: item.employeeName,
-      date: item.date,
-      time: item.time,
-      scannerName: item.scannerName,
-      status: (item.status as 'ok' | 'duplicate') || 'ok'
-    }));
-    
-    return feedRecords;
-  } catch (error) {
-    handleApiError(error);
-    throw error; // Re-throw to maintain existing error handling
-  }
-}
-
-export async function getTodayFeedRecords(page: number = 1, limit: number = 10): Promise<PaginatedFeedRecords> {
-  try {
-    const url = `/api/feeding/today?page=${page}&limit=${limit}`;
-    
-    const response = await cachedGet<{ data: BackendFeedingRecord[]; pagination: { page: number; limit: number; total: number; pages: number } }>(url);
-    
-    // Map the backend response to the FeedRecord interface expected by the frontend
-    const feedRecords = response.data.map((item) => ({
-      id: item._id,
-      employeeUid: item.employee?.uniqueId || item.uniqueId,
-      employeeName: item.employee?.name || 'Unknown',
-      date: item.date,
-      time: item.fedAt ? new Date(item.fedAt).toTimeString().split(' ')[0] : '',
-      scannerName: item.deviceId || 'Unknown',
-      status: 'ok' as const // Assuming all records are valid
-    }));
-    
-    return {
-      data: feedRecords,
-      pagination: response.pagination
-    };
-  } catch (error) {
-    handleApiError(error);
-    throw error; // Re-throw to maintain existing error handling
-  }
 }

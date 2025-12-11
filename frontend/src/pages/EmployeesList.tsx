@@ -43,7 +43,6 @@ export default function EmployeesList() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const limit = 10;
   const refresh = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return params.get('refresh') === 'true';
