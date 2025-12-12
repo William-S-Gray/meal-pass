@@ -553,8 +553,13 @@ export async function updateEmployee(id: string, data: Partial<Employee>): Promi
       throw new Error('Employee ID is required for update');
     }
 
+    // Ensure we're not sending the _id or uniqueId in the update data
+    const updateData = { ...data };
+    delete updateData._id;
+    delete updateData.uniqueId;
+    
     // Send JSON data instead of FormData
-    const response = await putWithCacheClear<{ success: boolean; message: string; data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, data);
+    const response = await putWithCacheClear<{ success: boolean; message: string; data: { _id: string; uniqueId: string; name: string; gender: 'Male' | 'Female' | 'Other'; phone?: string; department?: string; position?: string; validUntil: string; qrCodeUrl: string; createdAt: string; active?: boolean } }>(`/api/employees/${id}`, updateData);
     
     // Clear cache for this specific employee
     if (response.data.uniqueId) {
